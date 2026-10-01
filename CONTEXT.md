@@ -40,6 +40,10 @@ _Avoid_: drift (in gate contexts)
 The gate's single categorical judgement on one candidate, decided by probe performance rather than by shift: PASS, THRESHOLD STALE, PROBE DEGRADED or INCONCLUSIVE. Shift is reported alongside as a diagnostic.
 _Avoid_: result, status, NO SHIFT
 
+**Decision flip rate**:
+The fraction of examples whose probe decision (above or below the threshold) differs between reference and candidate on the same prompts. A diagnostic reported alongside the verdict, never an input to it.
+_Avoid_: verdict flip rate, churn
+
 **Recalibration**:
 Choosing a new threshold for the same target false-positive rate on the candidate, keeping the probe's weights unchanged.
 _Avoid_: retraining, retuning
