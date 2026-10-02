@@ -22,6 +22,16 @@ _Avoid_: original config, base config
 The serving config being evaluated for rollout against a reference.
 _Avoid_: new config, target
 
+### Probe task
+
+**Prompt attack**:
+A prompt that tries to make the model override its instructions or safety behaviour, by injection or jailbreak. The positive class of the example probe.
+_Avoid_: prompt injection (for the task as a whole), jailbreak (alone), adversarial prompt
+
+**Hard negative**:
+A benign prompt that looks like a prompt attack, for example one that discusses overriding or ignoring something.
+_Avoid_: benign-but-scary, tricky benign
+
 ### Gate
 
 **Reference snapshot**:
