@@ -17,3 +17,9 @@ hulder = "hulder:main"
 [build-system]
 requires = ["uv_build>=0.12.21,<0.13.0"]
 build-backend = "uv_build"
+
+[tool.uv]
+# Managed interpreter only (it ships Python.h, which Triton's JIT needs), never
+# downloaded implicitly. scripts/dev-env.sh points UV_PYTHON_INSTALL_DIR into the repo.
+python-preference = "only-managed"
+python-downloads = "manual"
