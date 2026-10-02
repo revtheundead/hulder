@@ -29,11 +29,8 @@ Relative L2 at the last token for batched vs single is about 1.2e-3. Last-token 
 
 On a cache hit, every full 16-token block is served from the stored hidden-state cache, bit-identical to whatever request first computed it. Only the trailing partial block is recomputed. In this run, positions 0 to 63 were reused and 64 onward recomputed. The recomputed tokens, including the last token, differ from a cold prefill because attention reads the prefix from the KV cache. So with caching on, a request's hidden states depend on the request history.
 
-Unexplained: with caching on, the first pass already differs from caching off at position 0, before any hit could occur. Not investigated.
+Unexplained: with caching on, the first pass already differs from caching off at position 0, before any hit could occur.
 
-## Implications (proposed, for the offline extraction decision)
+## Decision
 
-- Offline extraction for the gate runs with prefix caching **off** and a **fixed batch composition** (fixed prompt order and batch size). That makes snapshots bit-reproducible.
-- Batch composition is a measured source of variation, so the noise floor should vary it on purpose rather than hold it fixed by accident.
-- Prefix caching on/off is a serving config in its own right, which matches README §6 D2.
-- Chunked prefill must be off (connector docs). Production servers usually run with it on, so the gate's extraction settings are not the production settings. That gap is D1's problem (Phase 3), but the README should say so.
+The offline extraction decision (accepted): connector path, prefix caching off, fixed batch composition. The README §6 D1 note covers the chunked-prefill requirement.
