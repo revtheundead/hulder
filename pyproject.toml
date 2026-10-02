@@ -7,7 +7,9 @@ authors = [
     { name = "Utku Özbek", email = "72575433+revtheundead@users.noreply.github.com" }
 ]
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "vllm==0.30.0",
+]
 
 [project.scripts]
 hulder = "hulder:main"
