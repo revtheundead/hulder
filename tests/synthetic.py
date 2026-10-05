@@ -73,10 +73,16 @@ def unchanged_scorer(
     return Paired(reference, expit(noisy), labels, threshold)
 
 
-def verdict_rates(make: Callable[[int], Paired], seeds: range, target_fpr: float = 0.01) -> dict:
-    """Share of seeds giving each verdict, keyed by the verdict's value."""
-    counts = Counter()
+def reports(make: Callable[[int], Paired], seeds: range, target_fpr: float = 0.01) -> list[hulder.Report]:
+    """One check per seed."""
+    out = []
     for seed in seeds:
         d = make(seed)
-        counts[hulder.check(d.reference, d.candidate, d.labels, threshold=d.threshold, target_fpr=target_fpr).verdict] += 1
+        out.append(hulder.check(d.reference, d.candidate, d.labels, threshold=d.threshold, target_fpr=target_fpr))
+    return out
+
+
+def verdict_rates(make: Callable[[int], Paired], seeds: range, target_fpr: float = 0.01) -> dict:
+    """Share of seeds giving each verdict, keyed by the verdict's value."""
+    counts = Counter(r.verdict for r in reports(make, seeds, target_fpr))
     return {v.value: counts[v] / len(seeds) for v in hulder.Verdict}

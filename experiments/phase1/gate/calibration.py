@@ -11,16 +11,20 @@ Writes docs/results/phase1/gate_calibration.json.
 
 import json
 import sys
+from collections import Counter
 from functools import partial
 from pathlib import Path
 
+import numpy as np
 from scipy.stats import binomtest
 
 ROOT = Path(__file__).resolve().parents[3]
 sys.path[:0] = [str(ROOT / "tests"), str(ROOT / "experiments/phase1/probe")]
 
 from common import run_manifest  # noqa: E402
-from synthetic import FRESH_ENGINE_NOISE, FRESH_ENGINE_P_ZERO, N_ATTACK, N_BENIGN, unchanged_scorer, verdict_rates  # noqa: E402
+from synthetic import FRESH_ENGINE_NOISE, FRESH_ENGINE_P_ZERO, N_ATTACK, N_BENIGN, reports, unchanged_scorer  # noqa: E402
+
+import hulder  # noqa: E402
 
 OUT = ROOT / "docs/results/phase1/gate_calibration.json"
 SEEDS = range(1000)
@@ -28,12 +32,20 @@ TARGET_FPR = 0.01
 CANDIDATE_FPRS = (0.015, 0.02, 0.03, 0.05)
 
 
-def with_ci(rates: dict) -> dict:
+def summarise(runs: list[hulder.Report]) -> dict:
+    """Each verdict's rate with a 95% CI, and how many more benign INCONCLUSIVE runs asked for."""
+    counts = Counter(r.verdict for r in runs)
     out = {}
-    for verdict, rate in rates.items():
-        k = round(rate * len(SEEDS))
-        ci = binomtest(k, len(SEEDS)).proportion_ci(method="exact")
-        out[verdict] = {"rate": rate, "ci95": [ci.low, ci.high]}
+    for verdict in hulder.Verdict:
+        ci = binomtest(counts[verdict], len(runs)).proportion_ci(method="exact")
+        out[verdict.value] = {"rate": counts[verdict] / len(runs), "ci95": [ci.low, ci.high]}
+    more = [r.more_benign_needed for r in runs if r.verdict is hulder.Verdict.INCONCLUSIVE]
+    known = [m for m in more if m is not None]
+    out["inconclusive_more_benign_needed"] = {
+        "median": float(np.median(known)) if known else None,
+        "quartiles": [float(q) for q in np.quantile(known, [0.25, 0.75])] if known else None,
+        "n_none": len(more) - len(known),
+    }
     return out
 
 
@@ -45,8 +57,8 @@ def main() -> None:
     }
     results = {}
     for name, make in cases.items():
-        results[name] = with_ci(verdict_rates(make, SEEDS, TARGET_FPR))
-        print(name, {v: round(r["rate"], 3) for v, r in results[name].items()})
+        results[name] = summarise(reports(make, SEEDS, TARGET_FPR))
+        print(name, {v: round(results[name][v.value]["rate"], 3) for v in hulder.Verdict})
     report = {
         "n_benign": N_BENIGN,
         "n_attack": N_ATTACK,
