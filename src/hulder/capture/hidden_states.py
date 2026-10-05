@@ -12,7 +12,7 @@ from dataclasses import dataclass
 import numpy as np
 from vllm import LLM, SamplingParams
 from vllm.config.kv_transfer import KVTransferConfig
-from vllm.distributed.kv_transfer.kv_connector.v1 import example_hidden_states_connector as hsc
+from vllm.distributed.kv_transfer.kv_connector.v1 import example_hidden_states_connector
 
 
 @dataclass(frozen=True)
@@ -32,6 +32,13 @@ class CaptureConfig:
     max_model_len: int = 1024
     max_num_batched_tokens: int = 1024
     seed: int = 0
+    # The offline extraction decision: required off for reproducible snapshots. Fields so the manifest records them.
+    enable_prefix_caching: bool = False
+    enable_chunked_prefill: bool = False
+
+    def __post_init__(self) -> None:
+        if self.enable_prefix_caching or self.enable_chunked_prefill:
+            raise ValueError("the offline extraction decision: capture needs prefix caching and chunked prefill off")
 
 
 @dataclass(frozen=True)
@@ -55,8 +62,8 @@ def capture(prompts: list[str], cfg: CaptureConfig) -> Capture:
             max_num_batched_tokens=cfg.max_num_batched_tokens,
             max_num_seqs=cfg.batch_size,
             seed=cfg.seed,
-            enable_chunked_prefill=False,
-            enable_prefix_caching=False,
+            enable_chunked_prefill=cfg.enable_chunked_prefill,
+            enable_prefix_caching=cfg.enable_prefix_caching,
             speculative_config={
                 "method": "extract_hidden_states",
                 "num_speculative_tokens": 1,
@@ -73,12 +80,12 @@ def capture(prompts: list[str], cfg: CaptureConfig) -> Capture:
         for start in range(0, len(convs), cfg.batch_size):
             for out in llm.chat(convs[start : start + cfg.batch_size], params, use_tqdm=False):
                 path = out.kv_transfer_params["hidden_states_path"]
-                obj = hsc.load_hidden_states(path)
+                obj = example_hidden_states_connector.load_hidden_states(path)
                 assert obj["token_ids"].tolist() == list(out.prompt_token_ids)
                 # hidden_states is [tokens, layers, d]; keep only the requested positions.
                 acts.append(obj["hidden_states"][pos].transpose(0, 1).to("cpu").numpy().astype(np.float16))
                 tokens.append(tok.convert_ids_to_tokens(obj["token_ids"][pos].tolist()))
                 os.remove(path)
             if start // cfg.batch_size % 100 == 0:
-                print(f"captured {start + cfg.batch_size}/{len(convs)}", flush=True)
+                print(f"captured {min(start + cfg.batch_size, len(convs))}/{len(convs)}", flush=True)
     return Capture(activations=np.stack(acts), position_tokens=tokens)
