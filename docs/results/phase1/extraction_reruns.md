@@ -1,0 +1,23 @@
+# Fresh-engine captures are not bit-identical at scale (Phase 1)
+
+Three fp16 captures of the 16,332 probe prompts, each a fresh engine with an identical `CaptureConfig`. Full numbers in `extraction_reruns.json`.
+
+Reproduce from the repo root (each `extract.py` run writes `.cache/probe/fp16`; rename it between runs):
+
+```
+source scripts/dev-env.sh
+uv run python experiments/phase1/probe/extract.py --config fp16    # x3, renaming to fp16_run1..3
+uv run python experiments/phase1/probe/compare_runs.py .cache/probe/fp16_run1 .cache/probe/fp16_run2 .cache/probe/fp16_run3
+```
+
+| Pair | Prompts differing | Batches differing | Main probe mean / p99 / max \|Δscore\| | Decision flips at 0.769 |
+|---|---|---|---|---|
+| run 1 vs 2 | 54.9% | 1,471 / 2,042 | 8.2e-5 / 1.3e-3 / 4.1e-3 | 1 |
+| run 1 vs 3 | 56.0% | 1,473 / 2,042 | 8.6e-5 / 1.4e-3 / 4.1e-3 | 1 |
+| run 2 vs 3 | 52.6% | 1,389 / 2,042 | 8.1e-5 / 1.3e-3 / 3.6e-3 | 2 |
+
+- **Not the compile cache.** Run 1 started with a cold cache. Runs 2 and 3 both had a warm cache and differ just as much.
+- **Not batch size in tokens.** About 70% of batches differ at every batch token count from 192 to over 512.
+- **Same order as batch composition.** Relative L2 at the last token reaches about 3e-3 at layer 20 and 6e-3 at layer 28, comparable to the offline extraction decision's batched-vs-single effect.
+
+The offline extraction decision recorded bit-identical reruns, checked on 6 prompts in one batch. That holds for that case and not for 16k prompts. A reference snapshot therefore reproduces to within a noise floor, not bitwise, and the gate's `noise_floor=` input is needed even between identical serving configs. The probe effect is small: 1 or 2 of 16,332 decisions flip at the main probe's threshold. Run 1 was captured at a pre-rebase commit that no longer exists. Run 2 (commit `eaa1356`) is the canonical capture behind the committed probe results.
