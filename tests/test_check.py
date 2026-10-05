@@ -65,3 +65,14 @@ def test_attacks_slipping_under_the_threshold_is_threshold_stale():
         data.reference, data.candidate, data.labels, threshold=data.threshold, target_fpr=0.01
     )
     assert report.verdict is hulder.Verdict.THRESHOLD_STALE
+
+
+def test_scorer_that_no_longer_separates_is_scorer_degraded_even_though_fnr_also_rose():
+    # Attack logits down by 2 drop AUROC from about 0.993 to about 0.856. FNR rises too,
+    # which alone would be THRESHOLD STALE, but no threshold fixes a scorer that no longer
+    # separates, so SCORER DEGRADED is checked first.
+    data = unchanged_scorer(seed=0, attack_shift=-2.0)
+    report = hulder.check(
+        data.reference, data.candidate, data.labels, threshold=data.threshold, target_fpr=0.01
+    )
+    assert report.verdict is hulder.Verdict.SCORER_DEGRADED
