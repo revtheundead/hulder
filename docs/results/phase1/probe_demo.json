@@ -1,0 +1,90 @@
+{
+  "demo_only": true,
+  "note": "Quickstart demo probe. Trained on 600 examples with a 5% FPR target. Not a real monitor.",
+  "split_sizes": {
+    "train": {
+      "n": 600,
+      "scenarios": 25
+    },
+    "calibration": {
+      "n": 360,
+      "scenarios": 15
+    },
+    "test": {
+      "n": 240,
+      "scenarios": 10
+    }
+  },
+  "layer": 20,
+  "position": -1,
+  "C": 0.001,
+  "threshold": 0.3951607346534729,
+  "target_fpr": 0.05,
+  "calibration": {
+    "auroc": 0.9989814814814815,
+    "fpr": {
+      "rate": 0.044444444444444446,
+      "k": 8,
+      "n": 180,
+      "ci95": [
+        0.019380472829908426,
+        0.08569257842896986
+      ]
+    },
+    "fnr": {
+      "rate": 0.0,
+      "k": 0,
+      "n": 180,
+      "ci95": [
+        0.0,
+        0.02028520457011299
+      ]
+    }
+  },
+  "test": {
+    "auroc": 0.9985416666666667,
+    "ci95": [
+      0.9956927083333333,
+      0.9998611111111112
+    ],
+    "fpr": {
+      "rate": 0.05,
+      "k": 6,
+      "n": 120,
+      "ci95": [
+        0.018567586782669152,
+        0.1056538545187123
+      ]
+    },
+    "fnr": {
+      "rate": 0.008333333333333333,
+      "k": 1,
+      "n": 120,
+      "ci95": [
+        0.00021095947812170928,
+        0.04555551323359302
+      ]
+    },
+    "bootstrap": "pair-clustered"
+  },
+  "attribution": "Contains data derived from 3nesdeniz/agentic-prompt-injection-boundary-pairs (Deniz 2026, doi:10.5281/zenodo.21378693), CC-BY-4.0.",
+  "run_manifest": {
+    "git_commit": "f80eb143789ca9c82cd968e216ecd3087ca597c6",
+    "git_dirty": false,
+    "python": "3.12.14",
+    "packages": {
+      "numpy": "2.3.5",
+      "scipy": "1.18.1",
+      "scikit-learn": "1.9.1",
+      "pandas": "3.0.6",
+      "huggingface-hub": "1.33.0",
+      "vllm": "0.30.0",
+      "torch": "2.13.0"
+    },
+    "seed": 0,
+    "inputs_sha256": {
+      ".cache/probe/probe_main.npz": "fed66cae793ef8068793947f8f8b67104f78a1ddb3a5586db9f46a775a513702",
+      ".cache/probe/fp16/activations.npy": "2764025df57a5c6ec9a73f354f0c53493ce362ca2d9bb48c9edfefcbc392cf69"
+    }
+  }
+}

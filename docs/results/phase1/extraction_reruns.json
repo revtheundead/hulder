@@ -1,0 +1,81 @@
+{
+  "n_prompts": 16332,
+  "probe": {
+    "layer": 20,
+    "position": -1,
+    "threshold": 0.7688924074172974
+  },
+  "runs": {
+    "fp16_run1": {
+      "git_commit": "036820473d62868c9f6121aa8da89eee46b5d317",
+      "git_dirty": null,
+      "elapsed_s": 253.4
+    },
+    "fp16_run2": {
+      "git_commit": "eaa1356d49b3213ac69d02a1137e982752d69be3",
+      "git_dirty": false,
+      "elapsed_s": 249.0
+    },
+    "fp16_run3": {
+      "git_commit": "eaa1356d49b3213ac69d02a1137e982752d69be3",
+      "git_dirty": false,
+      "elapsed_s": 250.7
+    }
+  },
+  "pairs": {
+    "fp16_run1 vs fp16_run2": {
+      "prompts_differing": 8970,
+      "share_prompts_differing": 0.5492285084496693,
+      "batches_differing": 1471,
+      "batches": 2042,
+      "probe_abs_dscore": {
+        "mean": 8.150671055773273e-05,
+        "p99": 0.001296892063692212,
+        "max": 0.004094153642654419
+      },
+      "decision_flips_at_threshold": 1
+    },
+    "fp16_run1 vs fp16_run3": {
+      "prompts_differing": 9146,
+      "share_prompts_differing": 0.5600048983590498,
+      "batches_differing": 1473,
+      "batches": 2042,
+      "probe_abs_dscore": {
+        "mean": 8.612473902758211e-05,
+        "p99": 0.0013531020376831293,
+        "max": 0.004094153642654419
+      },
+      "decision_flips_at_threshold": 1
+    },
+    "fp16_run2 vs fp16_run3": {
+      "prompts_differing": 8588,
+      "share_prompts_differing": 0.5258388439872642,
+      "batches_differing": 1389,
+      "batches": 2042,
+      "probe_abs_dscore": {
+        "mean": 8.0508878454566e-05,
+        "p99": 0.0013357657007873058,
+        "max": 0.003618389368057251
+      },
+      "decision_flips_at_threshold": 2
+    }
+  },
+  "run_manifest": {
+    "git_commit": "f090f0e259a918828b15bb00fee4b991aeb91bf8",
+    "git_dirty": false,
+    "python": "3.12.14",
+    "packages": {
+      "numpy": "2.3.5",
+      "scipy": "1.18.1",
+      "scikit-learn": "1.9.1",
+      "pandas": "3.0.6",
+      "huggingface-hub": "1.33.0",
+      "vllm": "0.30.0",
+      "torch": "2.13.0"
+    },
+    "seed": null,
+    "inputs_sha256": {
+      ".cache/probe/probe_main.npz": "fed66cae793ef8068793947f8f8b67104f78a1ddb3a5586db9f46a775a513702"
+    }
+  }
+}

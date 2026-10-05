@@ -1,14 +1,32 @@
 [project]
 name = "hulder"
 version = "0.1.0"
-description = "Add your description here"
+description = "Release gate for thresholded scores, such as activation probes, across LLM serving configs"
 readme = "README.md"
 authors = [
     { name = "Utku Özbek", email = "72575433+revtheundead@users.noreply.github.com" }
 ]
 requires-python = ">=3.12"
+# Base install: the gate library and CLI, numpy and scipy only.
 dependencies = [
-    "vllm==0.30.0",
+    "numpy>=2.3",
+    "scipy>=1.16",
+]
+
+[project.optional-dependencies]
+vllm = ["vllm==0.30.0"]
+train = ["scikit-learn>=1.7"]
+
+[dependency-groups]
+# Default for `uv run`/`uv sync`, so local work keeps both extras installed.
+dev = [
+    "hulder[vllm,train]",
+    "pytest>=8",
+    "pandas>=2.3",
+    "pyarrow>=21",
+    # Imported directly by experiments/; versions come from the vllm pin via uv.lock.
+    "huggingface-hub",
+    "torch",
 ]
 
 [project.scripts]
