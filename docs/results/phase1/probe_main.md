@@ -9,6 +9,7 @@ source scripts/dev-env.sh
 uv run python experiments/phase1/probe/prepare_splits.py
 uv run python experiments/phase1/probe/extract.py --config fp16
 uv run python experiments/phase1/probe/train.py
+uv run python experiments/phase1/probe/near_dups.py
 ```
 
 Capture of 16,332 prompts at 7 layers and 2 positions took 253 s.
@@ -47,4 +48,4 @@ Point estimate 0.839 < 0.85, so **the quickstart gets a demo probe trained on bo
   | Test | 0.1% | 0.8% | 15.7% | 0.41 / 0.46 |
 
   Removing near-duplicates leaves calibration's FNR unchanged, so the probe was not refit. **S-Labs test is further from train than calibration is**, for benign and attack alike, which points to a distribution difference between S-Labs' train and test splits rather than leakage. That distance raises test FNR (15.6% against 9.0%), while test FPR (0.38%) stays under the 1% target.
-- **Validation and test overlap.** 19.6% of validation items have a near-duplicate (≥ 0.9) in test, after exact duplicates were removed. Validation only chose layer and C, over a grid flat to about 1e-4, so the effect on the test numbers should be small. But the test split is not fully independent of selection.
+- **Validation and test overlap.** 19.6% of validation items have a near-duplicate (≥ 0.9) in test. Cross-split deduplication matched only whitespace-normalised text, so this overlap includes texts that differ only in case or punctuation as well as true near-duplicates. Validation only chose layer and C, over a grid flat to about 1e-4, so the effect on the test numbers should be small. But the test split is not fully independent of selection.
