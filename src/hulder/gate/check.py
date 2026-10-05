@@ -61,7 +61,7 @@ def check(
     k, n, _ = _flag_rate(reference[~benign], threshold)
     reference_fnr = 1 - k / n
     _, _, candidate_flagged = _flag_rate(candidate[~benign], threshold)
-    candidate_fnr_low = 1 - candidate_flagged.high
+    candidate_fnr_low, candidate_fnr_high = 1 - candidate_flagged.high, 1 - candidate_flagged.low
     delta_auroc_low, delta_auroc_high = _paired_bootstrap_delta_auroc(reference, candidate, labels, seed)
     stale = (
         candidate_fpr.low > 2 * target_fpr
@@ -72,7 +72,7 @@ def check(
         verdict = Verdict.SCORER_DEGRADED
     elif stale:
         verdict = Verdict.THRESHOLD_STALE
-    elif candidate_fpr.high <= 2 * target_fpr:
+    elif candidate_fpr.high <= 2 * target_fpr and candidate_fnr_high <= reference_fnr + 0.05:
         verdict = Verdict.PASS
     else:
         verdict = Verdict.INCONCLUSIVE
