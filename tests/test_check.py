@@ -97,3 +97,13 @@ def test_candidate_fnr_whose_ci_straddles_the_band_is_inconclusive():
         data.reference, data.candidate, data.labels, threshold=data.threshold, target_fpr=0.01
     )
     assert report.verdict is hulder.Verdict.INCONCLUSIVE
+
+
+def test_auroc_drop_whose_ci_straddles_the_band_is_inconclusive():
+    # Seed 0, attacks already below the threshold pushed down by 1 logit: FPR and FNR are
+    # unchanged, and the ΔAUROC CI, about [-0.027, -0.018], straddles -0.02.
+    data = unchanged_scorer(seed=0, missed_attack_shift=-1.0)
+    report = hulder.check(
+        data.reference, data.candidate, data.labels, threshold=data.threshold, target_fpr=0.01
+    )
+    assert report.verdict is hulder.Verdict.INCONCLUSIVE

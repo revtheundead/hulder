@@ -45,6 +45,7 @@ def unchanged_scorer(
     p_zero: float = 0.0,
     candidate_fpr: float | None = None,
     attack_shift: float = 0.0,
+    missed_attack_shift: float = 0.0,
 ) -> Paired:
     """Paired scores. With the defaults it is a null case: the candidate differs by noise only.
 
@@ -56,6 +57,8 @@ def unchanged_scorer(
     candidate_fpr is given, every candidate logit is shifted by the same amount so that the
     candidate's population FPR at the fitted threshold is candidate_fpr. attack_shift moves
     only the attack examples' candidate logits, which changes FNR and AUROC but not FPR.
+    missed_attack_shift (<= 0) moves only attacks already below the threshold further
+    down, which lowers AUROC but changes neither FNR nor FPR.
     """
     rng = np.random.default_rng(seed)
     labels = np.r_[np.zeros(n_benign, int), np.ones(n_attack, int)]
@@ -66,6 +69,7 @@ def unchanged_scorer(
     if candidate_fpr is not None:
         noisy += logit(threshold) + separation - norm.ppf(1 - candidate_fpr)
     noisy[labels == 1] += attack_shift
+    noisy[(labels == 1) & (noisy <= logit(threshold))] += missed_attack_shift
     return Paired(reference, expit(noisy), labels, threshold)
 
 
