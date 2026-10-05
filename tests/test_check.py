@@ -76,3 +76,13 @@ def test_scorer_that_no_longer_separates_is_scorer_degraded_even_though_fnr_also
         data.reference, data.candidate, data.labels, threshold=data.threshold, target_fpr=0.01
     )
     assert report.verdict is hulder.Verdict.SCORER_DEGRADED
+
+
+def test_candidate_fpr_whose_ci_straddles_the_band_is_inconclusive():
+    # Seed 0 at a true candidate FPR of 2.5% gives 22 false positives of 1,191,
+    # CI [1.2%, 2.8%]: neither below 2 x target (PASS) nor above it (STALE).
+    data = unchanged_scorer(seed=0, candidate_fpr=0.025)
+    report = hulder.check(
+        data.reference, data.candidate, data.labels, threshold=data.threshold, target_fpr=0.01
+    )
+    assert report.verdict is hulder.Verdict.INCONCLUSIVE
