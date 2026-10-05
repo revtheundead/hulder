@@ -15,7 +15,7 @@ Layer 20, position −1, C = 0.001, all reused from the main probe. Split by sce
 | Calibration (180 / 180) | 0.999 | 4.4% [1.9, 8.6] | 0.0% [0.0, 2.0] |
 | Test (120 / 120) | 0.999 [0.996, 1.000] | 5.0% [1.9, 10.6] | 0.8% [0.0, 4.6] |
 
-Threshold 0.394, for 5% FPR on calibration benign. AUROC CI is a pair-clustered bootstrap; rate CIs are Clopper-Pearson.
+Threshold 0.395, for 5% FPR on calibration benign. AUROC CI is a pair-clustered bootstrap; rate CIs are Clopper-Pearson.
 
 Near-perfect separation on 240 synthetic, curated examples says the dataset is easy for a probe trained on it, not that the probe generalises. Its FPR interval spans 1.9% to 10.6% at n = 120, so the quickstart's fp16 vs AWQ check may well return INCONCLUSIVE. If it does, the quickstart shows that verdict as is.
 
