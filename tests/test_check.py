@@ -1,3 +1,4 @@
+import numpy as np
 import pytest
 
 import hulder
@@ -107,3 +108,27 @@ def test_auroc_drop_whose_ci_straddles_the_band_is_inconclusive():
         data.reference, data.candidate, data.labels, threshold=data.threshold, target_fpr=0.01
     )
     assert report.verdict is hulder.Verdict.INCONCLUSIVE
+
+
+def _benign_then_attack(n_benign, k_flagged, n_attack=910, k_missed=120):
+    """Scores with exactly k_flagged benign above 0.5 and k_missed attacks below it."""
+    benign = np.r_[np.full(k_flagged, 0.6), np.linspace(0.01, 0.4, n_benign - k_flagged)]
+    attack = np.r_[np.full(k_missed, 0.45), np.linspace(0.7, 0.99, n_attack - k_missed)]
+    return np.r_[benign, attack], np.r_[np.zeros(n_benign, int), np.ones(n_attack, int)]
+
+
+def test_inconclusive_reports_how_many_more_benign_examples_would_resolve_it():
+    # 22 of 1,191 benign flagged (1.85%, CI [1.2%, 2.8%]) against a 2% line.
+    reference, labels = _benign_then_attack(1191, 11)
+    candidate, _ = _benign_then_attack(1191, 22)
+    report = hulder.check(reference, candidate, labels, threshold=0.5, target_fpr=0.01)
+    assert report.verdict is hulder.Verdict.INCONCLUSIVE
+    more = report.more_benign_needed
+    assert more > 0
+
+    # With that many more benign at the same observed FPRs, the verdict is decided.
+    n = 1191 + more
+    reference, labels = _benign_then_attack(n, round(11 / 1191 * n))
+    candidate, _ = _benign_then_attack(n, round(22 / 1191 * n))
+    report = hulder.check(reference, candidate, labels, threshold=0.5, target_fpr=0.01)
+    assert report.verdict is not hulder.Verdict.INCONCLUSIVE
