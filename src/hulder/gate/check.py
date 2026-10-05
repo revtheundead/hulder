@@ -72,7 +72,11 @@ def check(
         verdict = Verdict.SCORER_DEGRADED
     elif stale:
         verdict = Verdict.THRESHOLD_STALE
-    elif candidate_fpr.high <= 2 * target_fpr and candidate_fnr_high <= reference_fnr + 0.05:
+    elif (
+        candidate_fpr.high <= 2 * target_fpr
+        and candidate_fnr_high <= reference_fnr + 0.05
+        and delta_auroc_low >= -0.02
+    ):
         verdict = Verdict.PASS
     else:
         verdict = Verdict.INCONCLUSIVE
