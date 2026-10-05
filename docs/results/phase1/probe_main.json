@@ -3,347 +3,347 @@
     "position": -1,
     "layer": 20,
     "C": 0.001,
-    "val_auroc": 0.9987043336122121
+    "val_auroc": 0.9987114582506367
   },
   "grid": [
     {
       "position": -1,
       "layer": 4,
       "C": 0.001,
-      "val_auroc": 0.9964010397900878
+      "val_auroc": 0.9964183424834047
     },
     {
       "position": -1,
       "layer": 4,
       "C": 0.01,
-      "val_auroc": 0.9959806861230365
+      "val_auroc": 0.9959847573449934
     },
     {
       "position": -1,
       "layer": 4,
       "C": 0.1,
-      "val_auroc": 0.9933211603796822
+      "val_auroc": 0.9934046204297988
     },
     {
       "position": -1,
       "layer": 4,
       "C": 1.0,
-      "val_auroc": 0.989076911489599
+      "val_auroc": 0.9886687714884185
     },
     {
       "position": -1,
       "layer": 8,
       "C": 0.001,
-      "val_auroc": 0.9965445503640691
+      "val_auroc": 0.996557781835429
     },
     {
       "position": -1,
       "layer": 8,
       "C": 0.01,
-      "val_auroc": 0.9969781355024804
+      "val_auroc": 0.9969954381957973
     },
     {
       "position": -1,
       "layer": 8,
       "C": 0.1,
-      "val_auroc": 0.9946626280144854
+      "val_auroc": 0.9946239514058947
     },
     {
       "position": -1,
       "layer": 8,
       "C": 1.0,
-      "val_auroc": 0.9919349093033528
+      "val_auroc": 0.9919216778319929
     },
     {
       "position": -1,
       "layer": 12,
       "C": 0.001,
-      "val_auroc": 0.9981710035358563
+      "val_auroc": 0.9981659145084101
     },
     {
       "position": -1,
       "layer": 12,
       "C": 0.01,
-      "val_auroc": 0.9977679525621217
+      "val_auroc": 0.9977944155048417
     },
     {
       "position": -1,
       "layer": 12,
       "C": 0.1,
-      "val_auroc": 0.9960855200884269
+      "val_auroc": 0.9961007871707654
     },
     {
       "position": -1,
       "layer": 12,
       "C": 1.0,
-      "val_auroc": 0.9943074138987447
+      "val_auroc": 0.9944707716797658
     },
     {
       "position": -1,
       "layer": 16,
       "C": 0.001,
-      "val_auroc": 0.9984539534618618
+      "val_auroc": 0.9984519178508834
     },
     {
       "position": -1,
       "layer": 16,
       "C": 0.01,
-      "val_auroc": 0.9985994996468215
+      "val_auroc": 0.9986076420907353
     },
     {
       "position": -1,
       "layer": 16,
       "C": 0.1,
-      "val_auroc": 0.9986086598962245
+      "val_auroc": 0.9985954284248646
     },
     {
       "position": -1,
       "layer": 16,
       "C": 1.0,
-      "val_auroc": 0.9984386863795234
+      "val_auroc": 0.9984763451826248
     },
     {
       "position": -1,
       "layer": 20,
       "C": 0.001,
-      "val_auroc": 0.9987043336122121
+      "val_auroc": 0.9987114582506367
     },
     {
       "position": -1,
       "layer": 20,
       "C": 0.01,
-      "val_auroc": 0.9984437754069695
+      "val_auroc": 0.9984478466289265
     },
     {
       "position": -1,
       "layer": 20,
       "C": 0.1,
-      "val_auroc": 0.998040724433235
+      "val_auroc": 0.9980254573508965
     },
     {
       "position": -1,
       "layer": 20,
       "C": 1.0,
-      "val_auroc": 0.9971369131587999
+      "val_auroc": 0.997065666774554
     },
     {
       "position": -1,
       "layer": 24,
       "C": 0.001,
-      "val_auroc": 0.998623926978563
+      "val_auroc": 0.9986229091730737
     },
     {
       "position": -1,
       "layer": 24,
       "C": 0.01,
-      "val_auroc": 0.9983053538604345
+      "val_auroc": 0.9982880511671176
     },
     {
       "position": -1,
       "layer": 24,
       "C": 0.1,
-      "val_auroc": 0.9972865305657167
+      "val_auroc": 0.9972651566504429
     },
     {
       "position": -1,
       "layer": 24,
       "C": 1.0,
-      "val_auroc": 0.9961588020836515
+      "val_auroc": 0.9961801759989252
     },
     {
       "position": -1,
       "layer": 28,
       "C": 0.001,
-      "val_auroc": 0.9983318168031544
+      "val_auroc": 0.9983307989976652
     },
     {
       "position": -1,
       "layer": 28,
       "C": 0.01,
-      "val_auroc": 0.9980987393461211
+      "val_auroc": 0.9981048461790564
     },
     {
       "position": -1,
       "layer": 28,
       "C": 0.1,
-      "val_auroc": 0.9966615979953303
+      "val_auroc": 0.996700274603921
     },
     {
       "position": -1,
       "layer": 28,
       "C": 1.0,
-      "val_auroc": 0.9953262371934626
+      "val_auroc": 0.9953282728044409
     },
     {
       "position": -5,
       "layer": 4,
       "C": 0.001,
-      "val_auroc": 0.9928957176851846
+      "val_auroc": 0.9928936820742063
     },
     {
       "position": -5,
       "layer": 4,
       "C": 0.01,
-      "val_auroc": 0.9936580539966169
+      "val_auroc": 0.9936519471636814
     },
     {
       "position": -5,
       "layer": 4,
       "C": 0.1,
-      "val_auroc": 0.9896346688976962
+      "val_auroc": 0.9896529893965025
     },
     {
       "position": -5,
       "layer": 4,
       "C": 1.0,
-      "val_auroc": 0.9819700846610606
+      "val_auroc": 0.9818988382768146
     },
     {
       "position": -5,
       "layer": 8,
       "C": 0.001,
-      "val_auroc": 0.9899135476017449
+      "val_auroc": 0.9899064229633203
     },
     {
       "position": -5,
       "layer": 8,
       "C": 0.01,
-      "val_auroc": 0.992024476186405
+      "val_auroc": 0.992060099378528
     },
     {
       "position": -5,
       "layer": 8,
       "C": 0.1,
-      "val_auroc": 0.9901262689489937
+      "val_auroc": 0.9901110018666552
     },
     {
       "position": -5,
       "layer": 8,
       "C": 1.0,
-      "val_auroc": 0.9858911803083137
+      "val_auroc": 0.9862301095362268
     },
     {
       "position": -5,
       "layer": 12,
       "C": 0.001,
-      "val_auroc": 0.9965598174464074
+      "val_auroc": 0.9965537106134721
     },
     {
       "position": -5,
       "layer": 12,
       "C": 0.01,
-      "val_auroc": 0.9967959483199085
+      "val_auroc": 0.9968244468736068
     },
     {
       "position": -5,
       "layer": 12,
       "C": 0.1,
-      "val_auroc": 0.9965028203390107
+      "val_auroc": 0.9965303010872198
     },
     {
       "position": -5,
       "layer": 12,
       "C": 1.0,
-      "val_auroc": 0.9958015523569321
+      "val_auroc": 0.9959409917089564
     },
     {
       "position": -5,
       "layer": 16,
       "C": 0.001,
-      "val_auroc": 0.9979979766026874
+      "val_auroc": 0.9980040834356227
     },
     {
       "position": -5,
       "layer": 16,
       "C": 0.01,
-      "val_auroc": 0.9984824520155602
+      "val_auroc": 0.9984773629881141
     },
     {
       "position": -5,
       "layer": 16,
       "C": 0.1,
-      "val_auroc": 0.9979287658294198
+      "val_auroc": 0.9979481041337153
     },
     {
       "position": -5,
       "layer": 16,
       "C": 1.0,
-      "val_auroc": 0.9970595599416188
+      "val_auroc": 0.9970671934827878
     },
     {
       "position": -5,
       "layer": 20,
       "C": 0.001,
-      "val_auroc": 0.9973028154535443
+      "val_auroc": 0.9973028154535444
     },
     {
       "position": -5,
       "layer": 20,
       "C": 0.01,
-      "val_auroc": 0.9979542109666505
+      "val_auroc": 0.9979745670764351
     },
     {
       "position": -5,
       "layer": 20,
       "C": 0.1,
-      "val_auroc": 0.9971521802411385
+      "val_auroc": 0.9971740630591569
     },
     {
       "position": -5,
       "layer": 20,
       "C": 1.0,
-      "val_auroc": 0.9953206392632717
+      "val_auroc": 0.9956407390896341
     },
     {
       "position": -5,
       "layer": 24,
       "C": 0.001,
-      "val_auroc": 0.9971684651289662
+      "val_auroc": 0.9971816966003261
     },
     {
       "position": -5,
       "layer": 24,
       "C": 0.01,
-      "val_auroc": 0.9977699881731003
+      "val_auroc": 0.9977750772005464
     },
     {
       "position": -5,
       "layer": 24,
       "C": 0.1,
-      "val_auroc": 0.997501287523944
+      "val_auroc": 0.9974676999427994
     },
     {
       "position": -5,
       "layer": 24,
       "C": 1.0,
-      "val_auroc": 0.9962783942286357
+      "val_auroc": 0.9963694878199217
     },
     {
       "position": -5,
       "layer": 28,
       "C": 0.001,
-      "val_auroc": 0.9974056138079564
+      "val_auroc": 0.9974249521122517
     },
     {
       "position": -5,
       "layer": 28,
       "C": 0.01,
-      "val_auroc": 0.9971684651289662
+      "val_auroc": 0.9971552336576062
     },
     {
       "position": -5,
       "layer": 28,
       "C": 0.1,
-      "val_auroc": 0.9960875556994053
+      "val_auroc": 0.9960936625323408
     },
     {
       "position": -5,
       "layer": 28,
       "C": 1.0,
-      "val_auroc": 0.9942870577889601
+      "val_auroc": 0.9942840043724923
     }
   ],
-  "threshold": 0.7693235874176025,
+  "threshold": 0.7688924074172974,
   "calibration": {
     "fpr": {
       "rate": 0.009235936188077247,
@@ -355,20 +355,20 @@
       ]
     },
     "fnr": {
-      "rate": 0.09010989010989011,
-      "k": 82,
+      "rate": 0.08901098901098901,
+      "k": 81,
       "n": 910,
       "ci95": [
-        0.07230744762273096,
-        0.1106157370491629
+        0.07131463586254118,
+        0.10941853963690512
       ]
     }
   },
   "test": {
-    "auroc": 0.9944542612477912,
+    "auroc": 0.9944533550813285,
     "ci95": [
-      0.9917401188999784,
-      0.9966931825447798
+      0.9917234928775261,
+      0.9967024061746069
     ],
     "fpr": {
       "rate": 0.0038095238095238095,
@@ -380,20 +380,20 @@
       ]
     },
     "fnr": {
-      "rate": 0.1560418648905804,
-      "k": 164,
+      "rate": 0.15509039010466222,
+      "k": 163,
       "n": 1051,
       "ci95": [
-        0.13461377933781482,
-        0.17941552199460967
+        0.13371956635938032,
+        0.17841229996053348
       ]
     }
   },
   "bpairs_all_1200": {
-    "auroc": 0.8390750000000001,
+    "auroc": 0.838813888888889,
     "ci95": [
-      0.8191370138888889,
-      0.8598553819444444
+      0.8189227083333334,
+      0.8595548263888888
     ],
     "fpr": {
       "rate": 0.9533333333333334,
@@ -417,7 +417,7 @@
   },
   "adr_0004_rule": {
     "threshold_auroc": 0.85,
-    "point_estimate": 0.8390750000000001,
+    "point_estimate": 0.838813888888889,
     "outcome": "train a demo probe on boundary-pairs"
   },
   "capture_manifest": {
@@ -444,7 +444,9 @@
       "gpu_memory_utilization": 0.7,
       "max_model_len": 1024,
       "max_num_batched_tokens": 1024,
-      "seed": 0
+      "seed": 0,
+      "enable_prefix_caching": false,
+      "enable_chunked_prefill": false
     },
     "n_prompts": 16332,
     "shape": [
@@ -456,12 +458,42 @@
     "last_token_examples": [
       "\u010a"
     ],
-    "elapsed_s": 253.4,
-    "vllm": "0.30.0",
-    "torch": "2.13.0+cu130",
+    "elapsed_s": 249.0,
     "gpu": "NVIDIA GeForce RTX 2070",
+    "git_commit": "eaa1356d49b3213ac69d02a1137e982752d69be3",
+    "git_dirty": false,
     "python": "3.12.14",
-    "git_commit": "036820473d62868c9f6121aa8da89eee46b5d317",
-    "splits_sha256": "13122a029b5442592da011ace5d59e43009fb599793d93ab20a9593c5e0c04b4"
+    "packages": {
+      "numpy": "2.3.5",
+      "scipy": "1.18.1",
+      "scikit-learn": "1.9.1",
+      "pandas": "3.0.6",
+      "huggingface-hub": "1.33.0",
+      "vllm": "0.30.0",
+      "torch": "2.13.0"
+    },
+    "seed": 0,
+    "inputs_sha256": {
+      ".cache/probe/splits.parquet": "13122a029b5442592da011ace5d59e43009fb599793d93ab20a9593c5e0c04b4"
+    }
+  },
+  "run_manifest": {
+    "git_commit": "33066ce31b469a3ae2f4a16723b788f1066b05a8",
+    "git_dirty": false,
+    "python": "3.12.14",
+    "packages": {
+      "numpy": "2.3.5",
+      "scipy": "1.18.1",
+      "scikit-learn": "1.9.1",
+      "pandas": "3.0.6",
+      "huggingface-hub": "1.33.0",
+      "vllm": "0.30.0",
+      "torch": "2.13.0"
+    },
+    "seed": 0,
+    "inputs_sha256": {
+      ".cache/probe/splits.parquet": "13122a029b5442592da011ace5d59e43009fb599793d93ab20a9593c5e0c04b4",
+      ".cache/probe/fp16/activations.npy": "2764025df57a5c6ec9a73f354f0c53493ce362ca2d9bb48c9edfefcbc392cf69"
+    }
   }
 }
