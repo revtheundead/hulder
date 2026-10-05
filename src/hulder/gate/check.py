@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 import numpy as np
+from scipy.stats import binomtest
 
 
 class Verdict(Enum):
@@ -31,6 +32,7 @@ class Report:
     """Plain data: it neither prints nor exits, and compares with ==."""
 
     verdict: Verdict
+    warnings: tuple[str, ...] = ()
 
 
 def check(
@@ -40,4 +42,16 @@ def check(
     threshold: float,
     target_fpr: float,
 ) -> Report:
-    return Report(verdict=Verdict.PASS)
+    warnings = []
+    benign = reference[labels == 0]
+    k, n = int((benign > threshold).sum()), len(benign)
+    ci = binomtest(k, n).proportion_ci(confidence_level=0.95, method="exact")
+    if not ci.low <= target_fpr <= ci.high:
+        warnings.append(
+            f"The reference's FPR at threshold {threshold:.4g} is {k / n:.2%} "
+            f"[95% CI {ci.low:.2%}, {ci.high:.2%}], which excludes the {target_fpr:.2%} target, "
+            "so the threshold wasn't calibrated on this snapshot. "
+            "Verdicts then mix threshold generalisation with the serving change: "
+            "recalibrate on the reference first."
+        )
+    return Report(verdict=Verdict.PASS, warnings=tuple(warnings))
