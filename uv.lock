@@ -1480,10 +1480,12 @@ vllm = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "huggingface-hub" },
     { name = "hulder", extra = ["train", "vllm"] },
     { name = "pandas" },
     { name = "pyarrow" },
     { name = "pytest" },
+    { name = "torch" },
 ]
 
 [package.metadata]
@@ -1497,10 +1499,12 @@ provides-extras = ["vllm", "train"]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "huggingface-hub" },
     { name = "hulder", extras = ["vllm", "train"] },
     { name = "pandas", specifier = ">=2.3" },
     { name = "pyarrow", specifier = ">=21" },
     { name = "pytest", specifier = ">=8" },
+    { name = "torch" },
 ]
 
 [[package]]

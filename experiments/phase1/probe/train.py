@@ -16,19 +16,19 @@ Run from the repo root, after extract.py --config fp16:
 Writes .cache/probe/probe_main.npz and docs/results/phase1/probe_main.json.
 """
 
+import dataclasses
 import json
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from common import ACTS, SLABS, SPLITS, Activations, load_bpairs, run_manifest
 from scipy.stats import binomtest
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_auc_score
 
 import hulder
 
-ACTS = Path(".cache/probe/fp16")
-SPLITS = Path(".cache/probe/splits.parquet")
 OUT_PROBE = Path(".cache/probe/probe_main.npz")
 OUT_REPORT = Path("docs/results/phase1/probe_main.json")
 TARGET_FPR = 0.01
@@ -51,7 +51,9 @@ def threshold_for_fpr(benign_scores: np.ndarray, fpr: float) -> float:
 
 
 def rate_ci(k: int, n: int) -> dict:
-    ci = binomtest(k, n).proportion_ci(confidence_level=0.95, method="exact")
+    if n == 0:
+        return {"rate": None, "k": 0, "n": 0, "ci95": None}
+    ci =binomtest(k, n).proportion_ci(confidence_level=0.95, method="exact")
     return {"rate": k / n, "k": k, "n": n, "ci95": [ci.low, ci.high]}
 
 
@@ -79,28 +81,26 @@ def auroc_ci(scores: np.ndarray, y: np.ndarray, clusters: np.ndarray | None = No
 
 def main() -> None:
     df = pd.read_parquet(SPLITS)
-    acts = np.load(ACTS / "activations.npy", mmap_mode="r")
-    manifest = json.loads((ACTS / "manifest.json").read_text())
-    assert json.loads((ACTS / "ids.json").read_text()) == df["id"].tolist()
-    cap = manifest["capture_config"]
-    y = df["label"].to_numpy()
-    rows = {s: np.flatnonzero(df["split"].to_numpy() == s) for s in df["split"].unique()}
-    rows["bpairs"] = np.flatnonzero(df["split"].str.startswith("bpairs_").to_numpy())
-
-    def xs(split: str, li: int, pi: int) -> np.ndarray:
-        return np.asarray(acts[rows[split], li, pi])
+    acts = Activations.load(ACTS)
+    assert list(acts.row_of) == df["id"].tolist()
+    cap = acts.capture_manifest["capture_config"]
+    split = df["split"].to_numpy()
+    mask_of = {s: split == s for s in np.unique(split)}
+    mask_of["bpairs"] = df["split"].str.startswith("bpairs_").to_numpy()
+    ids_of = {s: df["id"].to_numpy()[m] for s, m in mask_of.items()}
+    labels_of = {s: df["label"].to_numpy()[m] for s, m in mask_of.items()}
 
     # Layer x C grid on validation, both positions reported, selection at position -1.
     grid = []
-    for pi, pos in enumerate(cap["positions"]):
-        for li, layer in enumerate(cap["layers"]):
+    for position in cap["positions"]:
+        for layer in cap["layers"]:
+            x_train, x_val = (acts.at(ids_of[s], layer, position) for s in ("train", "validation"))
             for c in C_GRID:
-                p = fit(xs("train", li, pi), y[rows["train"]], c, {})
-                val = roc_auc_score(y[rows["validation"]], hulder.apply_probe(p, xs("validation", li, pi)))
-                grid.append({"position": pos, "layer": layer, "C": c, "val_auroc": val})
-                print(f"pos {pos:>2} layer {layer:>2} C {c:<6} val AUROC {val:.4f}", flush=True)
+                p = fit(x_train, labels_of["train"], c, {})
+                val = roc_auc_score(labels_of["validation"], hulder.apply_probe(p, x_val))
+                grid.append({"position": position, "layer": layer, "C": c, "val_auroc": val})
+                print(f"pos {position:>2} layer {layer:>2} C {c:<6} val AUROC {val:.4f}", flush=True)
     best = max((g for g in grid if g["position"] == -1), key=lambda g: g["val_auroc"])
-    li, pi = cap["layers"].index(best["layer"]), cap["positions"].index(best["position"])
 
     meta = {
         "model": cap["model"],
@@ -110,26 +110,25 @@ def main() -> None:
         "system_prompt": cap["system_prompt"],
         "dtype": cap["dtype"],
         "task": "prompt attack (injection or jailbreak)",
-        "training_data": "S-Labs/prompt-injection-dataset@002a9dd1, train split after dedup (probe_splits.json)",
+        "training_data": f"{SLABS.repo}@{SLABS.revision[:8]}, train split after dedup (probe_splits.json)",
         "C": best["C"],
     }
-    probe = fit(xs("train", li, pi), y[rows["train"]], best["C"], meta)
-    score = {s: hulder.apply_probe(probe, xs(s, li, pi)) for s in ["calibration", "test", "bpairs"]}
-    t = threshold_for_fpr(score["calibration"][y[rows["calibration"]] == 0], TARGET_FPR)
-    probe = hulder.Probe(probe.weights, probe.bias, probe.mean, probe.std, {**meta, "threshold": t, "target_fpr": TARGET_FPR})
+    probe = fit(acts.at(ids_of["train"], best["layer"], best["position"]), labels_of["train"], best["C"], meta)
+    score = {s: hulder.apply_probe(probe, acts.for_probe(ids_of[s], probe)) for s in ["calibration", "test", "bpairs"]}
+    t = threshold_for_fpr(score["calibration"][labels_of["calibration"] == 0], TARGET_FPR)
+    probe = dataclasses.replace(probe, metadata={**meta, "threshold": t, "target_fpr": TARGET_FPR})
 
-    bp_pairs = df["id"].to_numpy()[rows["bpairs"]]
-    bp_pairs = np.array([i.rsplit("_", 1)[0] for i in bp_pairs])
-    bp = auroc_ci(score["bpairs"], y[rows["bpairs"]], clusters=bp_pairs)
+    pair_of = dict(zip(*load_bpairs()[["id", "pair_id"]].to_numpy().T))
+    bp = auroc_ci(score["bpairs"], labels_of["bpairs"], clusters=np.array([pair_of[i] for i in ids_of["bpairs"]]))
     report = {
         "selected": best,
         "grid": grid,
         "threshold": t,
-        "calibration": at_threshold(score["calibration"], y[rows["calibration"]], t),
-        "test": {**auroc_ci(score["test"], y[rows["test"]]), **at_threshold(score["test"], y[rows["test"]], t)},
+        "calibration": at_threshold(score["calibration"], labels_of["calibration"], t),
+        "test": {**auroc_ci(score["test"], labels_of["test"]), **at_threshold(score["test"], labels_of["test"], t)},
         "bpairs_all_1200": {
             **bp,
-            **at_threshold(score["bpairs"], y[rows["bpairs"]], t),
+            **at_threshold(score["bpairs"], labels_of["bpairs"], t),
             "bootstrap": "pair-clustered",
         },
         "adr_0004_rule": {
@@ -137,12 +136,13 @@ def main() -> None:
             "point_estimate": bp["auroc"],
             "outcome": "keep S-Labs probe for the quickstart" if bp["auroc"] >= AUROC_RULE else "train a demo probe on boundary-pairs",
         },
-        "capture_manifest": manifest,
+        "capture_manifest": acts.capture_manifest,
+        "run_manifest": run_manifest(seed=SEED, inputs=(SPLITS, ACTS / "activations.npy")),
     }
     OUT_PROBE.parent.mkdir(parents=True, exist_ok=True)
     probe.save(OUT_PROBE)
     OUT_REPORT.write_text(json.dumps(report, indent=2) + "\n")
-    print(json.dumps({k: v for k, v in report.items() if k not in ("grid", "capture_manifest")}, indent=2))
+    print(json.dumps({k: v for k, v in report.items() if k not in ("grid", "capture_manifest", "run_manifest")}, indent=2))
 
 
 if __name__ == "__main__":

@@ -24,6 +24,9 @@ dev = [
     "pytest>=8",
     "pandas>=2.3",
     "pyarrow>=21",
+    # Imported directly by experiments/; versions come from the vllm pin via uv.lock.
+    "huggingface-hub",
+    "torch",
 ]
 
 [project.scripts]

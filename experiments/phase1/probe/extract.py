@@ -11,8 +11,6 @@ Writes .cache/probe/<config>/{activations.npy, ids.json, manifest.json}. Activat
 
 import argparse
 import json
-import platform
-import subprocess
 import time
 from dataclasses import asdict
 from pathlib import Path
@@ -20,11 +18,10 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import torch
-import vllm
+from common import SPLITS, run_manifest
 
-from hulder.capture.vllm import CaptureConfig, capture
+from hulder.capture.hidden_states import CaptureConfig, capture
 
-SPLITS = Path(".cache/probe/splits.parquet")
 CONFIGS = {
     "fp16": CaptureConfig(
         model="Qwen/Qwen2.5-1.5B-Instruct",
@@ -50,7 +47,8 @@ def main() -> None:
     cap = capture(df["text"].tolist(), cfg)
     elapsed = time.time() - t0
 
-    bad = [i for i, toks in zip(df["id"], cap.position_tokens) if toks[1] != "<|im_end|>"]
+    end_of_user_turn = cfg.positions.index(-5)
+    bad = [i for i, toks in zip(df["id"], cap.position_tokens) if toks[end_of_user_turn] != "<|im_end|>"]
     assert not bad, f"position -5 is not <|im_end|> for {len(bad)} prompts, e.g. {bad[:3]}"
     assert np.isfinite(cap.activations).all(), "non-finite activation"
 
@@ -64,12 +62,8 @@ def main() -> None:
         "shape": list(cap.activations.shape),
         "last_token_examples": sorted({t[0] for t in cap.position_tokens}),
         "elapsed_s": round(elapsed, 1),
-        "vllm": vllm.__version__,
-        "torch": torch.__version__,
         "gpu": torch.cuda.get_device_name(0),
-        "python": platform.python_version(),
-        "git_commit": subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip(),
-        "splits_sha256": subprocess.run(["sha256sum", str(SPLITS)], capture_output=True, text=True).stdout.split()[0],
+        **run_manifest(seed=cfg.seed, inputs=(SPLITS,)),
     }
     (out / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
     print(json.dumps(manifest, indent=2))
