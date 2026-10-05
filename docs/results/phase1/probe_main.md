@@ -46,5 +46,5 @@ Point estimate 0.839 < 0.85, so **the quickstart gets a demo probe trained on bo
   | Validation | 0.5% | 2.1% | 9.2% | 0.44 / 0.48 |
   | Test | 0.1% | 0.8% | 15.7% | 0.41 / 0.46 |
 
-  Removing near-duplicates leaves calibration's FNR unchanged, so the probe was not refit. Test is further from train as a whole, which points to a distribution difference between S-Labs' train and test splits rather than leakage. The threshold set on calibration therefore holds FPR on test (0.38%) but misses more attacks there.
+  Removing near-duplicates leaves calibration's FNR unchanged, so the probe was not refit. **S-Labs test is further from train than calibration is**, for benign and attack alike, which points to a distribution difference between S-Labs' train and test splits rather than leakage. That distance raises test FNR (15.6% against 9.0%), while test FPR (0.38%) stays under the 1% target.
 - **Validation and test overlap.** 19.6% of validation items have a near-duplicate (≥ 0.9) in test, after exact duplicates were removed. Validation only chose layer and C, over a grid flat to about 1e-4, so the effect on the test numbers should be small. But the test split is not fully independent of selection.
