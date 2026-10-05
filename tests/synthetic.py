@@ -9,7 +9,6 @@ from dataclasses import dataclass
 
 import numpy as np
 from scipy.special import expit
-from scipy.stats import norm
 
 # Sizes of the S-Labs calibration set (docs/results/phase1/probe_splits.json).
 N_BENIGN = 1191
@@ -34,13 +33,14 @@ def unchanged_scorer(
 ) -> Paired:
     """A null case: the candidate differs from the reference by noise only.
 
-    The threshold is the population (1 - target_fpr) quantile of benign scores, so it is
-    exactly right for the reference's distribution rather than fitted to this sample.
-    With the defaults the population FNR is about 12% and the AUROC about 0.993.
+    The threshold is fitted on the reference's own benign scores, as in the real workflow
+    (experiments/phase1/probe/train.py), so the reference's FPR is at most target_fpr by
+    construction. With the defaults the FNR is about 12% and the AUROC about 0.993.
     """
     rng = np.random.default_rng(seed)
     labels = np.r_[np.zeros(n_benign, int), np.ones(n_attack, int)]
     logits = np.r_[rng.normal(-separation, 1, n_benign), rng.normal(0, 1, n_attack)]
     noisy = logits + rng.normal(0, noise, logits.shape)
-    threshold = float(expit(-separation + norm.ppf(1 - target_fpr)))
-    return Paired(expit(logits), expit(noisy), labels, threshold)
+    reference = expit(logits)
+    threshold = float(np.quantile(reference[labels == 0], 1 - target_fpr, method="higher"))
+    return Paired(reference, expit(noisy), labels, threshold)
