@@ -54,7 +54,8 @@ def check(
             "recalibrate on the reference first."
         )
     _, _, candidate_fpr = _flag_rate(candidate[benign], threshold)
-    verdict = Verdict.THRESHOLD_STALE if candidate_fpr.low > 2 * target_fpr else Verdict.PASS
+    stale = candidate_fpr.low > 2 * target_fpr or candidate_fpr.high < target_fpr / 2
+    verdict = Verdict.THRESHOLD_STALE if stale else Verdict.PASS
     return Report(verdict=verdict, warnings=tuple(warnings))
 
 
