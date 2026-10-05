@@ -25,16 +25,12 @@ _Avoid_: new config, target
 ### Scoring
 
 **Scorer**:
-Anything that turns a request into a score derived from a served model and compares it against a threshold. An activation probe, a guard model's probability of "unsafe", or a semantic-cache similarity are all scorers.
+Anything that turns a request into a score derived from a served model and compares it against a threshold. An activation probe, a semantic-cache similarity, or a guard model's probability of "unsafe" are all scorers.
 _Avoid_: classifier, detector, monitor
 
 **Probe**:
 A scorer that reads the served model's own hidden states at one layer and position. In Hulder it is linear (logistic regression) and is the flagship scorer.
 _Avoid_: activation classifier, linear head
-
-**Guard model**:
-A separate model served to classify requests as safe or unsafe, such as Llama Guard. Its score is the probability it assigns to "unsafe".
-_Avoid_: judge (the judge is the guard model's role in the cascade, not the model)
 
 ### Probe task
 
@@ -61,7 +57,7 @@ An offline, paired change in scores between reference and candidate on the same 
 _Avoid_: drift (in gate contexts)
 
 **Verdict**:
-The gate's single categorical judgement on one candidate, decided by the scorer's performance rather than by shift: PASS, THRESHOLD STALE, PROBE DEGRADED or INCONCLUSIVE. Shift is reported alongside as a diagnostic.
+The gate's single categorical judgement on one candidate, decided by the scorer's performance rather than by shift: PASS, THRESHOLD STALE, SCORER DEGRADED or INCONCLUSIVE. Shift is reported alongside as a diagnostic.
 _Avoid_: result, status, NO SHIFT
 
 **Decision flip rate**:
