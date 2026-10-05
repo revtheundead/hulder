@@ -86,3 +86,14 @@ def test_candidate_fpr_whose_ci_straddles_the_band_is_inconclusive():
         data.reference, data.candidate, data.labels, threshold=data.threshold, target_fpr=0.01
     )
     assert report.verdict is hulder.Verdict.INCONCLUSIVE
+
+
+def test_candidate_fnr_whose_ci_straddles_the_band_is_inconclusive():
+    # Seed 0, attack logits down by 0.3: reference FNR 13.3%, candidate 19.9%,
+    # CI [17.3%, 22.6%] around the 18.3% line. ΔAUROC CI is about [-0.006, -0.004] and
+    # the FPR is unchanged, so only the FNR condition is undecided.
+    data = unchanged_scorer(seed=0, attack_shift=-0.3)
+    report = hulder.check(
+        data.reference, data.candidate, data.labels, threshold=data.threshold, target_fpr=0.01
+    )
+    assert report.verdict is hulder.Verdict.INCONCLUSIVE
