@@ -1,0 +1,85 @@
+{
+  "slabs_revision": "002a9dd18514abd021869823d6b0429b38606d99",
+  "bpairs_revision": "a5682e7573e1c7bc4b12e64d49c0dcd90ca776cf",
+  "dedup_key": "strip + collapse whitespace",
+  "within_split": {
+    "train": {
+      "rows": 11089,
+      "label_conflict_keys": 1,
+      "rows_dropped_conflict": 2,
+      "rows_dropped_duplicate": 37,
+      "rows_kept": 11050
+    },
+    "validation": {
+      "rows": 2101,
+      "label_conflict_keys": 0,
+      "rows_dropped_conflict": 0,
+      "rows_dropped_duplicate": 0,
+      "rows_kept": 2101
+    },
+    "test": {
+      "rows": 2101,
+      "label_conflict_keys": 0,
+      "rows_dropped_conflict": 0,
+      "rows_dropped_duplicate": 0,
+      "rows_kept": 2101
+    }
+  },
+  "cross_split": {
+    "label_conflict_keys": 0,
+    "removed": {
+      "test": {
+        "label_conflict": 0,
+        "duplicate_of_higher_priority_split": 0
+      },
+      "validation": {
+        "label_conflict": 0,
+        "duplicate_of_higher_priority_split": 116
+      },
+      "train": {
+        "label_conflict": 0,
+        "duplicate_of_higher_priority_split": 4
+      }
+    }
+  },
+  "removed_overlap_with_bpairs": {
+    "test": 0,
+    "validation": 0,
+    "train": 0
+  },
+  "pairwise_overlap_after": {
+    "train&calibration": 0,
+    "train&validation": 0,
+    "train&test": 0,
+    "calibration&validation": 0,
+    "calibration&test": 0,
+    "validation&test": 0
+  },
+  "final": {
+    "train": {
+      "n": 8945,
+      "benign": 5073,
+      "attack": 3872
+    },
+    "calibration": {
+      "n": 2101,
+      "benign": 1191,
+      "attack": 910
+    },
+    "validation": {
+      "n": 1985,
+      "benign": 1043,
+      "attack": 942
+    },
+    "test": {
+      "n": 2101,
+      "benign": 1050,
+      "attack": 1051
+    },
+    "bpairs_all": {
+      "n": 1200,
+      "benign": 600,
+      "attack": 600
+    }
+  }
+}
