@@ -1,4 +1,6 @@
 {
+  "demo_only": true,
+  "note": "Quickstart demo probe. Trained on 600 examples with a 5% FPR target. Not a real monitor.",
   "split_sizes": {
     "train": {
       "n": 600,
@@ -16,7 +18,7 @@
   "layer": 20,
   "position": -1,
   "C": 0.001,
-  "threshold": 0.39400580525398254,
+  "threshold": 0.3951607346534729,
   "target_fpr": 0.05,
   "calibration": {
     "auroc": 0.9989814814814815,
@@ -65,5 +67,24 @@
     },
     "bootstrap": "pair-clustered"
   },
-  "attribution": "Contains data derived from 3nesdeniz/agentic-prompt-injection-boundary-pairs (Deniz 2026, doi:10.5281/zenodo.21378693), CC-BY-4.0."
+  "attribution": "Contains data derived from 3nesdeniz/agentic-prompt-injection-boundary-pairs (Deniz 2026, doi:10.5281/zenodo.21378693), CC-BY-4.0.",
+  "run_manifest": {
+    "git_commit": "f80eb143789ca9c82cd968e216ecd3087ca597c6",
+    "git_dirty": false,
+    "python": "3.12.14",
+    "packages": {
+      "numpy": "2.3.5",
+      "scipy": "1.18.1",
+      "scikit-learn": "1.9.1",
+      "pandas": "3.0.6",
+      "huggingface-hub": "1.33.0",
+      "vllm": "0.30.0",
+      "torch": "2.13.0"
+    },
+    "seed": 0,
+    "inputs_sha256": {
+      ".cache/probe/probe_main.npz": "fed66cae793ef8068793947f8f8b67104f78a1ddb3a5586db9f46a775a513702",
+      ".cache/probe/fp16/activations.npy": "2764025df57a5c6ec9a73f354f0c53493ce362ca2d9bb48c9edfefcbc392cf69"
+    }
+  }
 }
