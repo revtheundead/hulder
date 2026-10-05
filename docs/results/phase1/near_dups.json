@@ -1,0 +1,153 @@
+{
+  "normalise": "lowercase, strip punctuation, collapse whitespace",
+  "tfidf": "char_wb 3-5, min_df 2, fit on train",
+  "calibration": {
+    "n": 2101,
+    "normalised_dup_in_train": 5,
+    "max_sim_to_train_median": {
+      "benign": 0.4889657199311106,
+      "attack": 0.4896619013264723
+    },
+    "all": {
+      "fnr": 0.09010989010989011,
+      "n_attack": 910,
+      "fpr": 0.009235936188077247,
+      "n_benign": 1191
+    },
+    "near_dup_in_train@0.8": {
+      "share": 0.03284150404569253,
+      "share_benign": 0.03946263643996641,
+      "share_attack": 0.024175824175824177,
+      "with_near_dup": {
+        "fnr": 0.045454545454545456,
+        "n_attack": 22,
+        "fpr": 0.0,
+        "n_benign": 47
+      },
+      "without_near_dup": {
+        "fnr": 0.09121621621621621,
+        "n_attack": 888,
+        "fpr": 0.009615384615384616,
+        "n_benign": 1144
+      }
+    },
+    "near_dup_in_train@0.9": {
+      "share": 0.011899095668729176,
+      "share_benign": 0.012594458438287154,
+      "share_attack": 0.01098901098901099,
+      "with_near_dup": {
+        "fnr": 0.0,
+        "n_attack": 10,
+        "fpr": 0.0,
+        "n_benign": 15
+      },
+      "without_near_dup": {
+        "fnr": 0.09111111111111111,
+        "n_attack": 900,
+        "fpr": 0.00935374149659864,
+        "n_benign": 1176
+      }
+    }
+  },
+  "validation": {
+    "n": 1985,
+    "normalised_dup_in_train": 1,
+    "max_sim_to_train_median": {
+      "benign": 0.4371843910855781,
+      "attack": 0.4819943694847184
+    },
+    "all": {
+      "fnr": 0.09129511677282377,
+      "n_attack": 942,
+      "fpr": 0.0028763183125599234,
+      "n_benign": 1043
+    },
+    "near_dup_in_train@0.8": {
+      "share": 0.02065491183879093,
+      "share_benign": 0.03355704697986577,
+      "share_attack": 0.006369426751592357,
+      "with_near_dup": {
+        "fnr": 0.0,
+        "n_attack": 6,
+        "fpr": 0.0,
+        "n_benign": 35
+      },
+      "without_near_dup": {
+        "fnr": 0.09188034188034189,
+        "n_attack": 936,
+        "fpr": 0.002976190476190476,
+        "n_benign": 1008
+      }
+    },
+    "near_dup_in_train@0.9": {
+      "share": 0.005037783375314861,
+      "share_benign": 0.009587727708533078,
+      "share_attack": 0.0,
+      "with_near_dup": {
+        "fnr": 0.0,
+        "n_attack": 0,
+        "fpr": 0.0,
+        "n_benign": 10
+      },
+      "without_near_dup": {
+        "fnr": 0.09129511677282377,
+        "n_attack": 942,
+        "fpr": 0.002904162633107454,
+        "n_benign": 1033
+      }
+    }
+  },
+  "test": {
+    "n": 2101,
+    "normalised_dup_in_train": 0,
+    "max_sim_to_train_median": {
+      "benign": 0.41023150853903956,
+      "attack": 0.4637583714106085
+    },
+    "all": {
+      "fnr": 0.1560418648905804,
+      "n_attack": 1051,
+      "fpr": 0.0038095238095238095,
+      "n_benign": 1050
+    },
+    "near_dup_in_train@0.8": {
+      "share": 0.007615421227986673,
+      "share_benign": 0.005714285714285714,
+      "share_attack": 0.009514747859181731,
+      "with_near_dup": {
+        "fnr": 0.1,
+        "n_attack": 10,
+        "fpr": 0.0,
+        "n_benign": 6
+      },
+      "without_near_dup": {
+        "fnr": 0.15658021133525457,
+        "n_attack": 1041,
+        "fpr": 0.0038314176245210726,
+        "n_benign": 1044
+      }
+    },
+    "near_dup_in_train@0.9": {
+      "share": 0.0009519276534983341,
+      "share_benign": 0.0,
+      "share_attack": 0.0019029495718363464,
+      "with_near_dup": {
+        "fnr": 0.0,
+        "n_attack": 2,
+        "fpr": 0.0,
+        "n_benign": 0
+      },
+      "without_near_dup": {
+        "fnr": 0.1563393708293613,
+        "n_attack": 1049,
+        "fpr": 0.0038095238095238095,
+        "n_benign": 1050
+      }
+    }
+  },
+  "cross_eval_near_dup@0.9": {
+    "calibration->test": 0.00047596382674916705,
+    "validation->test": 0.1959697732997481,
+    "calibration->validation": 0.00047596382674916705
+  }
+}

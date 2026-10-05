@@ -17,7 +17,9 @@ Capture of 16,332 prompts at 7 layers and 2 positions took 253 s.
 
 Selected: layer 20, C = 0.001, validation AUROC 0.9987. Selection is close to arbitrary, for two reasons:
 - Every layer from 4 to 28 at either position scores 0.990 to 0.999. Layer 4 alone reaches 0.996, which suggests the S-Labs classes are separable from surface features of the text.
-- Across layers 16 to 24 the differences are around 1e-4, within noise. C = 0.001 is the edge of the grid. The grid was not extended after the held-out result below was seen, so that result cannot steer it.
+- Across layers 16 to 24 the differences are around 1e-4, within noise.
+
+**Limitation: C = 0.001 is the edge of the grid** (1e-3 to 1). A smaller C might score marginally higher on validation. The grid is deliberately left as is: it was not extended after the boundary-pairs result below was seen, so that result cannot steer selection.
 
 ## Results at threshold 0.769 (1% FPR target on calibration benign)
 
@@ -36,4 +38,13 @@ Point estimate 0.839 < 0.85, so **the quickstart gets a demo probe trained on bo
 ## What this shows
 
 - **The hard-negative failure is total at this threshold.** Benign boundary-pairs prompts score a median of 0.985 (S-Labs benign: 0.010), so 95% of them would escalate. The probe still ranks attacks above benign (AUROC 0.84), so a threshold tuned on boundary-pairs would do better, but an S-Labs-calibrated threshold is useless on agentic text. This is the distribution-shift case the dataset decision anticipated, and it belongs on the benchmarks page.
-- **Test is harder than calibration.** FNR is 15.6% on test against 9.0% on calibration, with non-overlapping CIs, and test AUROC is below validation's. Calibration is carved from train, so templated near-duplicates shared between train and calibration (exact duplicates were removed) may make calibration optimistic. Not yet checked.
+- **Test is harder than calibration, and near-duplicates don't explain it.** FNR is 15.6% on test against 9.0% on calibration, with non-overlapping CIs. `near_dups.json` checks whether calibration items copy train (character 3-5-gram TF-IDF cosine on normalised text, `experiments/phase1/probe/near_dups.py`):
+
+  | Split | Train near-dup ≥ 0.9 | ≥ 0.8 | FNR, items without a near-dup ≥ 0.8 | Median similarity to nearest train item (benign / attack) |
+  |---|---|---|---|---|
+  | Calibration | 1.2% | 3.3% | 9.1% | 0.49 / 0.49 |
+  | Validation | 0.5% | 2.1% | 9.2% | 0.44 / 0.48 |
+  | Test | 0.1% | 0.8% | 15.7% | 0.41 / 0.46 |
+
+  Removing near-duplicates leaves calibration's FNR unchanged, so the probe was not refit. Test is further from train as a whole, which points to a distribution difference between S-Labs' train and test splits rather than leakage. The threshold set on calibration therefore holds FPR on test (0.38%) but misses more attacks there.
+- **Validation and test overlap.** 19.6% of validation items have a near-duplicate (≥ 0.9) in test, after exact duplicates were removed. Validation only chose layer and C, over a grid flat to about 1e-4, so the effect on the test numbers should be small. But the test split is not fully independent of selection.
