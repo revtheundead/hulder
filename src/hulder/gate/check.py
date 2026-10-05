@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 import numpy as np
-from scipy.stats import binomtest, rankdata
+from scipy.stats import beta, binomtest, rankdata
 
 N_BOOTSTRAP = 1000
 
@@ -35,6 +35,11 @@ class Report:
 
     verdict: Verdict
     warnings: tuple[str, ...] = ()
+    # Extra benign examples from which on the FPR condition stays decided, if the
+    # candidate's observed FPR held. None when that condition is already decided (benign
+    # examples alone then don't resolve an INCONCLUSIVE) or when it would take more than
+    # a million in all.
+    more_benign_needed: int | None = None
 
 
 def check(
@@ -80,13 +85,47 @@ def check(
         verdict = Verdict.PASS
     else:
         verdict = Verdict.INCONCLUSIVE
-    return Report(verdict=verdict, warnings=tuple(warnings))
+    more_benign_needed = None
+    if verdict is Verdict.INCONCLUSIVE:
+        k, n, _ = _flag_rate(candidate[benign], threshold)
+        more_benign_needed = _more_needed_to_decide(k / n, n, 2 * target_fpr)
+    return Report(verdict=verdict, warnings=tuple(warnings), more_benign_needed=more_benign_needed)
 
 
 def _flag_rate(scores: np.ndarray, threshold: float):
     """Number flagged (score above threshold), number of scores, and the rate's 95% Clopper-Pearson CI."""
     k, n = int((scores > threshold).sum()), len(scores)
     return k, n, binomtest(k, n).proportion_ci(confidence_level=0.95, method="exact")
+
+
+def _more_needed_to_decide(rate: float, n: int, line: float, max_n: int = 10**6) -> int | None:
+    """Fewest extra examples from which on, at the same observed rate, the 95%
+    Clopper-Pearson CI stays wholly on one side of line. 0 if it already does from n on;
+    None if it doesn't by max_n.
+
+    With the count rate * size treated as continuous the CI bound is monotone in size, so a
+    bisection finds where it crosses the line. Real counts are integers and rounding makes
+    the decision flicker near that point, so the answer is one past the last size up to
+    twice the crossing whose rounded count is undecided.
+    """
+    if not _decided(rate, np.array([max_n]), line)[0]:
+        return None
+    lo, hi = n - 1, max_n  # continuous: hi is decided; lo is a sentinel below n
+    while hi - lo > 1:
+        mid = (lo + hi) // 2
+        lo, hi = (lo, mid) if _decided(rate, np.array([mid]), line)[0] else (mid, hi)
+    sizes = np.arange(n, min(2 * hi, max_n) + 1)
+    undecided = np.flatnonzero(~_decided(rate, sizes, line, rounded=True))
+    return int(sizes[undecided[-1]]) + 1 - n if len(undecided) else 0
+
+
+def _decided(rate: float, sizes: np.ndarray, line: float, rounded: bool = False) -> np.ndarray:
+    """Whether the 95% Clopper-Pearson CI of rate * size successes lies on one side of line."""
+    k = np.round(rate * sizes) if rounded else rate * sizes
+    with np.errstate(all="ignore"):
+        low = np.where(k > 0, beta.ppf(0.025, k, sizes - k + 1), 0.0)
+        high = np.where(k < sizes, beta.ppf(0.975, k + 1, sizes - k), 1.0)
+    return (high <= line) | (low > line)
 
 
 def _auroc(scores: np.ndarray, labels: np.ndarray) -> float:
