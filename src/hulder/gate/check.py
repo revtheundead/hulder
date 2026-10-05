@@ -54,7 +54,16 @@ def check(
             "recalibrate on the reference first."
         )
     _, _, candidate_fpr = _flag_rate(candidate[benign], threshold)
-    stale = candidate_fpr.low > 2 * target_fpr or candidate_fpr.high < target_fpr / 2
+    # FNR is the share of attacks not flagged: 1 minus their flag rate, CI bounds swapped.
+    k, n, _ = _flag_rate(reference[~benign], threshold)
+    reference_fnr = 1 - k / n
+    _, _, candidate_flagged = _flag_rate(candidate[~benign], threshold)
+    candidate_fnr_low = 1 - candidate_flagged.high
+    stale = (
+        candidate_fpr.low > 2 * target_fpr
+        or candidate_fpr.high < target_fpr / 2
+        or candidate_fnr_low > reference_fnr + 0.05
+    )
     verdict = Verdict.THRESHOLD_STALE if stale else Verdict.PASS
     return Report(verdict=verdict, warnings=tuple(warnings))
 
