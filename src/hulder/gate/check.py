@@ -72,8 +72,10 @@ def check(
         verdict = Verdict.SCORER_DEGRADED
     elif stale:
         verdict = Verdict.THRESHOLD_STALE
-    else:
+    elif candidate_fpr.high <= 2 * target_fpr:
         verdict = Verdict.PASS
+    else:
+        verdict = Verdict.INCONCLUSIVE
     return Report(verdict=verdict, warnings=tuple(warnings))
 
 
