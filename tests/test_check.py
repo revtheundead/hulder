@@ -34,3 +34,13 @@ def test_threshold_calibrated_on_the_reference_snapshot_gives_no_warning():
         data.reference, data.candidate, data.labels, threshold=data.threshold, target_fpr=0.01
     )
     assert report.warnings == ()
+
+
+def test_candidate_scores_drifting_up_to_five_times_target_fpr_is_threshold_stale():
+    # Seed 0 at a true candidate FPR of 5% gives 50 false positives of 1,191,
+    # CI [3.1%, 5.5%], whose lower bound is above 2 x target.
+    data = unchanged_scorer(seed=0, candidate_fpr=0.05)
+    report = hulder.check(
+        data.reference, data.candidate, data.labels, threshold=data.threshold, target_fpr=0.01
+    )
+    assert report.verdict is hulder.Verdict.THRESHOLD_STALE

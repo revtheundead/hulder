@@ -42,10 +42,9 @@ def check(
     threshold: float,
     target_fpr: float,
 ) -> Report:
+    benign = labels == 0
     warnings = []
-    benign = reference[labels == 0]
-    k, n = int((benign > threshold).sum()), len(benign)
-    ci = binomtest(k, n).proportion_ci(confidence_level=0.95, method="exact")
+    k, n, ci = _flag_rate(reference[benign], threshold)
     if not ci.low <= target_fpr <= ci.high:
         warnings.append(
             f"The reference's FPR at threshold {threshold:.4g} is {k / n:.2%} "
@@ -54,4 +53,12 @@ def check(
             "Verdicts then mix threshold generalisation with the serving change: "
             "recalibrate on the reference first."
         )
-    return Report(verdict=Verdict.PASS, warnings=tuple(warnings))
+    _, _, candidate_fpr = _flag_rate(candidate[benign], threshold)
+    verdict = Verdict.THRESHOLD_STALE if candidate_fpr.low > 2 * target_fpr else Verdict.PASS
+    return Report(verdict=verdict, warnings=tuple(warnings))
+
+
+def _flag_rate(scores: np.ndarray, threshold: float):
+    """Number flagged (score above threshold), number of scores, and the rate's 95% Clopper-Pearson CI."""
+    k, n = int((scores > threshold).sum()), len(scores)
+    return k, n, binomtest(k, n).proportion_ci(confidence_level=0.95, method="exact")
