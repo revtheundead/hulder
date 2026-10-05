@@ -81,5 +81,21 @@
       "benign": 600,
       "attack": 600
     }
+  },
+  "run_manifest": {
+    "git_commit": "90faf1d85f19b92d520e36e4be85b5d359988b09",
+    "git_dirty": false,
+    "python": "3.12.14",
+    "packages": {
+      "numpy": "2.3.5",
+      "scipy": "1.18.1",
+      "scikit-learn": "1.9.1",
+      "pandas": "3.0.6",
+      "huggingface-hub": "1.33.0",
+      "vllm": "0.30.0",
+      "torch": "2.13.0"
+    },
+    "seed": 0,
+    "inputs_sha256": {}
   }
 }
