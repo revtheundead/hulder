@@ -35,6 +35,11 @@
           0.0,
           0.003682083896865671
         ]
+      },
+      "inconclusive_more_benign_needed": {
+        "median": null,
+        "quartiles": null,
+        "n_none": 0
       }
     },
     "fresh_engine_noise": {
@@ -65,14 +70,19 @@
           0.0,
           0.003682083896865671
         ]
+      },
+      "inconclusive_more_benign_needed": {
+        "median": null,
+        "quartiles": null,
+        "n_none": 0
       }
     },
     "candidate_fpr_0.015": {
       "PASS": {
-        "rate": 1.0,
+        "rate": 0.205,
         "ci95": [
-          0.9963179161031341,
-          1.0
+          0.18037676898868163,
+          0.23137310493391994
         ]
       },
       "THRESHOLD STALE": {
@@ -90,19 +100,27 @@
         ]
       },
       "INCONCLUSIVE": {
-        "rate": 0.0,
+        "rate": 0.795,
         "ci95": [
-          0.0,
-          0.003682083896865671
+          0.7686268950660801,
+          0.8196232310113184
         ]
+      },
+      "inconclusive_more_benign_needed": {
+        "median": 2154.0,
+        "quartiles": [
+          1236.0,
+          12677.0
+        ],
+        "n_none": 27
       }
     },
     "candidate_fpr_0.02": {
       "PASS": {
-        "rate": 0.979,
+        "rate": 0.018,
         "ci95": [
-          0.9680776648195845,
-          0.9869548077096123
+          0.01070194792941471,
+          0.028299041249019215
         ]
       },
       "THRESHOLD STALE": {
@@ -120,19 +138,27 @@
         ]
       },
       "INCONCLUSIVE": {
-        "rate": 0.0,
+        "rate": 0.961,
         "ci95": [
-          0.0,
-          0.003682083896865671
+          0.947069064214555,
+          0.9721228512046636
         ]
+      },
+      "inconclusive_more_benign_needed": {
+        "median": 10389.0,
+        "quartiles": [
+          3389.0,
+          31752.0
+        ],
+        "n_none": 76
       }
     },
     "candidate_fpr_0.03": {
       "PASS": {
-        "rate": 0.43,
+        "rate": 0.0,
         "ci95": [
-          0.39906025339363116,
-          0.4613530351076099
+          0.0,
+          0.003682083896865671
         ]
       },
       "THRESHOLD STALE": {
@@ -150,19 +176,27 @@
         ]
       },
       "INCONCLUSIVE": {
-        "rate": 0.0,
+        "rate": 0.43,
         "ci95": [
-          0.0,
-          0.003682083896865671
+          0.39906025339363116,
+          0.4613530351076099
         ]
+      },
+      "inconclusive_more_benign_needed": {
+        "median": 1326.0,
+        "quartiles": [
+          416.0,
+          3389.0
+        ],
+        "n_none": 8
       }
     },
     "candidate_fpr_0.05": {
       "PASS": {
-        "rate": 0.001,
+        "rate": 0.0,
         "ci95": [
-          2.5317487491294062e-05,
-          0.0055589242798266825
+          0.0,
+          0.003682083896865671
         ]
       },
       "THRESHOLD STALE": {
@@ -180,16 +214,24 @@
         ]
       },
       "INCONCLUSIVE": {
-        "rate": 0.0,
+        "rate": 0.001,
         "ci95": [
-          0.0,
-          0.003682083896865671
+          2.5317487491294062e-05,
+          0.0055589242798266825
         ]
+      },
+      "inconclusive_more_benign_needed": {
+        "median": 123.0,
+        "quartiles": [
+          123.0,
+          123.0
+        ],
+        "n_none": 0
       }
     }
   },
   "run_manifest": {
-    "git_commit": "42b7afb6937b243e14ab6ca1c36c1d94a62e1968",
+    "git_commit": "51ffc46fc4467582dddcc6a51c72dbdb8ddd19ca",
     "git_dirty": false,
     "python": "3.12.14",
     "packages": {
