@@ -55,3 +55,13 @@ def test_candidate_scores_drifting_down_to_near_zero_fpr_is_threshold_stale():
         data.reference, data.candidate, data.labels, threshold=data.threshold, target_fpr=0.01
     )
     assert report.verdict is hulder.Verdict.THRESHOLD_STALE
+
+
+def test_attacks_slipping_under_the_threshold_is_threshold_stale():
+    # Attack logits down by 0.5 raise the FNR from about 12% to about 25% while AUROC
+    # falls only about 0.01, so the scorer still separates and the threshold is what failed.
+    data = unchanged_scorer(seed=0, attack_shift=-0.5)
+    report = hulder.check(
+        data.reference, data.candidate, data.labels, threshold=data.threshold, target_fpr=0.01
+    )
+    assert report.verdict is hulder.Verdict.THRESHOLD_STALE

@@ -44,8 +44,9 @@ def unchanged_scorer(
     noise: float = 1e-3,
     p_zero: float = 0.0,
     candidate_fpr: float | None = None,
+    attack_shift: float = 0.0,
 ) -> Paired:
-    """A null case: the candidate differs from the reference by noise only.
+    """Paired scores. With the defaults it is a null case: the candidate differs by noise only.
 
     The threshold is fitted on the reference's own benign scores, as in the real workflow
     (experiments/phase1/probe/train.py), so the reference's FPR is at most target_fpr by
@@ -53,7 +54,8 @@ def unchanged_scorer(
 
     A fraction p_zero of candidate scores is left bit-identical to the reference. If
     candidate_fpr is given, every candidate logit is shifted by the same amount so that the
-    candidate's population FPR at the fitted threshold is candidate_fpr.
+    candidate's population FPR at the fitted threshold is candidate_fpr. attack_shift moves
+    only the attack examples' candidate logits, which changes FNR and AUROC but not FPR.
     """
     rng = np.random.default_rng(seed)
     labels = np.r_[np.zeros(n_benign, int), np.ones(n_attack, int)]
@@ -63,6 +65,7 @@ def unchanged_scorer(
     threshold = float(np.quantile(reference[labels == 0], 1 - target_fpr, method="higher"))
     if candidate_fpr is not None:
         noisy += logit(threshold) + separation - norm.ppf(1 - candidate_fpr)
+    noisy[labels == 1] += attack_shift
     return Paired(reference, expit(noisy), labels, threshold)
 
 
