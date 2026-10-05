@@ -44,3 +44,14 @@ def test_candidate_scores_drifting_up_to_five_times_target_fpr_is_threshold_stal
         data.reference, data.candidate, data.labels, threshold=data.threshold, target_fpr=0.01
     )
     assert report.verdict is hulder.Verdict.THRESHOLD_STALE
+
+
+def test_candidate_scores_drifting_down_to_near_zero_fpr_is_threshold_stale():
+    # Too few false positives also means a stale threshold: attacks slip under it.
+    # At 1,191 benign the FPR upper bound is below target / 2 only with at most 1 false
+    # positive (CI upper bound 0.47%), so this drifts to a true FPR of 0.01%.
+    data = unchanged_scorer(seed=0, candidate_fpr=0.0001)
+    report = hulder.check(
+        data.reference, data.candidate, data.labels, threshold=data.threshold, target_fpr=0.01
+    )
+    assert report.verdict is hulder.Verdict.THRESHOLD_STALE
