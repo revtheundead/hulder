@@ -27,3 +27,11 @@ def test_fresh_engine_noise_rarely_fails_to_pass():
 def test_candidate_fpr_of_five_times_target_is_mostly_threshold_stale():
     rates = verdict_rates(partial(unchanged_scorer, candidate_fpr=0.05), SEEDS)
     assert rates["THRESHOLD STALE"] >= 0.90
+
+
+@pytest.mark.parametrize("candidate_fpr", [0.03, 0.05])
+def test_candidate_fpr_of_three_times_target_or_more_almost_never_passes(candidate_fpr):
+    # Pre-registered (2026-10-05): a gate that waves a tripled escalation volume through
+    # is worse than one that can't decide.
+    rates = verdict_rates(partial(unchanged_scorer, candidate_fpr=candidate_fpr), SEEDS)
+    assert rates["PASS"] <= 0.01
