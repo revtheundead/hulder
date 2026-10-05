@@ -44,6 +44,10 @@ _Avoid_: benign-but-scary, tricky benign
 
 ### Gate
 
+**Calibration set**:
+The fixed labelled examples on which a threshold is set for a target false-positive rate and on which reference and candidate are compared. Kept apart from every example that trains a probe or selects its settings.
+_Avoid_: holdout, calib data
+
 **Reference snapshot**:
 The recorded scorer behaviour on the reference serving config over a fixed labelled calibration set, against which candidates are compared.
 _Avoid_: baseline, ref file
