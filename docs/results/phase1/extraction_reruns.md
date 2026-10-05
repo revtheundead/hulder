@@ -10,6 +10,19 @@ uv run python experiments/phase1/probe/extract.py --config fp16    # x3, renamin
 uv run python experiments/phase1/probe/compare_runs.py .cache/probe/fp16_run1 .cache/probe/fp16_run2 .cache/probe/fp16_run3
 ```
 
+**`fp16_run3` was deleted on 2026-10-05 to save disk.** `fp16_run1` is kept as a real `noise_floor=` example and `fp16_run2` is a symlink to the canonical `fp16`. To regenerate run 3, move the canonical capture aside so `extract.py` doesn't overwrite it (about 670 MB; check free space first):
+
+```
+source scripts/dev-env.sh
+df -h .
+mv .cache/probe/fp16 .cache/probe/fp16_canonical
+uv run python experiments/phase1/probe/extract.py --config fp16
+mv .cache/probe/fp16 .cache/probe/fp16_run3
+mv .cache/probe/fp16_canonical .cache/probe/fp16
+```
+
+A regenerated run 3 is a fresh engine, so it reproduces the run 3 rows below to within the noise this page reports, not bitwise.
+
 | Pair | Prompts differing | Batches differing | Main probe mean / p99 / max \|Δscore\| | Decision flips at 0.769 |
 |---|---|---|---|---|
 | run 1 vs 2 | 54.9% | 1,471 / 2,042 | 8.2e-5 / 1.3e-3 / 4.1e-3 | 1 |
