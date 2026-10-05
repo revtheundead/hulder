@@ -68,21 +68,21 @@ def main() -> None:
         y = sub["label"].to_numpy()
         sim = max_sim_to(train_tfidf, tfidf[m])
         scores = hulder.apply_probe(probe, acts.for_probe(sub["id"], probe))
-        t = probe.metadata["threshold"]
+        threshold = probe.metadata["threshold"]
         entry = {
             "n": int(m.sum()),
             "normalised_dup_in_train": int(sub["norm"].isin(train_norm).sum()),
             "max_sim_to_train_median": {lab: float(np.median(sim[y == k])) for k, lab in ((0, "benign"), (1, "attack"))},
-            "all": at_threshold(scores, y, t),
+            "all": at_threshold(scores, y, threshold),
         }
-        for t in SIMS:
-            near = sim >= t
-            entry[f"near_dup_in_train@{t}"] = {
+        for sim_cut in SIMS:
+            near = sim >= sim_cut
+            entry[f"near_dup_in_train@{sim_cut}"] = {
                 "share": float(near.mean()),
                 "share_benign": float(near[y == 0].mean()),
                 "share_attack": float(near[y == 1].mean()),
-                "with_near_dup": at_threshold(scores[near], y[near], t),
-                "without_near_dup": at_threshold(scores[~near], y[~near], t),
+                "with_near_dup": at_threshold(scores[near], y[near], threshold),
+                "without_near_dup": at_threshold(scores[~near], y[~near], threshold),
             }
         report[s] = entry
         print(s, json.dumps(entry, indent=1))
