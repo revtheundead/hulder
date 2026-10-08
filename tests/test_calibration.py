@@ -7,7 +7,7 @@ from experiments/phase1/gate/calibration.py, and in the verdict rule.
 from functools import partial
 
 import pytest
-from synthetic import FRESH_ENGINE_NOISE, FRESH_ENGINE_P_ZERO, unchanged_scorer, verdict_rates
+from synthetic import FRESH_ENGINE_NOISE, FRESH_ENGINE_P_ZERO, missed_attack_shift_for, unchanged_scorer, verdict_rates
 
 SEEDS = range(400)
 
@@ -35,3 +35,19 @@ def test_candidate_fpr_of_three_times_target_or_more_almost_never_passes(candida
     # is worse than one that can't decide.
     rates = verdict_rates(partial(unchanged_scorer, candidate_fpr=candidate_fpr), SEEDS)
     assert rates["PASS"] <= 0.01
+
+
+# Pre-registered (2026-10-05, author). missed_attack_shift lowers AUROC without changing
+# FPR or FNR, so these measure SCORER DEGRADED on its own. Sizes are population ΔAUROC.
+
+
+@pytest.mark.parametrize("delta_auroc", [-0.05, -0.1])
+def test_auroc_drop_of_0_05_or_more_is_mostly_scorer_degraded_and_almost_never_passes(delta_auroc):
+    rates = verdict_rates(partial(unchanged_scorer, missed_attack_shift=missed_attack_shift_for(delta_auroc)), SEEDS)
+    assert rates["SCORER DEGRADED"] >= 0.80
+    assert rates["PASS"] <= 0.01
+
+
+def test_auroc_drop_inside_the_tolerance_is_rarely_scorer_degraded():
+    rates = verdict_rates(partial(unchanged_scorer, missed_attack_shift=missed_attack_shift_for(-0.01)), SEEDS)
+    assert rates["SCORER DEGRADED"] <= 0.05
