@@ -59,7 +59,11 @@ def dedup_within(df: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
 
 
 def main() -> None:
-    report: dict = {"slabs_revision": SLABS.revision, "bpairs_revision": BPAIRS.revision, "dedup_key": "strip + collapse whitespace"}
+    report: dict = {
+        "slabs_revision": SLABS.revision,
+        "bpairs_revision": BPAIRS.revision,
+        "dedup_key": "strip + collapse whitespace",
+    }
 
     splits = {}
     report["within_split"] = {}
@@ -80,7 +84,9 @@ def main() -> None:
         drop = df["key"].isin(cross_conflict) | df["key"].isin(claimed)
         report["cross_split"]["removed"][s] = {
             "label_conflict": int(df["key"].isin(cross_conflict).sum()),
-            "duplicate_of_higher_priority_split": int((df["key"].isin(claimed) & ~df["key"].isin(cross_conflict)).sum()),
+            "duplicate_of_higher_priority_split": int(
+                (df["key"].isin(claimed) & ~df["key"].isin(cross_conflict)).sum()
+            ),
         }
         splits[s] = df[~drop]
         claimed |= set(splits[s]["key"])
@@ -114,10 +120,18 @@ def main() -> None:
     }
     assert all(v == 0 for v in report["pairwise_overlap_after"].values())
     report["final"] = {
-        s: {"n": len(splits[s]), "benign": int((splits[s]["label"] == 0).sum()), "attack": int((splits[s]["label"] == 1).sum())}
+        s: {
+            "n": len(splits[s]),
+            "benign": int((splits[s]["label"] == 0).sum()),
+            "attack": int((splits[s]["label"] == 1).sum()),
+        }
         for s in order
     }
-    report["final"]["bpairs_all"] = {"n": len(bp), "benign": int((bp["label"] == 0).sum()), "attack": int((bp["label"] == 1).sum())}
+    report["final"]["bpairs_all"] = {
+        "n": len(bp),
+        "benign": int((bp["label"] == 0).sum()),
+        "attack": int((bp["label"] == 1).sum()),
+    }
 
     out = pd.concat([splits[s] for s in order] + [bp])[["id", "split", "text", "label"]].reset_index(drop=True)
     SPLITS.parent.mkdir(parents=True, exist_ok=True)

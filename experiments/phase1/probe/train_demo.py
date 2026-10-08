@@ -74,7 +74,13 @@ def main() -> None:
     t = threshold_for_fpr(s_ca[y_ca == 0], TARGET_FPR)
     probe = dataclasses.replace(probe, metadata={**meta, "threshold": t, "target_fpr": TARGET_FPR})
 
-    sizes = {s: {"n": int((bp["demo_split"] == s).sum()), "scenarios": int(bp.loc[bp["demo_split"] == s, "scenario_id"].nunique())} for s in ("train", "calibration", "test")}
+    sizes = {
+        s: {
+            "n": int((bp["demo_split"] == s).sum()),
+            "scenarios": int(bp.loc[bp["demo_split"] == s, "scenario_id"].nunique()),
+        }
+        for s in ("train", "calibration", "test")
+    }
     report = {
         "demo_only": True,
         "note": meta["note"],
@@ -85,7 +91,11 @@ def main() -> None:
         "threshold": t,
         "target_fpr": TARGET_FPR,
         "calibration": {"auroc": roc_auc_score(y_ca, s_ca), **at_threshold(s_ca, y_ca, t)},
-        "test": {**auroc_ci(s_te, y_te, clusters=pairs_te), **at_threshold(s_te, y_te, t), "bootstrap": "pair-clustered"},
+        "test": {
+            **auroc_ci(s_te, y_te, clusters=pairs_te),
+            **at_threshold(s_te, y_te, t),
+            "bootstrap": "pair-clustered",
+        },
         "attribution": BPAIRS_ATTRIBUTION,
         "run_manifest": run_manifest(seed=SEED, inputs=(MAIN, ACTS / "activations.npy")),
     }

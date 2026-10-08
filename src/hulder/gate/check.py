@@ -96,7 +96,7 @@ def check(
         candidate_fpr.high <= 2 * target_fpr
         and candidate_fnr_high <= reference_fnr + 0.05
         and delta_auroc_low >= -0.02
-    ):
+    ):  # fmt: skip
         verdict = Verdict.PASS
     else:
         verdict = Verdict.INCONCLUSIVE
@@ -204,9 +204,7 @@ def _resample_counts(rng: np.random.Generator, n: int) -> np.ndarray:
     return np.bincount(draws.ravel(), minlength=N_BOOTSTRAP * n).reshape(N_BOOTSTRAP, n)
 
 
-def _weighted_auroc(
-    scores: np.ndarray, labels: np.ndarray, w_benign: np.ndarray, w_attack: np.ndarray
-) -> np.ndarray:
+def _weighted_auroc(scores: np.ndarray, labels: np.ndarray, w_benign: np.ndarray, w_attack: np.ndarray) -> np.ndarray:
     """_auroc of each bootstrap resample, given as rows of per-example multiplicities.
 
     Equivalent to copying each example w times and calling _auroc, but costs a cumulative

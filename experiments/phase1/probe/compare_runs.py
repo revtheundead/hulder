@@ -49,14 +49,21 @@ def main() -> None:
             "share_prompts_differing": float(diff.mean()),
             "batches_differing": len(np.unique(np.flatnonzero(diff) // BATCH)),
             "batches": -(-len(ids) // BATCH),
-            "probe_abs_dscore": {"mean": float(dscore.mean()), "p99": float(np.quantile(dscore, 0.99)), "max": float(dscore.max())},
+            "probe_abs_dscore": {
+                "mean": float(dscore.mean()),
+                "p99": float(np.quantile(dscore, 0.99)),
+                "max": float(dscore.max()),
+            },
             "decision_flips_at_threshold": int(((scores[x] > t) != (scores[y] > t)).sum()),
         }
         print(f"{x} vs {y}: {json.dumps(pairs[f'{x} vs {y}'])}")
     report = {
         "n_prompts": len(ids),
         "probe": {k: probe.metadata[k] for k in ("layer", "position", "threshold")},
-        "runs": {name: {k: r.capture_manifest.get(k) for k in ("git_commit", "git_dirty", "elapsed_s")} for name, r in runs.items()},
+        "runs": {
+            name: {k: r.capture_manifest.get(k) for k in ("git_commit", "git_dirty", "elapsed_s")}
+            for name, r in runs.items()
+        },
         "pairs": pairs,
         "run_manifest": run_manifest(inputs=(PROBE,)),
     }

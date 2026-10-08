@@ -61,7 +61,10 @@ def main() -> None:
     probe = hulder.Probe.load(PROBE)
     acts = Activations.load(ACTS)
 
-    report: dict = {"normalise": "lowercase, strip punctuation, collapse whitespace", "tfidf": "char_wb 3-5, min_df 2, fit on train"}
+    report: dict = {
+        "normalise": "lowercase, strip punctuation, collapse whitespace",
+        "tfidf": "char_wb 3-5, min_df 2, fit on train",
+    }
     for s in EVAL:
         m = split == s
         sub = df[m]
@@ -72,7 +75,9 @@ def main() -> None:
         entry = {
             "n": int(m.sum()),
             "normalised_dup_in_train": int(sub["norm"].isin(train_norm).sum()),
-            "max_sim_to_train_median": {lab: float(np.median(sim[y == k])) for k, lab in ((0, "benign"), (1, "attack"))},
+            "max_sim_to_train_median": {
+                lab: float(np.median(sim[y == k])) for k, lab in ((0, "benign"), (1, "attack"))
+            },
             "all": at_threshold(scores, y, threshold),
         }
         for sim_cut in SIMS:

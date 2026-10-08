@@ -65,15 +65,21 @@ def main() -> None:
         for li in range(h.shape[1]):
             flat = h[:, li, :].flatten()
             vals, idx = flat.topk(TOP_K)
-            per_layer.append({
-                "layer": LAYER_IDS[li],
-                "median_abs": round(h[:, li, :].median().item(), 4),
-                "top": [
-                    {"pos": int(j // h.shape[2]), "token": tok.convert_ids_to_tokens(ids[int(j // h.shape[2])]),
-                     "dim": int(j % h.shape[2]), "abs": round(v.item(), 1)}
-                    for v, j in zip(vals, idx)
-                ],
-            })
+            per_layer.append(
+                {
+                    "layer": LAYER_IDS[li],
+                    "median_abs": round(h[:, li, :].median().item(), 4),
+                    "top": [
+                        {
+                            "pos": int(j // h.shape[2]),
+                            "token": tok.convert_ids_to_tokens(ids[int(j // h.shape[2])]),
+                            "dim": int(j % h.shape[2]),
+                            "abs": round(v.item(), 1),
+                        }
+                        for v, j in zip(vals, idx)
+                    ],
+                }
+            )
         prompts.append({"templated": i < len(PROMPTS), "num_tokens": len(ids), "layers": per_layer})
 
     result = {

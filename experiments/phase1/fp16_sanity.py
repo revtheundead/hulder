@@ -75,12 +75,14 @@ def main() -> int:
             absmax = h.float().nan_to_num(nan=0.0, posinf=FP16_MAX, neginf=-FP16_MAX).abs().amax(dim=(0, 2))
             layer_max = torch.maximum(layer_max, absmax)
             all_finite &= bool(finite.all())
-            per_prompt.append({
-                "prompt": prompt,
-                "completion": o.outputs[0].text,
-                "num_prompt_tokens": len(o.prompt_token_ids),
-                "nonfinite_by_layer": nonfinite_by_layer,
-            })
+            per_prompt.append(
+                {
+                    "prompt": prompt,
+                    "completion": o.outputs[0].text,
+                    "num_prompt_tokens": len(o.prompt_token_ids),
+                    "nonfinite_by_layer": nonfinite_by_layer,
+                }
+            )
 
     result = {
         "model": MODEL,

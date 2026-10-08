@@ -10,9 +10,7 @@ def test_unchanged_scorer_at_realistic_size_passes():
     # scorer's FPR CI is roughly [0.5%, 1.7%], which the one-sided PASS band
     # (upper bound <= 2%) must accept.
     data = unchanged_scorer(seed=0)
-    report = hulder.check(
-        data.reference, data.candidate, data.labels, threshold=data.threshold, target_fpr=0.01
-    )
+    report = hulder.check(data.reference, data.candidate, data.labels, threshold=data.threshold, target_fpr=0.01)
     assert report.verdict is hulder.Verdict.PASS
 
 
@@ -21,9 +19,7 @@ def test_threshold_not_calibrated_on_the_reference_snapshot_warns(fitted_fpr):
     # Fitted for 3% (or 0.2%) FPR on 1,191 benign, the reference's FPR CI at the threshold
     # excludes the 1% target, so the threshold can't have come from this snapshot.
     data = unchanged_scorer(seed=0, target_fpr=fitted_fpr)
-    report = hulder.check(
-        data.reference, data.candidate, data.labels, threshold=data.threshold, target_fpr=0.01
-    )
+    report = hulder.check(data.reference, data.candidate, data.labels, threshold=data.threshold, target_fpr=0.01)
     [warning] = report.warnings
     assert "wasn't calibrated on this snapshot" in warning
     assert "recalibrate on the reference first" in warning
@@ -31,9 +27,7 @@ def test_threshold_not_calibrated_on_the_reference_snapshot_warns(fitted_fpr):
 
 def test_threshold_calibrated_on_the_reference_snapshot_gives_no_warning():
     data = unchanged_scorer(seed=0)
-    report = hulder.check(
-        data.reference, data.candidate, data.labels, threshold=data.threshold, target_fpr=0.01
-    )
+    report = hulder.check(data.reference, data.candidate, data.labels, threshold=data.threshold, target_fpr=0.01)
     assert report.warnings == ()
 
 
@@ -41,9 +35,7 @@ def test_candidate_scores_drifting_up_to_five_times_target_fpr_is_threshold_stal
     # Seed 0 at a true candidate FPR of 5% gives 50 false positives of 1,191,
     # CI [3.1%, 5.5%], whose lower bound is above 2 x target.
     data = unchanged_scorer(seed=0, candidate_fpr=0.05)
-    report = hulder.check(
-        data.reference, data.candidate, data.labels, threshold=data.threshold, target_fpr=0.01
-    )
+    report = hulder.check(data.reference, data.candidate, data.labels, threshold=data.threshold, target_fpr=0.01)
     assert report.verdict is hulder.Verdict.THRESHOLD_STALE
 
 
@@ -52,9 +44,7 @@ def test_candidate_scores_drifting_down_to_near_zero_fpr_is_threshold_stale():
     # At 1,191 benign the FPR upper bound is below target / 2 only with at most 1 false
     # positive (CI upper bound 0.47%), so this drifts to a true FPR of 0.01%.
     data = unchanged_scorer(seed=0, candidate_fpr=0.0001)
-    report = hulder.check(
-        data.reference, data.candidate, data.labels, threshold=data.threshold, target_fpr=0.01
-    )
+    report = hulder.check(data.reference, data.candidate, data.labels, threshold=data.threshold, target_fpr=0.01)
     assert report.verdict is hulder.Verdict.THRESHOLD_STALE
 
 
@@ -62,9 +52,7 @@ def test_attacks_slipping_under_the_threshold_is_threshold_stale():
     # Attack logits down by 0.5 raise the FNR from about 12% to about 25% while AUROC
     # falls only about 0.01, so the scorer still separates and the threshold is what failed.
     data = unchanged_scorer(seed=0, attack_shift=-0.5)
-    report = hulder.check(
-        data.reference, data.candidate, data.labels, threshold=data.threshold, target_fpr=0.01
-    )
+    report = hulder.check(data.reference, data.candidate, data.labels, threshold=data.threshold, target_fpr=0.01)
     assert report.verdict is hulder.Verdict.THRESHOLD_STALE
 
 
@@ -73,9 +61,7 @@ def test_scorer_that_no_longer_separates_is_scorer_degraded_even_though_fnr_also
     # which alone would be THRESHOLD STALE, but no threshold fixes a scorer that no longer
     # separates, so SCORER DEGRADED is checked first.
     data = unchanged_scorer(seed=0, attack_shift=-2.0)
-    report = hulder.check(
-        data.reference, data.candidate, data.labels, threshold=data.threshold, target_fpr=0.01
-    )
+    report = hulder.check(data.reference, data.candidate, data.labels, threshold=data.threshold, target_fpr=0.01)
     assert report.verdict is hulder.Verdict.SCORER_DEGRADED
 
 
@@ -83,9 +69,7 @@ def test_candidate_fpr_whose_ci_straddles_the_band_is_inconclusive():
     # Seed 0 at a true candidate FPR of 2.5% gives 22 false positives of 1,191,
     # CI [1.2%, 2.8%]: neither below 2 x target (PASS) nor above it (STALE).
     data = unchanged_scorer(seed=0, candidate_fpr=0.025)
-    report = hulder.check(
-        data.reference, data.candidate, data.labels, threshold=data.threshold, target_fpr=0.01
-    )
+    report = hulder.check(data.reference, data.candidate, data.labels, threshold=data.threshold, target_fpr=0.01)
     assert report.verdict is hulder.Verdict.INCONCLUSIVE
 
 
@@ -94,9 +78,7 @@ def test_candidate_fnr_whose_ci_straddles_the_band_is_inconclusive():
     # CI [17.3%, 22.6%] around the 18.3% line. ΔAUROC CI is about [-0.006, -0.004] and
     # the FPR is unchanged, so only the FNR condition is undecided.
     data = unchanged_scorer(seed=0, attack_shift=-0.3)
-    report = hulder.check(
-        data.reference, data.candidate, data.labels, threshold=data.threshold, target_fpr=0.01
-    )
+    report = hulder.check(data.reference, data.candidate, data.labels, threshold=data.threshold, target_fpr=0.01)
     assert report.verdict is hulder.Verdict.INCONCLUSIVE
 
 
@@ -104,9 +86,7 @@ def test_auroc_drop_whose_ci_straddles_the_band_is_inconclusive():
     # Seed 0, attacks already below the threshold pushed down by 1 logit: FPR and FNR are
     # unchanged, and the ΔAUROC CI, about [-0.027, -0.018], straddles -0.02.
     data = unchanged_scorer(seed=0, missed_attack_shift=-1.0)
-    report = hulder.check(
-        data.reference, data.candidate, data.labels, threshold=data.threshold, target_fpr=0.01
-    )
+    report = hulder.check(data.reference, data.candidate, data.labels, threshold=data.threshold, target_fpr=0.01)
     assert report.verdict is hulder.Verdict.INCONCLUSIVE
     # The FPR condition is decided, so more benign examples wouldn't help.
     assert report.more_benign_needed == 0

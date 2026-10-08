@@ -53,7 +53,7 @@ def threshold_for_fpr(benign_scores: np.ndarray, fpr: float) -> float:
 def rate_ci(k: int, n: int) -> dict:
     if n == 0:
         return {"rate": None, "k": 0, "n": 0, "ci95": None}
-    ci =binomtest(k, n).proportion_ci(confidence_level=0.95, method="exact")
+    ci = binomtest(k, n).proportion_ci(confidence_level=0.95, method="exact")
     return {"rate": k / n, "k": k, "n": n, "ci95": [ci.low, ci.high]}
 
 
@@ -134,7 +134,9 @@ def main() -> None:
         "adr_0004_rule": {
             "threshold_auroc": AUROC_RULE,
             "point_estimate": bp["auroc"],
-            "outcome": "keep S-Labs probe for the quickstart" if bp["auroc"] >= AUROC_RULE else "train a demo probe on boundary-pairs",
+            "outcome": "keep S-Labs probe for the quickstart"
+            if bp["auroc"] >= AUROC_RULE
+            else "train a demo probe on boundary-pairs",
         },
         "capture_manifest": acts.capture_manifest,
         "run_manifest": run_manifest(seed=SEED, inputs=(SPLITS, ACTS / "activations.npy")),
@@ -142,7 +144,9 @@ def main() -> None:
     OUT_PROBE.parent.mkdir(parents=True, exist_ok=True)
     probe.save(OUT_PROBE)
     OUT_REPORT.write_text(json.dumps(report, indent=2) + "\n")
-    print(json.dumps({k: v for k, v in report.items() if k not in ("grid", "capture_manifest", "run_manifest")}, indent=2))
+    print(
+        json.dumps({k: v for k, v in report.items() if k not in ("grid", "capture_manifest", "run_manifest")}, indent=2)
+    )
 
 
 if __name__ == "__main__":
