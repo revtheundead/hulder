@@ -34,6 +34,9 @@ class Report:
     """Plain data: it neither prints nor exits, and compares with ==."""
 
     verdict: Verdict
+    # Share of examples whose decision (score above the threshold or not) differs between
+    # reference and candidate. A diagnostic, never an input to the verdict.
+    decision_flip_rate: float
     warnings: tuple[str, ...] = ()
     # Set only for INCONCLUSIVE: extra benign examples from which on the FPR condition
     # stays decided, if the candidate's observed FPR held. 0 when that condition is
@@ -89,7 +92,12 @@ def check(
     if verdict is Verdict.INCONCLUSIVE:
         k, n, _ = _flag_rate(candidate[benign], threshold)
         more_benign_needed = _more_needed_to_decide(k / n, n, 2 * target_fpr)
-    return Report(verdict=verdict, warnings=tuple(warnings), more_benign_needed=more_benign_needed)
+    return Report(
+        verdict=verdict,
+        decision_flip_rate=float(np.mean((reference > threshold) != (candidate > threshold))),
+        warnings=tuple(warnings),
+        more_benign_needed=more_benign_needed,
+    )
 
 
 def _flag_rate(scores: np.ndarray, threshold: float):

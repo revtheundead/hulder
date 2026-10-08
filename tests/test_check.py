@@ -134,3 +134,12 @@ def test_inconclusive_reports_how_many_more_benign_examples_would_resolve_it():
     candidate, _ = _benign_then_attack(n, round(22 / 1191 * n))
     report = hulder.check(reference, candidate, labels, threshold=0.5, target_fpr=0.01)
     assert report.verdict is not hulder.Verdict.INCONCLUSIVE
+
+
+def test_report_gives_the_share_of_examples_whose_decision_flipped():
+    # Reference flags benign 0-10 and the candidate benign 0-21, attacks unchanged:
+    # benign 11-21 flip, 11 of 2,101 examples.
+    reference, labels = _benign_then_attack(1191, 11)
+    candidate, _ = _benign_then_attack(1191, 22)
+    report = hulder.check(reference, candidate, labels, threshold=0.5, target_fpr=0.01)
+    assert report.decision_flip_rate == pytest.approx(11 / 2101)
