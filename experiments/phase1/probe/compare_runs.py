@@ -3,7 +3,7 @@
 Each run is a fresh engine with an identical CaptureConfig (extract.py). Run from the repo
 root with two or more capture directories:
     source scripts/dev-env.sh
-    uv run python experiments/phase1/probe/compare_runs.py .cache/probe/fp16_run1 .cache/probe/fp16_run2 ...
+    uv run python experiments/phase1/probe/compare_runs.py .cache/probe/fp16_run1 .cache/probe/fp16 ...
 
 Writes docs/results/phase1/extraction_reruns.json.
 """

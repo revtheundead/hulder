@@ -2,15 +2,15 @@
 
 Three fp16 captures of the 16,332 probe prompts, each a fresh engine with an identical `CaptureConfig`. Full numbers in `extraction_reruns.json`.
 
-Reproduce from the repo root (each `extract.py` run writes `.cache/probe/fp16`; rename it between runs):
+Reproduce from the repo root (each `extract.py` run writes `.cache/probe/fp16`; rename runs 1 and 3 after capture):
 
 ```
 source scripts/dev-env.sh
-uv run python experiments/phase1/probe/extract.py --config fp16    # x3, renaming to fp16_run1..3
-uv run python experiments/phase1/probe/compare_runs.py .cache/probe/fp16_run1 .cache/probe/fp16_run2 .cache/probe/fp16_run3
+uv run python experiments/phase1/probe/extract.py --config fp16    # x3, keeping run 2 as fp16
+uv run python experiments/phase1/probe/compare_runs.py .cache/probe/fp16_run1 .cache/probe/fp16 .cache/probe/fp16_run3
 ```
 
-**`fp16_run3` was deleted on 2026-10-05 to save disk.** `fp16_run1` is kept as a real `noise_floor=` example and `fp16_run2` is a symlink to the canonical `fp16`. To regenerate run 3, move the canonical capture aside so `extract.py` doesn't overwrite it (about 670 MB; check free space first):
+**`fp16_run3` was deleted on 2026-10-05 to save disk.** `fp16_run1` is kept as the real `noise_floor=` example. The snapshot slice's real-data check uses `fp16` as reference, `fp16_run1` as floor and AWQ as candidate. Run 2 is the canonical `fp16` itself. Its `fp16_run2` symlink was removed on 2026-10-08, so no path can pass the reference off as an independent rerun, and the command above names `fp16` instead (the JSON then labels run 2 `fp16`). To regenerate run 3, move the canonical capture aside so `extract.py` doesn't overwrite it (about 670 MB; check free space first):
 
 ```
 source scripts/dev-env.sh
