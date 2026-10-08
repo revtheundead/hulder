@@ -143,3 +143,14 @@ def test_report_gives_the_share_of_examples_whose_decision_flipped():
     candidate, _ = _benign_then_attack(1191, 22)
     report = hulder.check(reference, candidate, labels, threshold=0.5, target_fpr=0.01)
     assert report.decision_flip_rate == pytest.approx(11 / 2101)
+
+
+def test_without_a_noise_floor_the_shift_is_reported_and_the_floor_is_not_measured():
+    reference, labels = _benign_then_attack(1191, 11)
+    candidate = reference + 0.01  # no score crosses 0.5
+    report = hulder.check(reference, candidate, labels, threshold=0.5, target_fpr=0.01)
+    assert report.mean_abs_shift == pytest.approx(0.01)
+    assert report.decision_flips == 0
+    assert report.noise_floor_mean_abs_shift is None
+    assert report.noise_floor_decision_flips is None
+    assert report.shift_exceeds_noise_floor is None

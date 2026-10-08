@@ -37,6 +37,15 @@ class Report:
     # Share of examples whose decision (score above the threshold or not) differs between
     # reference and candidate. A diagnostic, never an input to the verdict.
     decision_flip_rate: float
+    decision_flips: int
+    # Mean |candidate - reference| over all examples, in score space.
+    mean_abs_shift: float
+    # The same two numbers for a second run of the reference against the reference, and
+    # whether the candidate moved scores more than that rerun did. None when no rerun was
+    # given: the noise floor was not measured.
+    noise_floor_decision_flips: int | None = None
+    noise_floor_mean_abs_shift: float | None = None
+    shift_exceeds_noise_floor: bool | None = None
     warnings: tuple[str, ...] = ()
     # Set only for INCONCLUSIVE: extra benign examples from which on the FPR condition
     # stays decided, if the candidate's observed FPR held. 0 when that condition is
@@ -92,9 +101,12 @@ def check(
     if verdict is Verdict.INCONCLUSIVE:
         k, n, _ = _flag_rate(candidate[benign], threshold)
         more_benign_needed = _more_needed_to_decide(k / n, n, 2 * target_fpr)
+    flipped = (reference > threshold) != (candidate > threshold)
     return Report(
         verdict=verdict,
-        decision_flip_rate=float(np.mean((reference > threshold) != (candidate > threshold))),
+        decision_flip_rate=float(flipped.mean()),
+        decision_flips=int(flipped.sum()),
+        mean_abs_shift=float(np.abs(candidate - reference).mean()),
         warnings=tuple(warnings),
         more_benign_needed=more_benign_needed,
     )
