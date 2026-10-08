@@ -6,6 +6,24 @@
     0,
     1000
   ],
+  "degradation_sizes": {
+    "-0.01": {
+      "missed_attack_shift": -0.6161967937557105,
+      "blur_noise_sd": 0.5936711241158289
+    },
+    "-0.02": {
+      "missed_attack_shift": -0.982833238927341,
+      "blur_noise_sd": 0.8003172348301393
+    },
+    "-0.05": {
+      "missed_attack_shift": -1.7492909644681145,
+      "blur_noise_sd": 1.2012412535999648
+    },
+    "-0.1": {
+      "missed_attack_shift": -3.0979221710180824,
+      "blur_noise_sd": 1.7189953390792334
+    }
+  },
   "results": {
     "null": {
       "PASS": {
@@ -228,11 +246,300 @@
         ],
         "n_none": 0
       }
+    },
+    "missed_attack_delta_auroc_-0.01": {
+      "PASS": {
+        "rate": 1.0,
+        "ci95": [
+          0.9963179161031341,
+          1.0
+        ]
+      },
+      "THRESHOLD STALE": {
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.003682083896865671
+        ]
+      },
+      "SCORER DEGRADED": {
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.003682083896865671
+        ]
+      },
+      "INCONCLUSIVE": {
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.003682083896865671
+        ]
+      },
+      "inconclusive_more_benign_needed": {
+        "median": null,
+        "quartiles": null,
+        "n_none": 0
+      }
+    },
+    "missed_attack_delta_auroc_-0.02": {
+      "PASS": {
+        "rate": 0.067,
+        "ci95": [
+          0.05229783640004518,
+          0.08431003710244142
+        ]
+      },
+      "THRESHOLD STALE": {
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.003682083896865671
+        ]
+      },
+      "SCORER DEGRADED": {
+        "rate": 0.046,
+        "ci95": [
+          0.033871498547677924,
+          0.06088355271374264
+        ]
+      },
+      "INCONCLUSIVE": {
+        "rate": 0.887,
+        "ci95": [
+          0.8657282191964616,
+          0.9059603332456124
+        ]
+      },
+      "inconclusive_more_benign_needed": {
+        "median": 0.0,
+        "quartiles": [
+          0.0,
+          0.0
+        ],
+        "n_none": 0
+      }
+    },
+    "missed_attack_delta_auroc_-0.05": {
+      "PASS": {
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.003682083896865671
+        ]
+      },
+      "THRESHOLD STALE": {
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.003682083896865671
+        ]
+      },
+      "SCORER DEGRADED": {
+        "rate": 1.0,
+        "ci95": [
+          0.9963179161031341,
+          1.0
+        ]
+      },
+      "INCONCLUSIVE": {
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.003682083896865671
+        ]
+      },
+      "inconclusive_more_benign_needed": {
+        "median": null,
+        "quartiles": null,
+        "n_none": 0
+      }
+    },
+    "missed_attack_delta_auroc_-0.1": {
+      "PASS": {
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.003682083896865671
+        ]
+      },
+      "THRESHOLD STALE": {
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.003682083896865671
+        ]
+      },
+      "SCORER DEGRADED": {
+        "rate": 1.0,
+        "ci95": [
+          0.9963179161031341,
+          1.0
+        ]
+      },
+      "INCONCLUSIVE": {
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.003682083896865671
+        ]
+      },
+      "inconclusive_more_benign_needed": {
+        "median": null,
+        "quartiles": null,
+        "n_none": 0
+      }
+    },
+    "blur_delta_auroc_-0.01": {
+      "PASS": {
+        "rate": 0.001,
+        "ci95": [
+          2.5317487491294062e-05,
+          0.0055589242798266825
+        ]
+      },
+      "THRESHOLD STALE": {
+        "rate": 0.117,
+        "ci95": [
+          0.09772900249506662,
+          0.13855746639058333
+        ]
+      },
+      "SCORER DEGRADED": {
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.003682083896865671
+        ]
+      },
+      "INCONCLUSIVE": {
+        "rate": 0.882,
+        "ci95": [
+          0.8603722794655597,
+          0.9013474836051032
+        ]
+      },
+      "inconclusive_more_benign_needed": {
+        "median": 5679.0,
+        "quartiles": [
+          2124.0,
+          22790.0
+        ],
+        "n_none": 69
+      }
+    },
+    "blur_delta_auroc_-0.02": {
+      "PASS": {
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.003682083896865671
+        ]
+      },
+      "THRESHOLD STALE": {
+        "rate": 0.788,
+        "ci95": [
+          0.7613374671308146,
+          0.8129547104495867
+        ]
+      },
+      "SCORER DEGRADED": {
+        "rate": 0.023,
+        "ci95": [
+          0.014634582325176752,
+          0.034312337612854335
+        ]
+      },
+      "INCONCLUSIVE": {
+        "rate": 0.189,
+        "ci95": [
+          0.16517848646712344,
+          0.21466774274891617
+        ]
+      },
+      "inconclusive_more_benign_needed": {
+        "median": 763.0,
+        "quartiles": [
+          123.0,
+          3389.0
+        ],
+        "n_none": 5
+      }
+    },
+    "blur_delta_auroc_-0.05": {
+      "PASS": {
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.003682083896865671
+        ]
+      },
+      "THRESHOLD STALE": {
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.003682083896865671
+        ]
+      },
+      "SCORER DEGRADED": {
+        "rate": 1.0,
+        "ci95": [
+          0.9963179161031341,
+          1.0
+        ]
+      },
+      "INCONCLUSIVE": {
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.003682083896865671
+        ]
+      },
+      "inconclusive_more_benign_needed": {
+        "median": null,
+        "quartiles": null,
+        "n_none": 0
+      }
+    },
+    "blur_delta_auroc_-0.1": {
+      "PASS": {
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.003682083896865671
+        ]
+      },
+      "THRESHOLD STALE": {
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.003682083896865671
+        ]
+      },
+      "SCORER DEGRADED": {
+        "rate": 1.0,
+        "ci95": [
+          0.9963179161031341,
+          1.0
+        ]
+      },
+      "INCONCLUSIVE": {
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.003682083896865671
+        ]
+      },
+      "inconclusive_more_benign_needed": {
+        "median": null,
+        "quartiles": null,
+        "n_none": 0
+      }
     }
   },
   "run_manifest": {
-    "git_commit": "51ffc46fc4467582dddcc6a51c72dbdb8ddd19ca",
-    "git_dirty": false,
+    "git_commit": "4d08e4b0386f5006e6d6796c9e80303d53f92c2d",
+    "git_dirty": true,
     "python": "3.12.14",
     "packages": {
       "numpy": "2.3.5",
