@@ -1,7 +1,8 @@
 """The synthetic generator's degradation sizes match a large-n run of the generator itself."""
 
+import numpy as np
 import pytest
-from synthetic import blur_for, missed_attack_shift_for, unchanged_scorer
+from synthetic import blur_for, missed_attack_delta_auroc, missed_attack_shift_for, unchanged_scorer
 
 from hulder.gate.check import _auroc
 
@@ -27,3 +28,13 @@ def test_missed_attack_shift_cannot_reach_below_its_floor():
     # Only attacks under the threshold (about 12%) move, so AUROC can fall by at most ~0.1145.
     with pytest.raises(ValueError):
         missed_attack_shift_for(-0.12)
+
+
+def test_missed_attack_delta_auroc_at_a_given_threshold_matches_monte_carlo():
+    # Each seed fits its own threshold, so its true ΔAUROC is the integral at that threshold.
+    rng = np.random.default_rng(1)
+    attack, benign = rng.normal(0, 1, N_LARGE), rng.normal(-3.5, 1, N_LARGE)
+    t, shift = -1.0, -1.0
+    moved = np.where(attack <= t, attack + shift, attack)
+    monte_carlo = (moved > benign).mean() - (attack > benign).mean()
+    assert missed_attack_delta_auroc(shift, threshold_logit=t) == pytest.approx(monte_carlo, abs=1e-3)

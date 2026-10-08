@@ -75,15 +75,18 @@ def unchanged_scorer(
     return Paired(reference, expit(noisy), labels, threshold)
 
 
-def missed_attack_delta_auroc(shift: float, separation: float = 3.5, target_fpr: float = 0.01) -> float:
+def missed_attack_delta_auroc(
+    shift: float, separation: float = 3.5, target_fpr: float = 0.01, threshold_logit: float | None = None
+) -> float:
     """Population AUROC change from missed_attack_shift.
 
-    Attacks A ~ N(0, 1) at or below the threshold's logit T = Phi^-1(1 - target_fpr) - separation
-    move to A + shift, and each such attack now outscores a benign B ~ N(-separation, 1) with
+    Attacks A ~ N(0, 1) at or below the threshold's logit T move to A + shift. T defaults to the
+    population's, Phi^-1(1 - target_fpr) - separation; pass a seed's fitted threshold_logit for
+    that seed's own true change. Each moved attack now outscores a benign B ~ N(-separation, 1) with
     chance Phi(A + shift + separation) instead of Phi(A + separation). So
     delta = E[1{A <= T} (Phi(A + shift + separation) - Phi(A + separation))].
     """
-    t = norm.ppf(1 - target_fpr) - separation
+    t = norm.ppf(1 - target_fpr) - separation if threshold_logit is None else threshold_logit
     gain = lambda a: norm.pdf(a) * (norm.cdf(a + shift + separation) - norm.cdf(a + separation))
     return quad(gain, -np.inf, t)[0]
 
