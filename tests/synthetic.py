@@ -10,6 +10,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 import numpy as np
+from scipy.integrate import quad
+from scipy.optimize import brentq
 from scipy.special import expit, logit
 from scipy.stats import norm
 
@@ -71,6 +73,36 @@ def unchanged_scorer(
     noisy[labels == 1] += attack_shift
     noisy[(labels == 1) & (noisy <= logit(threshold))] += missed_attack_shift
     return Paired(reference, expit(noisy), labels, threshold)
+
+
+def missed_attack_delta_auroc(shift: float, separation: float = 3.5, target_fpr: float = 0.01) -> float:
+    """Population AUROC change from missed_attack_shift.
+
+    Attacks A ~ N(0, 1) at or below the threshold's logit T = Phi^-1(1 - target_fpr) - separation
+    move to A + shift, and each such attack now outscores a benign B ~ N(-separation, 1) with
+    chance Phi(A + shift + separation) instead of Phi(A + separation). So
+    delta = E[1{A <= T} (Phi(A + shift + separation) - Phi(A + separation))].
+    """
+    t = norm.ppf(1 - target_fpr) - separation
+    gain = lambda a: norm.pdf(a) * (norm.cdf(a + shift + separation) - norm.cdf(a + separation))  # noqa: E731
+    return quad(gain, -np.inf, t)[0]
+
+
+def missed_attack_shift_for(delta_auroc: float, separation: float = 3.5, target_fpr: float = 0.01) -> float:
+    """The missed_attack_shift whose population AUROC change is delta_auroc. Raises ValueError
+    beyond the floor, where every missed attack already sits below every benign example."""
+    return brentq(lambda s: missed_attack_delta_auroc(s, separation, target_fpr) - delta_auroc, -50, 0)
+
+
+def blur_for(delta_auroc: float, separation: float = 3.5) -> float:
+    """The candidate logit noise sd whose population AUROC change is delta_auroc.
+
+    With noise sd s on every logit, the classes are N(-separation, 1 + s^2) and N(0, 1 + s^2),
+    so the AUROC is Phi(separation / sqrt(2 (1 + s^2))). Unlike missed_attack_shift this
+    also raises FPR at the reference's threshold.
+    """
+    z = norm.ppf(norm.cdf(separation / np.sqrt(2)) + delta_auroc)
+    return float(np.sqrt((separation / z) ** 2 / 2 - 1))
 
 
 def reports(make: Callable[[int], Paired], seeds: range, target_fpr: float = 0.01) -> list[hulder.Report]:
