@@ -48,6 +48,7 @@ def unchanged_scorer(
     candidate_fpr: float | None = None,
     attack_shift: float = 0.0,
     missed_attack_shift: float = 0.0,
+    noise_seed: int | None = None,
 ) -> Paired:
     """Paired scores. With the defaults it is a null case: the candidate differs by noise only.
 
@@ -60,12 +61,14 @@ def unchanged_scorer(
     candidate's population FPR at the fitted threshold is candidate_fpr. attack_shift moves
     only the attack examples' candidate logits, which changes FNR and AUROC but not FPR.
     missed_attack_shift (<= 0) moves only attacks already below the threshold further
-    down, which lowers AUROC but changes neither FNR nor FPR.
+    down, which lowers AUROC but changes neither FNR nor FPR. A noise_seed draws the noise
+    from its own stream, so the same reference gets an independent rerun.
     """
     rng = np.random.default_rng(seed)
     labels = np.r_[np.zeros(n_benign, int), np.ones(n_attack, int)]
     logits = np.r_[rng.normal(-separation, 1, n_benign), rng.normal(0, 1, n_attack)]
-    noisy = logits + rng.normal(0, noise, logits.shape) * (rng.random(logits.shape) >= p_zero)
+    noise_rng = rng if noise_seed is None else np.random.default_rng((seed, noise_seed))
+    noisy = logits + noise_rng.normal(0, noise, logits.shape) * (noise_rng.random(logits.shape) >= p_zero)
     reference = expit(logits)
     threshold = float(np.quantile(reference[labels == 0], 1 - target_fpr, method="higher"))
     if candidate_fpr is not None:

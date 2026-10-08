@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from synthetic import unchanged_scorer
+from synthetic import FRESH_ENGINE_NOISE, FRESH_ENGINE_P_ZERO, unchanged_scorer
 
 import hulder
 
@@ -169,3 +169,13 @@ def test_noise_floor_rerun_is_reported_side_by_side_and_never_changes_the_verdic
     assert report.noise_floor_mean_abs_shift == pytest.approx(0.59 / 2101)
     assert report.shift_exceeds_noise_floor is True
     assert report.verdict is without.verdict
+
+
+def test_a_candidate_no_noisier_than_the_rerun_does_not_exceed_the_noise_floor():
+    # Two independent reruns at the fresh-engine noise level: neither is a change.
+    data = unchanged_scorer(seed=0, noise=FRESH_ENGINE_NOISE, p_zero=FRESH_ENGINE_P_ZERO)
+    rerun = unchanged_scorer(seed=0, noise=FRESH_ENGINE_NOISE, p_zero=FRESH_ENGINE_P_ZERO, noise_seed=1).candidate
+    report = hulder.check(
+        data.reference, data.candidate, data.labels, threshold=data.threshold, target_fpr=0.01, noise_floor=rerun
+    )
+    assert report.shift_exceeds_noise_floor is False
