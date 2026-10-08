@@ -27,6 +27,7 @@ dev = [
     # Imported directly by experiments/; versions come from the vllm pin via uv.lock.
     "huggingface-hub",
     "torch",
+    "ruff>=0.16.10",
 ]
 
 [project.scripts]
@@ -41,3 +42,7 @@ build-backend = "uv_build"
 # downloaded implicitly. scripts/dev-env.sh points UV_PYTHON_INSTALL_DIR into the repo.
 python-preference = "only-managed"
 python-downloads = "manual"
+
+[tool.ruff]
+# Matches the existing code; most lines stay within 120.
+line-length = 120

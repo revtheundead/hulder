@@ -1,8 +1,8 @@
 import numpy as np
 import pytest
+from synthetic import unchanged_scorer
 
 import hulder
-from synthetic import unchanged_scorer
 
 
 def test_unchanged_scorer_at_realistic_size_passes():

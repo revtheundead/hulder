@@ -84,7 +84,7 @@ def missed_attack_delta_auroc(shift: float, separation: float = 3.5, target_fpr:
     delta = E[1{A <= T} (Phi(A + shift + separation) - Phi(A + separation))].
     """
     t = norm.ppf(1 - target_fpr) - separation
-    gain = lambda a: norm.pdf(a) * (norm.cdf(a + shift + separation) - norm.cdf(a + separation))  # noqa: E731
+    gain = lambda a: norm.pdf(a) * (norm.cdf(a + shift + separation) - norm.cdf(a + separation))
     return quad(gain, -np.inf, t)[0]
 
 

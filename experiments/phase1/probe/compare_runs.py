@@ -47,7 +47,7 @@ def main() -> None:
         pairs[f"{x} vs {y}"] = {
             "prompts_differing": int(diff.sum()),
             "share_prompts_differing": float(diff.mean()),
-            "batches_differing": int(len(np.unique(np.flatnonzero(diff) // BATCH))),
+            "batches_differing": len(np.unique(np.flatnonzero(diff) // BATCH)),
             "batches": -(-len(ids) // BATCH),
             "probe_abs_dscore": {"mean": float(dscore.mean()), "p99": float(np.quantile(dscore, 0.99)), "max": float(dscore.max())},
             "decision_flips_at_threshold": int(((scores[x] > t) != (scores[y] > t)).sum()),

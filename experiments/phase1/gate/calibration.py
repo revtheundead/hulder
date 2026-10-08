@@ -21,8 +21,8 @@ from scipy.stats import binomtest
 ROOT = Path(__file__).resolve().parents[3]
 sys.path[:0] = [str(ROOT / "tests"), str(ROOT / "experiments/phase1/probe")]
 
-from common import run_manifest  # noqa: E402
-from synthetic import (  # noqa: E402
+from common import run_manifest
+from synthetic import (
     FRESH_ENGINE_NOISE,
     FRESH_ENGINE_P_ZERO,
     N_ATTACK,
@@ -33,7 +33,7 @@ from synthetic import (  # noqa: E402
     unchanged_scorer,
 )
 
-import hulder  # noqa: E402
+import hulder
 
 OUT = ROOT / "docs/results/phase1/gate_calibration.json"
 SEEDS = range(1000)

@@ -16,11 +16,10 @@ from pathlib import Path
 
 import torch
 import vllm
+from fp16_sanity import MODEL, NUM_LAYERS, PROMPTS, REVISION
 from vllm import LLM, SamplingParams
 from vllm.config.kv_transfer import KVTransferConfig
 from vllm.distributed.kv_transfer.kv_connector.v1 import example_hidden_states_connector as hsc
-
-from fp16_sanity import MODEL, NUM_LAYERS, PROMPTS, REVISION
 
 LAYER_IDS = list(range(NUM_LAYERS + 1))
 TOP_K = 4
