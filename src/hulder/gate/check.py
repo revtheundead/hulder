@@ -61,7 +61,10 @@ def check(
     threshold: float,
     target_fpr: float,
     seed: int = 0,
+    noise_floor: np.ndarray | None = None,
 ) -> Report:
+    """noise_floor is an optional second run of the reference on the same examples. It feeds
+    only the shift diagnostics, never the verdict."""
     benign = labels == 0
     warnings = []
     k, n, ci = _flag_rate(reference[benign], threshold)
@@ -102,6 +105,15 @@ def check(
         k, n, _ = _flag_rate(candidate[benign], threshold)
         more_benign_needed = _more_needed_to_decide(k / n, n, 2 * target_fpr)
     flipped = (reference > threshold) != (candidate > threshold)
+    floor = {}
+    if noise_floor is not None:
+        candidate_shift, rerun_shift = np.abs(candidate - reference), np.abs(noise_floor - reference)
+        low, _ = _paired_bootstrap_mean(candidate_shift - rerun_shift, seed)
+        floor = {
+            "noise_floor_decision_flips": int(((reference > threshold) != (noise_floor > threshold)).sum()),
+            "noise_floor_mean_abs_shift": float(rerun_shift.mean()),
+            "shift_exceeds_noise_floor": bool(low > 0),
+        }
     return Report(
         verdict=verdict,
         decision_flip_rate=float(flipped.mean()),
@@ -109,6 +121,7 @@ def check(
         mean_abs_shift=float(np.abs(candidate - reference).mean()),
         warnings=tuple(warnings),
         more_benign_needed=more_benign_needed,
+        **floor,
     )
 
 
@@ -173,6 +186,15 @@ def _paired_bootstrap_delta_auroc(
         reference, labels, w_benign, w_attack
     )
     low, high = np.quantile(delta, [0.025, 0.975])
+    return float(low), float(high)
+
+
+def _paired_bootstrap_mean(differences: np.ndarray, seed: int) -> tuple[float, float]:
+    """95% percentile CI of the mean of per-example differences, resampling examples."""
+    # A stream apart from the ΔAUROC bootstrap's, so adding this doesn't change that CI.
+    rng = np.random.default_rng((seed, 1))
+    means = _resample_counts(rng, len(differences)) @ differences / len(differences)
+    low, high = np.quantile(means, [0.025, 0.975])
     return float(low), float(high)
 
 

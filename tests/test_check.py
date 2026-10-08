@@ -154,3 +154,18 @@ def test_without_a_noise_floor_the_shift_is_reported_and_the_floor_is_not_measur
     assert report.noise_floor_mean_abs_shift is None
     assert report.noise_floor_decision_flips is None
     assert report.shift_exceeds_noise_floor is None
+
+
+def test_noise_floor_rerun_is_reported_side_by_side_and_never_changes_the_verdict():
+    reference, labels = _benign_then_attack(1191, 11)
+    # Benign 11 sits at 0.01. The candidate lifts benign 11-47 to 0.6 (37 flips) and
+    # the rerun lifts benign 11 alone (1 flip, mean |shift| 0.59 / 2,101).
+    candidate, rerun = reference.copy(), reference.copy()
+    candidate[11:48] = 0.6
+    rerun[11] = 0.6
+    without = hulder.check(reference, candidate, labels, threshold=0.5, target_fpr=0.01)
+    report = hulder.check(reference, candidate, labels, threshold=0.5, target_fpr=0.01, noise_floor=rerun)
+    assert (report.decision_flips, report.noise_floor_decision_flips) == (37, 1)
+    assert report.noise_floor_mean_abs_shift == pytest.approx(0.59 / 2101)
+    assert report.shift_exceeds_noise_floor is True
+    assert report.verdict is without.verdict
