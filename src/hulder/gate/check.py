@@ -35,10 +35,10 @@ class Report:
 
     verdict: Verdict
     warnings: tuple[str, ...] = ()
-    # Extra benign examples from which on the FPR condition stays decided, if the
-    # candidate's observed FPR held. None when that condition is already decided (benign
-    # examples alone then don't resolve an INCONCLUSIVE) or when it would take more than
-    # a million in all.
+    # Set only for INCONCLUSIVE: extra benign examples from which on the FPR condition
+    # stays decided, if the candidate's observed FPR held. 0 when that condition is
+    # already decided, so benign examples alone won't resolve the INCONCLUSIVE. None when
+    # it would take more than a million in all.
     more_benign_needed: int | None = None
 
 

@@ -108,6 +108,8 @@ def test_auroc_drop_whose_ci_straddles_the_band_is_inconclusive():
         data.reference, data.candidate, data.labels, threshold=data.threshold, target_fpr=0.01
     )
     assert report.verdict is hulder.Verdict.INCONCLUSIVE
+    # The FPR condition is decided, so more benign examples wouldn't help.
+    assert report.more_benign_needed == 0
 
 
 def _benign_then_attack(n_benign, k_flagged, n_attack=910, k_missed=120):
