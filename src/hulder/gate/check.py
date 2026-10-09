@@ -42,7 +42,8 @@ class Report:
     mean_abs_shift: float
     # The same two numbers for a second run of the reference against the reference, and
     # whether the candidate moved scores more than that rerun did. None when no rerun was
-    # given: the noise floor was not measured.
+    # given, or when it was bit-identical to the reference (with a warning): the noise
+    # floor was not measured.
     noise_floor_decision_flips: int | None = None
     noise_floor_mean_abs_shift: float | None = None
     shift_exceeds_noise_floor: bool | None = None
@@ -106,7 +107,12 @@ def check(
         more_benign_needed = _more_needed_to_decide(k / n, n, 2 * target_fpr)
     flipped = (reference > threshold) != (candidate > threshold)
     floor = {}
-    if noise_floor is not None:
+    if noise_floor is not None and np.array_equal(noise_floor, reference):
+        warnings.append(
+            "The noise-floor rerun is bit-identical to the reference, so the noise floor was not measured. "
+            "Pass an independent second run of the reference, not the reference itself."
+        )
+    elif noise_floor is not None:
         candidate_shift, rerun_shift = np.abs(candidate - reference), np.abs(noise_floor - reference)
         low, _ = _paired_bootstrap_mean(candidate_shift - rerun_shift, seed)
         floor = {

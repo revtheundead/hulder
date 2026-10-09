@@ -159,3 +159,17 @@ def test_a_candidate_no_noisier_than_the_rerun_does_not_exceed_the_noise_floor()
         data.reference, data.candidate, data.labels, threshold=data.threshold, target_fpr=0.01, noise_floor=rerun
     )
     assert report.shift_exceeds_noise_floor is False
+
+
+def test_a_rerun_identical_to_the_reference_leaves_the_floor_unmeasured_and_warns():
+    # A rerun bit-identical to the reference measures nothing: as a zero floor, any noise
+    # in the candidate would "exceed" it.
+    reference, labels = _benign_then_attack(1191, 11)
+    candidate = reference + 0.01
+    report = hulder.check(reference, candidate, labels, threshold=0.5, target_fpr=0.01, noise_floor=reference.copy())
+    assert report.noise_floor_mean_abs_shift is None
+    assert report.noise_floor_decision_flips is None
+    assert report.shift_exceeds_noise_floor is None
+    [warning] = report.warnings
+    assert "bit-identical to the reference" in warning
+    assert "noise floor was not measured" in warning
