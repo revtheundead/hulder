@@ -91,6 +91,7 @@ def check(
     changes_under_test: tuple[str, ...] = (),
     reference_ids: Iterable | None = None,
     candidate_ids: Iterable | None = None,
+    noise_floor_ids: Iterable | None = None,
     probe: Probe | None = None,
 ) -> Report:
     """reference, candidate and noise_floor are 1-D scores, or with probe=, (n, d)
@@ -101,8 +102,11 @@ def check(
     changes_under_test may differ and are listed; any other difference warns.
 
     Each run's prompt_ids_sha256 comes from its metadata or, failing that, from its example
-    ids. Two known hashes that differ raise PairingError; an unknown one warns."""
-    warnings = _check_pairing(reference_meta, candidate_meta, reference_ids, candidate_ids)
+    ids, and the noise-floor rerun's from noise_floor_ids. Two known hashes that differ raise
+    PairingError; an unknown one warns."""
+    warnings = _check_pairing(
+        reference_meta, candidate_meta, reference_ids, candidate_ids, noise_floor_ids, noise_floor is not None
+    )
     meta_warnings, changes = _compare_metadata(reference_meta, candidate_meta, changes_under_test)
     warnings += meta_warnings
     rerun_identical = noise_floor is not None and np.array_equal(noise_floor, reference)
@@ -194,22 +198,41 @@ def _check_pairing(
     candidate_meta: dict | None,
     reference_ids: Iterable | None,
     candidate_ids: Iterable | None,
+    noise_floor_ids: Iterable | None,
+    has_noise_floor: bool,
 ) -> list[str]:
-    hashes = [
-        (meta or {}).get(PROMPT_IDS_KEY) or (prompt_ids_sha256(ids) if ids is not None else None)
-        for meta, ids in ((reference_meta, reference_ids), (candidate_meta, candidate_ids))
-    ]
-    if None in hashes:
+    """Each run's ids hash comes from its metadata or else its ids. Known hashes that
+    differ from the reference's raise PairingError; an unknown one warns."""
+    reference = _ids_hash(reference_meta, reference_ids)
+    warnings = _pair(reference, _ids_hash(candidate_meta, candidate_ids), "candidate")
+    if has_noise_floor:
+        warnings += _pair(reference, _ids_hash(None, noise_floor_ids), "noise-floor rerun")
+    return warnings
+
+
+def _ids_hash(meta: dict | None, ids: Iterable | None) -> str | None:
+    return (meta or {}).get(PROMPT_IDS_KEY) or (prompt_ids_sha256(ids) if ids is not None else None)
+
+
+def _pair(reference: str | None, other: str | None, role: str) -> list[str]:
+    if reference is None or other is None:
+        if role == "candidate":
+            return [
+                (
+                    "Pairing not verified; scores assumed to be in the same order. "
+                    f"Pass example ids or {PROMPT_IDS_KEY} in the metadata for both runs."
+                )
+            ]
         return [
             (
-                "Pairing not verified; scores assumed to be in the same order. "
-                f"Pass example ids or {PROMPT_IDS_KEY} in the metadata for both runs."
+                f"Rerun pairing not verified; {role} scores assumed to be in the reference's order. "
+                "Pass noise_floor_ids with the reference's ids."
             )
         ]
-    if hashes[0] != hashes[1]:
+    if reference != other:
         raise PairingError(
-            f"{PROMPT_IDS_KEY} differs ({hashes[0]!r} vs {hashes[1]!r}): "
-            "reference and candidate were not run on the same prompts in the same order."
+            f"{PROMPT_IDS_KEY} differs ({reference!r} vs {other!r}): "
+            f"reference and {role} were not run on the same prompts in the same order."
         )
     return []
 

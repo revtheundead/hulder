@@ -48,8 +48,8 @@ def main() -> None:
         paths = {run: SNAPSHOTS / f"{name}_{run}.npz" for run in ("fp16", "fp16_run1", "awq")}
         inputs += [probe_path, *paths.values()]
         reference, rerun, candidate = (hulder.Snapshot.load(p) for p in paths.values())
-        # check verifies reference against candidate; the rerun's pairing is checked here.
-        assert (rerun.ids == reference.ids).all() and (rerun.labels == reference.labels).all()
+        # check verifies the ids of all three runs; it doesn't see the rerun's labels.
+        assert (rerun.labels == reference.labels).all()
         threshold, target_fpr = probe.metadata["threshold"], probe.metadata["target_fpr"]
         report = hulder.check(
             reference.activations,
@@ -59,6 +59,7 @@ def main() -> None:
             target_fpr=target_fpr,
             seed=SEED,
             noise_floor=rerun.activations,
+            noise_floor_ids=rerun.ids,
             reference_meta=reference.metadata,
             candidate_meta=candidate.metadata,
             reference_ids=reference.ids,

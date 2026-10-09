@@ -182,7 +182,14 @@ def test_a_rerun_identical_to_the_reference_leaves_the_floor_unmeasured_and_warn
     reference, labels = _benign_then_attack(1191, 11)
     candidate = reference + 0.01
     report = hulder.check(
-        reference, candidate, labels, threshold=0.5, target_fpr=0.01, noise_floor=reference.copy(), **_paired(labels)
+        reference,
+        candidate,
+        labels,
+        threshold=0.5,
+        target_fpr=0.01,
+        noise_floor=reference.copy(),
+        noise_floor_ids=_paired(labels)["reference_ids"],
+        **_paired(labels),
     )
     assert report.noise_floor_mean_abs_shift is None
     assert report.noise_floor_decision_flips is None
@@ -418,3 +425,34 @@ def test_bring_your_own_scores_have_no_logit_shift():
 def test_two_dimensional_input_without_a_probe_is_rejected():
     with pytest.raises(ValueError, match="probe="):
         hulder.check(np.zeros((4, 2)), np.zeros((4, 2)), np.array([0, 0, 1, 1]), threshold=0.5, target_fpr=0.01)
+
+
+def _check_with_rerun(noise_floor_ids):
+    data = unchanged_scorer(seed=0, noise=FRESH_ENGINE_NOISE, p_zero=FRESH_ENGINE_P_ZERO)
+    rerun = unchanged_scorer(seed=0, noise=FRESH_ENGINE_NOISE, p_zero=FRESH_ENGINE_P_ZERO, noise_seed=1).candidate
+    return hulder.check(
+        data.reference,
+        data.candidate,
+        data.labels,
+        threshold=data.threshold,
+        target_fpr=0.01,
+        noise_floor=rerun,
+        noise_floor_ids=noise_floor_ids,
+        **_paired(data.labels),
+    )
+
+
+def test_rerun_ids_in_the_same_order_verify_the_rerun_pairing():
+    ids = _paired(unchanged_scorer(seed=0).labels)["reference_ids"]
+    assert _check_with_rerun(list(ids)).warnings == ()
+
+
+def test_rerun_ids_in_a_different_order_raise_a_pairing_error():
+    ids = _paired(unchanged_scorer(seed=0).labels)["reference_ids"]
+    with pytest.raises(hulder.PairingError, match="noise-floor rerun"):
+        _check_with_rerun(ids[::-1])
+
+
+def test_a_rerun_without_ids_warns_that_its_pairing_was_not_verified():
+    [warning] = _check_with_rerun(None).warnings
+    assert warning.startswith("Rerun pairing not verified")
