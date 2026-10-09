@@ -1,7 +1,8 @@
 from hulder.gate.check import PairingError, Report, Verdict, check, prompt_ids_sha256
 from hulder.gate.probe import Probe, apply_probe
+from hulder.gate.snapshot import Snapshot
 
-__all__ = ["PairingError", "Probe", "Report", "Verdict", "apply_probe", "check", "prompt_ids_sha256"]
+__all__ = ["PairingError", "Probe", "Report", "Snapshot", "Verdict", "apply_probe", "check", "prompt_ids_sha256"]
 
 
 def main() -> None:
