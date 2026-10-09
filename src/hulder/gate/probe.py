@@ -49,6 +49,12 @@ class Probe:
 
 def apply_probe(probe: Probe, activations: np.ndarray) -> np.ndarray:
     """Score a (n, d) batch of activations. Computes in float32 whatever the input dtype."""
+    return expit(probe_logits(probe, activations))
+
+
+def probe_logits(probe: Probe, activations: np.ndarray) -> np.ndarray:
+    """The probe's logits for a (n, d) batch, before the sigmoid, in float32. Computed
+    directly, since inverting a saturated float32 score gives inf."""
     h = np.asarray(activations, dtype=np.float32)
     if h.ndim != 2 or h.shape[1] != probe.weights.shape[0]:
         raise ValueError(
@@ -56,4 +62,4 @@ def apply_probe(probe: Probe, activations: np.ndarray) -> np.ndarray:
             f"probe expects 2-D input of width {probe.weights.shape[0]}"
         )
     z = (h - probe.mean.astype(np.float32)) / probe.std.astype(np.float32)
-    return expit(z @ probe.weights.astype(np.float32) + np.float32(probe.bias))
+    return z @ probe.weights.astype(np.float32) + np.float32(probe.bias)

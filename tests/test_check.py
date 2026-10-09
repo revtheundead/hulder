@@ -369,3 +369,52 @@ def test_prompt_ids_hash_depends_on_order_and_not_on_id_type_boundaries():
     assert hulder.prompt_ids_sha256(["a", "b"]) != hulder.prompt_ids_sha256(["b", "a"])
     assert hulder.prompt_ids_sha256(["ab", "c"]) != hulder.prompt_ids_sha256(["a", "bc"])
     assert hulder.prompt_ids_sha256(np.array([1, 2])) == hulder.prompt_ids_sha256(["1", "2"])
+
+
+def _identity_probe():
+    # One feature, no standardisation: the logit is the activation itself.
+    return hulder.Probe(weights=np.array([1.0]), bias=0.0, mean=np.array([0.0]), std=np.array([1.0]))
+
+
+def _as_activations(scores):
+    return np.log(scores / (1 - scores)).astype(np.float32)[:, None]
+
+
+def test_activations_with_a_probe_give_the_same_report_as_the_probes_scores():
+    data = unchanged_scorer(seed=0, candidate_fpr=0.03)
+    probe, reference, candidate = _identity_probe(), _as_activations(data.reference), _as_activations(data.candidate)
+    kwargs = {"threshold": data.threshold, "target_fpr": 0.01, **_paired(data.labels)}
+    from_scores = hulder.check(
+        hulder.apply_probe(probe, reference), hulder.apply_probe(probe, candidate), data.labels, **kwargs
+    )
+    from_activations = hulder.check(reference, candidate, data.labels, probe=probe, **kwargs)
+    assert from_activations.verdict is from_scores.verdict
+    assert from_activations.mean_abs_shift == from_scores.mean_abs_shift
+    assert from_activations.decision_flips == from_scores.decision_flips
+
+
+def test_with_a_probe_the_logit_shift_is_reported_beside_the_score_shift():
+    # Logit 20 saturates the float32 sigmoid: a +2 logit shift there moves the score by
+    # nothing, so only the logit shift shows the probe's view moved.
+    reference = np.array([[-3.0], [-2.0], [2.0], [20.0]], dtype=np.float32)
+    candidate = reference + np.array([[0.0], [0.0], [0.0], [2.0]], dtype=np.float32)
+    rerun = reference + np.array([[0.4], [0.0], [0.0], [0.0]], dtype=np.float32)
+    labels = np.array([0, 0, 1, 1])
+    report = hulder.check(
+        reference, candidate, labels, threshold=0.5, target_fpr=0.01, probe=_identity_probe(), noise_floor=rerun
+    )
+    assert report.mean_abs_shift == 0.0
+    assert report.mean_abs_logit_shift == pytest.approx(2.0 / 4)
+    assert report.noise_floor_mean_abs_logit_shift == pytest.approx(0.4 / 4)
+
+
+def test_bring_your_own_scores_have_no_logit_shift():
+    data = unchanged_scorer(seed=0)
+    report = hulder.check(data.reference, data.candidate, data.labels, threshold=data.threshold, target_fpr=0.01)
+    assert report.mean_abs_logit_shift is None
+    assert report.noise_floor_mean_abs_logit_shift is None
+
+
+def test_two_dimensional_input_without_a_probe_is_rejected():
+    with pytest.raises(ValueError, match="probe="):
+        hulder.check(np.zeros((4, 2)), np.zeros((4, 2)), np.array([0, 0, 1, 1]), threshold=0.5, target_fpr=0.01)

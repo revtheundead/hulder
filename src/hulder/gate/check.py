@@ -7,7 +7,10 @@ from dataclasses import dataclass
 from enum import Enum
 
 import numpy as np
+from scipy.special import expit
 from scipy.stats import beta, binomtest, rankdata
+
+from hulder.gate.probe import Probe, probe_logits
 
 N_BOOTSTRAP = 1000
 
@@ -60,6 +63,10 @@ class Report:
     noise_floor_decision_flips: int | None = None
     noise_floor_mean_abs_shift: float | None = None
     shift_exceeds_noise_floor: bool | None = None
+    # Mean |Δlogit| for the candidate and the rerun, set only when check applied a probe to
+    # activations. Score space flattens shifts where the sigmoid saturates; logits don't.
+    mean_abs_logit_shift: float | None = None
+    noise_floor_mean_abs_logit_shift: float | None = None
     warnings: tuple[str, ...] = ()
     # (key, reference value, candidate value) for each metadata key that differs and is
     # declared as under test, sorted by key.
@@ -84,8 +91,10 @@ def check(
     changes_under_test: tuple[str, ...] = (),
     reference_ids: Iterable | None = None,
     candidate_ids: Iterable | None = None,
+    probe: Probe | None = None,
 ) -> Report:
-    """noise_floor is an optional second run of the reference on the same examples. It feeds
+    """reference, candidate and noise_floor are 1-D scores, or with probe=, (n, d)
+    activations that check scores itself. noise_floor is an optional second run of the reference on the same examples. It feeds
     only the shift diagnostics, never the verdict.
 
     reference_meta and candidate_meta describe each run. Keys in UNDER_TEST or
@@ -96,6 +105,19 @@ def check(
     warnings = _check_pairing(reference_meta, candidate_meta, reference_ids, candidate_ids)
     meta_warnings, changes = _compare_metadata(reference_meta, candidate_meta, changes_under_test)
     warnings += meta_warnings
+    rerun_identical = noise_floor is not None and np.array_equal(noise_floor, reference)
+    logit_shift = {}
+    if probe is not None:
+        reference, candidate = probe_logits(probe, reference), probe_logits(probe, candidate)
+        logit_shift["mean_abs_logit_shift"] = float(np.abs(candidate - reference).mean())
+        if noise_floor is not None:
+            noise_floor = probe_logits(probe, noise_floor)
+            if not rerun_identical:
+                logit_shift["noise_floor_mean_abs_logit_shift"] = float(np.abs(noise_floor - reference).mean())
+            noise_floor = expit(noise_floor)
+        reference, candidate = expit(reference), expit(candidate)
+    elif np.ndim(reference) != 1 or np.ndim(candidate) != 1:
+        raise ValueError("2-D input is activations: pass probe= to score them, or pass 1-D scores")
     benign = labels == 0
     k, n, ci = _flag_rate(reference[benign], threshold)
     if not ci.low <= target_fpr <= ci.high:
@@ -136,7 +158,7 @@ def check(
         more_benign_needed = _more_needed_to_decide(k / n, n, 2 * target_fpr)
     flipped = (reference > threshold) != (candidate > threshold)
     floor = {}
-    if noise_floor is not None and np.array_equal(noise_floor, reference):
+    if rerun_identical:
         warnings.append(
             "The noise-floor rerun is bit-identical to the reference, so the noise floor was not measured. "
             "Pass an independent second run of the reference, not the reference itself."
@@ -158,6 +180,7 @@ def check(
         changes_under_test=changes,
         more_benign_needed=more_benign_needed,
         **floor,
+        **logit_shift,
     )
 
 
