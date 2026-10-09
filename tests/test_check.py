@@ -10,6 +10,12 @@ from synthetic import FRESH_ENGINE_NOISE, FRESH_ENGINE_P_ZERO, unchanged_scorer
 import hulder
 
 
+def _paired(labels):
+    """Example ids for both runs, so tests about other warnings don't also get the pairing one."""
+    ids = [f"slabs/{i}" for i in range(len(labels))]
+    return {"reference_ids": ids, "candidate_ids": ids}
+
+
 def test_unchanged_scorer_at_realistic_size_passes():
     # About 1,150 benign at a 1% target, threshold fitted on the reference: an unchanged
     # scorer's FPR CI is roughly [0.5%, 1.7%], which the one-sided PASS band
@@ -24,7 +30,9 @@ def test_threshold_not_calibrated_on_the_reference_snapshot_warns(fitted_fpr):
     # Fitted for 3% (or 0.2%) FPR on 1,191 benign, the reference's FPR CI at the threshold
     # excludes the 1% target, so the threshold can't have come from this snapshot.
     data = unchanged_scorer(seed=0, target_fpr=fitted_fpr)
-    report = hulder.check(data.reference, data.candidate, data.labels, threshold=data.threshold, target_fpr=0.01)
+    report = hulder.check(
+        data.reference, data.candidate, data.labels, threshold=data.threshold, target_fpr=0.01, **_paired(data.labels)
+    )
     [warning] = report.warnings
     assert "wasn't calibrated on this snapshot" in warning
     assert "recalibrate on the reference first" in warning
@@ -32,7 +40,9 @@ def test_threshold_not_calibrated_on_the_reference_snapshot_warns(fitted_fpr):
 
 def test_threshold_calibrated_on_the_reference_snapshot_gives_no_warning():
     data = unchanged_scorer(seed=0)
-    report = hulder.check(data.reference, data.candidate, data.labels, threshold=data.threshold, target_fpr=0.01)
+    report = hulder.check(
+        data.reference, data.candidate, data.labels, threshold=data.threshold, target_fpr=0.01, **_paired(data.labels)
+    )
     assert report.warnings == ()
 
 
@@ -171,7 +181,9 @@ def test_a_rerun_identical_to_the_reference_leaves_the_floor_unmeasured_and_warn
     # in the candidate would "exceed" it.
     reference, labels = _benign_then_attack(1191, 11)
     candidate = reference + 0.01
-    report = hulder.check(reference, candidate, labels, threshold=0.5, target_fpr=0.01, noise_floor=reference.copy())
+    report = hulder.check(
+        reference, candidate, labels, threshold=0.5, target_fpr=0.01, noise_floor=reference.copy(), **_paired(labels)
+    )
     assert report.noise_floor_mean_abs_shift is None
     assert report.noise_floor_decision_flips is None
     assert report.shift_exceeds_noise_floor is None
@@ -296,17 +308,64 @@ def test_a_missing_base_model_warns_that_it_could_not_be_determined():
 
 def test_metadata_on_one_side_only_warns_that_it_was_not_compared():
     report = _check_with_meta(_META, None)
-    [warning] = report.warnings
-    assert "metadata" in warning
-    assert "not compared" in warning
+    metadata, pairing = sorted(report.warnings, key=lambda w: w.startswith("Pairing"))
+    assert "metadata" in metadata
+    assert "not compared" in metadata
+    assert pairing.startswith("Pairing not verified")
 
 
-def test_without_metadata_nothing_is_compared_or_warned_about():
+def test_without_metadata_nothing_is_compared_and_only_pairing_is_warned_about():
     report = _check_with_meta(None, None)
-    assert report.warnings == ()
+    [warning] = report.warnings
+    assert warning.startswith("Pairing not verified")
     assert report.changes_under_test == ()
 
 
 def test_different_prompt_ids_raise_a_pairing_error():
     with pytest.raises(hulder.PairingError, match="prompt_ids_sha256"):
         _check_with_meta(_META, {**_AWQ, "prompt_ids_sha256": "bbb"})
+
+
+def _check_with_ids(reference_ids, candidate_ids, reference_meta=None, candidate_meta=None):
+    data = unchanged_scorer(seed=0)
+    return hulder.check(
+        data.reference,
+        data.candidate,
+        data.labels,
+        threshold=data.threshold,
+        target_fpr=0.01,
+        reference_meta=reference_meta,
+        candidate_meta=candidate_meta,
+        reference_ids=reference_ids,
+        candidate_ids=candidate_ids,
+    )
+
+
+def test_example_ids_in_the_same_order_verify_the_pairing():
+    ids = [f"slabs/{i}" for i in range(len(unchanged_scorer(seed=0).labels))]
+    assert _check_with_ids(ids, list(ids)).warnings == ()
+
+
+def test_example_ids_in_a_different_order_raise_a_pairing_error():
+    ids = [f"slabs/{i}" for i in range(len(unchanged_scorer(seed=0).labels))]
+    with pytest.raises(hulder.PairingError, match="not run on the same prompts in the same order"):
+        _check_with_ids(ids, ids[1:] + ids[:1])
+
+
+def test_ids_on_one_side_are_checked_against_the_hash_in_the_others_metadata():
+    ids = [f"slabs/{i}" for i in range(len(unchanged_scorer(seed=0).labels))]
+    meta = {"base_model": "m", "prompt_ids_sha256": hulder.prompt_ids_sha256(ids)}
+    assert _check_with_ids(None, ids, reference_meta=meta, candidate_meta={"base_model": "m"}).warnings == ()
+    with pytest.raises(hulder.PairingError):
+        _check_with_ids(None, ids[::-1], reference_meta=meta, candidate_meta={"base_model": "m"})
+
+
+def test_without_ids_or_hashes_the_report_warns_that_pairing_was_not_verified():
+    [warning] = _check_with_ids(None, None).warnings
+    assert "pairing not verified; scores assumed to be in the same order" in warning.lower()
+
+
+def test_prompt_ids_hash_depends_on_order_and_not_on_id_type_boundaries():
+    assert hulder.prompt_ids_sha256(["a", "b"]) != hulder.prompt_ids_sha256(["b", "a"])
+    assert hulder.prompt_ids_sha256(["ab", "c"]) != hulder.prompt_ids_sha256(["a", "bc"])
+    assert hulder.prompt_ids_sha256(np.array([1, 2])) == hulder.prompt_ids_sha256(["1", "2"])

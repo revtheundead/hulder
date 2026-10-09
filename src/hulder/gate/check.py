@@ -1,5 +1,8 @@
 """The release gate: compare a scorer under reference and candidate serving configs."""
 
+import hashlib
+import json
+from collections.abc import Iterable
 from dataclasses import dataclass
 from enum import Enum
 
@@ -79,14 +82,20 @@ def check(
     reference_meta: dict | None = None,
     candidate_meta: dict | None = None,
     changes_under_test: tuple[str, ...] = (),
+    reference_ids: Iterable | None = None,
+    candidate_ids: Iterable | None = None,
 ) -> Report:
     """noise_floor is an optional second run of the reference on the same examples. It feeds
     only the shift diagnostics, never the verdict.
 
     reference_meta and candidate_meta describe each run. Keys in UNDER_TEST or
-    changes_under_test may differ and are listed; any other difference warns. Different
-    prompt_ids_sha256 values raise PairingError."""
-    warnings, changes = _compare_metadata(reference_meta, candidate_meta, changes_under_test)
+    changes_under_test may differ and are listed; any other difference warns.
+
+    Each run's prompt_ids_sha256 comes from its metadata or, failing that, from its example
+    ids. Two known hashes that differ raise PairingError; an unknown one warns."""
+    warnings = _check_pairing(reference_meta, candidate_meta, reference_ids, candidate_ids)
+    meta_warnings, changes = _compare_metadata(reference_meta, candidate_meta, changes_under_test)
+    warnings += meta_warnings
     benign = labels == 0
     k, n, ci = _flag_rate(reference[benign], threshold)
     if not ci.low <= target_fpr <= ci.high:
@@ -152,6 +161,36 @@ def check(
     )
 
 
+def prompt_ids_sha256(ids: Iterable) -> str:
+    """Hash of example ids in order, each as a string. JSON keeps id boundaries unambiguous."""
+    return hashlib.sha256(json.dumps([str(i) for i in ids]).encode()).hexdigest()
+
+
+def _check_pairing(
+    reference_meta: dict | None,
+    candidate_meta: dict | None,
+    reference_ids: Iterable | None,
+    candidate_ids: Iterable | None,
+) -> list[str]:
+    hashes = [
+        (meta or {}).get(PROMPT_IDS_KEY) or (prompt_ids_sha256(ids) if ids is not None else None)
+        for meta, ids in ((reference_meta, reference_ids), (candidate_meta, candidate_ids))
+    ]
+    if None in hashes:
+        return [
+            (
+                "Pairing not verified; scores assumed to be in the same order. "
+                f"Pass example ids or {PROMPT_IDS_KEY} in the metadata for both runs."
+            )
+        ]
+    if hashes[0] != hashes[1]:
+        raise PairingError(
+            f"{PROMPT_IDS_KEY} differs ({hashes[0]!r} vs {hashes[1]!r}): "
+            "reference and candidate were not run on the same prompts in the same order."
+        )
+    return []
+
+
 def _compare_metadata(
     reference: dict | None, candidate: dict | None, extra_under_test: tuple[str, ...]
 ) -> tuple[list[str], tuple[tuple[str, object, object], ...]]:
@@ -161,11 +200,6 @@ def _compare_metadata(
     if reference is None or candidate is None:
         given = "reference" if candidate is None else "candidate"
         return [f"Only the {given} has metadata, so the two runs' metadata was not compared."], ()
-    if reference.get(PROMPT_IDS_KEY) != candidate.get(PROMPT_IDS_KEY):
-        raise PairingError(
-            f"{PROMPT_IDS_KEY} differs ({reference.get(PROMPT_IDS_KEY)!r} vs {candidate.get(PROMPT_IDS_KEY)!r}): "
-            "reference and candidate were not run on the same prompts in the same order."
-        )
     under_test = set(UNDER_TEST) | set(extra_under_test)
     warnings, changes = [], []
     if "base_model" not in reference or "base_model" not in candidate:
