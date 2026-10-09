@@ -1,3 +1,8 @@
+import os
+import subprocess
+import sys
+from pathlib import Path
+
 import numpy as np
 import pytest
 from synthetic import FRESH_ENGINE_NOISE, FRESH_ENGINE_P_ZERO, unchanged_scorer
@@ -173,3 +178,47 @@ def test_a_rerun_identical_to_the_reference_leaves_the_floor_unmeasured_and_warn
     [warning] = report.warnings
     assert "bit-identical to the reference" in warning
     assert "noise floor was not measured" in warning
+
+
+def _determinism_case():
+    # Both bootstraps run: the ΔAUROC one and, with a rerun, the noise floor's. Report
+    # carries no CI bounds yet, only the verdict and shift_exceeds_noise_floor that they
+    # decide, so an unseeded bootstrap passes these tests unless a draw tips a decision.
+    data = unchanged_scorer(seed=3, noise=FRESH_ENGINE_NOISE, p_zero=FRESH_ENGINE_P_ZERO, candidate_fpr=0.015)
+    rerun = unchanged_scorer(seed=3, noise=FRESH_ENGINE_NOISE, p_zero=FRESH_ENGINE_P_ZERO, noise_seed=1).candidate
+    return hulder.check(
+        data.reference,
+        data.candidate,
+        data.labels,
+        threshold=data.threshold,
+        target_fpr=0.01,
+        seed=7,
+        noise_floor=rerun,
+    )
+
+
+def test_same_inputs_and_seed_give_an_identical_report():
+    first, second = _determinism_case(), _determinism_case()
+    assert first.noise_floor_mean_abs_shift is not None
+    assert first == second
+
+
+def test_same_inputs_and_seed_give_an_identical_report_across_processes():
+    # repr round-trips floats exactly, so equal reprs mean equal Reports. Different hash
+    # seeds catch any dependence on set or dict ordering.
+    code = (
+        f"import sys; sys.path.insert(0, {str(Path(__file__).parent)!r})\n"
+        "import test_check\n"
+        "print(repr(test_check._determinism_case()))"
+    )  # fmt: skip
+    reprs = [
+        subprocess.run(
+            [sys.executable, "-c", code],
+            capture_output=True,
+            text=True,
+            check=True,
+            env={**os.environ, "PYTHONHASHSEED": hash_seed},
+        ).stdout
+        for hash_seed in ("1", "2")
+    ]
+    assert reprs[0] == reprs[1] == repr(_determinism_case()) + "\n"
