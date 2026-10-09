@@ -61,8 +61,10 @@ class Activations:
 
     def at(self, ids, layer: int, position: int) -> np.ndarray:
         cfg = self.capture_manifest["capture_config"]
+        layers = self.capture_manifest.get("saved_layers", cfg["layers"])
+        positions = self.capture_manifest.get("saved_positions", cfg["positions"])
         rows = [self.row_of[i] for i in ids]
-        return np.asarray(self.array[rows, cfg["layers"].index(layer), cfg["positions"].index(position)])
+        return np.asarray(self.array[rows, layers.index(layer), positions.index(position)])
 
     def for_probe(self, ids, probe: hulder.Probe) -> np.ndarray:
         return self.at(ids, probe.metadata["layer"], probe.metadata["position"])
