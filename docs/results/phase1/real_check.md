@@ -33,7 +33,7 @@ Both checks are **INCONCLUSIVE** (exit 12). Rates are Clopper-Pearson 95% interv
 
 **Why INCONCLUSIVE.** In both checks the candidate's FPR interval straddles the 2 × target line, which is 2% for the main probe and 10% for the demo. So neither PASS nor THRESHOLD STALE can be called. FNR and ΔAUROC are inside their tolerances.
 
-**What AWQ did.** It moved scores upward along the probe direction. FPR roughly doubled (point estimates 2.3× and 1.6×) and the main probe's FNR halved, which is the pattern of a stale threshold, not a degraded scorer. AWQ moved scores 250 to 600 times as much as the fp16 rerun did (250 to 430 times in logits), and 58 main-probe decisions flipped where the rerun flipped 1. The gate correctly says the change is real, but the calibration set is too small to say whether the FPR rise crosses the band.
+**What AWQ did.** It moved scores upward along the probe direction. FPR rose 2.3× for the main probe and 1.6× for the demo (point estimates), and the main probe's FNR halved, which is the pattern of a stale threshold, not a degraded scorer. AWQ moved scores 250 to 600 times as much as the fp16 rerun did (250 to 430 times in logits), and 58 main-probe decisions flipped where the rerun flipped 1. The gate correctly says the change is real, but the calibration set is too small to say whether the FPR rise crosses the band.
 
 ## Where this loses
 
