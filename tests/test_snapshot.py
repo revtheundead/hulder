@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 
 import hulder
+from hulder.gate.snapshot import _content_sha256
 
 
 def _snapshot(**kwargs):
@@ -47,7 +48,10 @@ def test_a_snapshot_whose_ids_no_longer_match_their_stored_hash_fails_to_load(tm
     _snapshot().save(tmp_path / "s.npz")
     with np.load(tmp_path / "s.npz", allow_pickle=False) as f:
         arrays = dict(f)
+    # Consistent arrays, so only the ids' hash in the metadata disagrees.
     arrays["ids"] = arrays["ids"][::-1]
+    content = {k: arrays[k] for k in ("ids", "labels", "activations")}
+    arrays["content_sha256"] = np.array(_content_sha256(content))
     np.savez(tmp_path / "s.npz", **arrays)
     with pytest.raises(ValueError, match="prompt_ids_sha256"):
         hulder.Snapshot.load(tmp_path / "s.npz")
@@ -57,3 +61,22 @@ def test_snapshot_metadata_is_plain_json_in_the_file(tmp_path):
     _snapshot().save(tmp_path / "s.npz")
     with np.load(tmp_path / "s.npz", allow_pickle=False) as f:
         assert json.loads(str(f["metadata"]))["format_version"] == hulder.Snapshot.FORMAT_VERSION
+
+
+@pytest.mark.parametrize("entry", ["activations", "labels", "ids"])
+def test_a_snapshot_whose_arrays_were_altered_fails_to_load(tmp_path, entry):
+    # One flipped value, as a bad disk block would leave it.
+    _snapshot().save(tmp_path / "s.npz")
+    with np.load(tmp_path / "s.npz", allow_pickle=False) as f:
+        arrays = dict(f)
+    altered = arrays[entry].copy()
+    altered[0] = altered[1]
+    arrays[entry] = altered
+    np.savez(tmp_path / "s.npz", **arrays)
+    with pytest.raises(ValueError, match="content_sha256"):
+        hulder.Snapshot.load(tmp_path / "s.npz")
+
+
+def test_the_content_hash_is_not_part_of_the_metadata_check_compares(tmp_path):
+    _snapshot().save(tmp_path / "s.npz")
+    assert "content_sha256" not in hulder.Snapshot.load(tmp_path / "s.npz").metadata

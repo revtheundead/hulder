@@ -1,5 +1,6 @@
 """Snapshot files: one serving config's scorer inputs over a labelled calibration set. Numpy only."""
 
+import hashlib
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -27,16 +28,19 @@ class Snapshot:
             raise ValueError("a snapshot holds exactly one of scores or activations")
 
     def save(self, path: str | Path) -> None:
-        """Write an .npz of plain arrays plus JSON metadata, with the ids' hash for pairing.
-        Never pickled, so safe to share."""
-        values = {"scores": self.scores} if self.scores is not None else {"activations": self.activations}
+        """Write an .npz of plain arrays plus JSON metadata, with the ids' hash for pairing
+        and a content hash that load verifies. Never pickled, so safe to share."""
+        arrays = {
+            "ids": np.asarray(self.ids, dtype=str),
+            "labels": np.asarray(self.labels, dtype=np.int8),
+            **({"scores": self.scores} if self.scores is not None else {"activations": self.activations}),
+        }
         metadata = {"format_version": self.FORMAT_VERSION, **self.metadata, PROMPT_IDS_KEY: prompt_ids_sha256(self.ids)}
         np.savez(
             path,
-            ids=np.asarray(self.ids, dtype=str),
-            labels=np.asarray(self.labels, dtype=np.int8),
             metadata=np.array(json.dumps(metadata)),
-            **values,
+            content_sha256=np.array(_content_sha256(arrays)),
+            **arrays,
         )
 
     @classmethod
@@ -46,6 +50,9 @@ class Snapshot:
             version = metadata.pop("format_version")
             if version != cls.FORMAT_VERSION:
                 raise ValueError(f"snapshot file format {version}, this hulder reads {cls.FORMAT_VERSION}")
+            arrays = {k: f[k] for k in ("ids", "labels", "scores", "activations") if k in f}
+            if str(f["content_sha256"]) != _content_sha256(arrays):
+                raise ValueError(f"{path}: the arrays don't match the file's content_sha256; the file is damaged")
             ids = f["ids"]
             if PROMPT_IDS_KEY in metadata and metadata[PROMPT_IDS_KEY] != prompt_ids_sha256(ids):
                 raise ValueError(f"{path}: the ids don't match the file's {PROMPT_IDS_KEY}; the file was altered")
@@ -56,3 +63,13 @@ class Snapshot:
                 activations=f.get("activations"),
                 metadata=metadata,
             )
+
+
+def _content_sha256(arrays: dict[str, np.ndarray]) -> str:
+    """Hash of each array's name, dtype, shape and bytes, in name order."""
+    h = hashlib.sha256()
+    for name in sorted(arrays):
+        a = np.ascontiguousarray(arrays[name])
+        h.update(f"{name}:{a.dtype.str}:{a.shape};".encode())
+        h.update(a.tobytes())
+    return h.hexdigest()
