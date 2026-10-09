@@ -222,3 +222,91 @@ def test_same_inputs_and_seed_give_an_identical_report_across_processes():
         for hash_seed in ("1", "2")
     ]
     assert reprs[0] == reprs[1] == repr(_determinism_case()) + "\n"
+
+
+_META = {
+    "base_model": "Qwen/Qwen2.5-1.5B-Instruct",
+    "model": "Qwen/Qwen2.5-1.5B-Instruct",
+    "revision": "989aa79",
+    "quantization": None,
+    "system_prompt": "You are a helpful assistant.",
+    "layer": 20,
+    "position": -1,
+    "prompt_ids_sha256": "aaa",
+}
+_AWQ = {**_META, "model": "Qwen/Qwen2.5-1.5B-Instruct-AWQ", "revision": "3ecffa0", "quantization": "awq"}
+
+
+def _check_with_meta(reference_meta, candidate_meta, **kwargs):
+    data = unchanged_scorer(seed=0)
+    return hulder.check(
+        data.reference,
+        data.candidate,
+        data.labels,
+        threshold=data.threshold,
+        target_fpr=0.01,
+        reference_meta=reference_meta,
+        candidate_meta=candidate_meta,
+        **kwargs,
+    )
+
+
+def test_changes_under_test_are_listed_and_not_warned_about():
+    # fp16 vs the official AWQ checkpoint: a different repo and revision of the same base model.
+    report = _check_with_meta(_META, _AWQ)
+    assert report.warnings == ()
+    assert report.changes_under_test == (
+        ("model", "Qwen/Qwen2.5-1.5B-Instruct", "Qwen/Qwen2.5-1.5B-Instruct-AWQ"),
+        ("quantization", None, "awq"),
+        ("revision", "989aa79", "3ecffa0"),
+    )
+
+
+@pytest.mark.parametrize(
+    ("key", "value"),
+    [("base_model", "Qwen/Qwen2.5-7B-Instruct"), ("system_prompt", ""), ("layer", 16), ("team", "x")],
+)
+def test_a_difference_outside_the_changes_under_test_warns(key, value):
+    # Unknown keys like "team" must match too: nobody declared them as under test.
+    report = _check_with_meta({**_META, "team": "a"}, {**_AWQ, "team": "a", key: value})
+    [warning] = report.warnings
+    assert f"{key!r} differs" in warning
+    assert key not in [k for k, _, _ in report.changes_under_test]
+
+
+def test_a_key_declared_as_under_test_is_listed_instead_of_warned_about():
+    report = _check_with_meta({**_META, "team": "a"}, {**_AWQ, "team": "b"}, changes_under_test=("team",))
+    assert report.warnings == ()
+    assert ("team", "a", "b") in report.changes_under_test
+
+
+def test_a_key_on_one_side_only_counts_as_a_difference():
+    report = _check_with_meta({**_META, "chat_template": "t"}, _AWQ)
+    [warning] = report.warnings
+    assert "'chat_template' differs" in warning
+
+
+def test_a_missing_base_model_warns_that_it_could_not_be_determined():
+    without = {k: v for k, v in _AWQ.items() if k != "base_model"}
+    report = _check_with_meta(_META, without)
+    [warning] = report.warnings
+    assert "base model" in warning
+    assert "couldn't be determined" in warning
+
+
+def test_metadata_on_one_side_only_warns_that_it_was_not_compared():
+    report = _check_with_meta(_META, None)
+    [warning] = report.warnings
+    assert "metadata" in warning
+    assert "not compared" in warning
+
+
+def test_without_metadata_nothing_is_compared_or_warned_about():
+    report = _check_with_meta(None, None)
+    assert report.warnings == ()
+    assert report.changes_under_test == ()
+
+
+def test_different_prompt_ids_raise_a_pairing_error():
+    with pytest.raises(hulder.PairingError, match="prompt_ids_sha256"):
+        _check_with_meta(_META, {**_AWQ, "prompt_ids_sha256": "bbb"})

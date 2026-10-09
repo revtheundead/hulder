@@ -8,6 +8,16 @@ from scipy.stats import beta, binomtest, rankdata
 
 N_BOOTSTRAP = 1000
 
+# Metadata keys whose differences are the serving change being checked: listed in the
+# Report, never warned about. Every other key, known or not, must match.
+UNDER_TEST = ("model", "revision", "dtype", "quantization", "kv_cache_dtype", "vllm_version", "batch_size")
+# Hashes the prompt ids in order. If they differ, the two runs aren't paired.
+PROMPT_IDS_KEY = "prompt_ids_sha256"
+
+
+class PairingError(ValueError):
+    """Reference and candidate were not run on the same prompts in the same order."""
+
 
 class Verdict(Enum):
     PASS = "PASS"
@@ -48,6 +58,9 @@ class Report:
     noise_floor_mean_abs_shift: float | None = None
     shift_exceeds_noise_floor: bool | None = None
     warnings: tuple[str, ...] = ()
+    # (key, reference value, candidate value) for each metadata key that differs and is
+    # declared as under test, sorted by key.
+    changes_under_test: tuple[tuple[str, object, object], ...] = ()
     # Set only for INCONCLUSIVE: extra benign examples from which on the FPR condition
     # stays decided, if the candidate's observed FPR held. 0 when that condition is
     # already decided, so benign examples alone won't resolve the INCONCLUSIVE. None when
@@ -63,11 +76,18 @@ def check(
     target_fpr: float,
     seed: int = 0,
     noise_floor: np.ndarray | None = None,
+    reference_meta: dict | None = None,
+    candidate_meta: dict | None = None,
+    changes_under_test: tuple[str, ...] = (),
 ) -> Report:
     """noise_floor is an optional second run of the reference on the same examples. It feeds
-    only the shift diagnostics, never the verdict."""
+    only the shift diagnostics, never the verdict.
+
+    reference_meta and candidate_meta describe each run. Keys in UNDER_TEST or
+    changes_under_test may differ and are listed; any other difference warns. Different
+    prompt_ids_sha256 values raise PairingError."""
+    warnings, changes = _compare_metadata(reference_meta, candidate_meta, changes_under_test)
     benign = labels == 0
-    warnings = []
     k, n, ci = _flag_rate(reference[benign], threshold)
     if not ci.low <= target_fpr <= ci.high:
         warnings.append(
@@ -126,9 +146,45 @@ def check(
         decision_flips=int(flipped.sum()),
         mean_abs_shift=float(np.abs(candidate - reference).mean()),
         warnings=tuple(warnings),
+        changes_under_test=changes,
         more_benign_needed=more_benign_needed,
         **floor,
     )
+
+
+def _compare_metadata(
+    reference: dict | None, candidate: dict | None, extra_under_test: tuple[str, ...]
+) -> tuple[list[str], tuple[tuple[str, object, object], ...]]:
+    """Warnings for differences outside the changes under test, and the changes under test."""
+    if reference is None and candidate is None:
+        return [], ()
+    if reference is None or candidate is None:
+        given = "reference" if candidate is None else "candidate"
+        return [f"Only the {given} has metadata, so the two runs' metadata was not compared."], ()
+    if reference.get(PROMPT_IDS_KEY) != candidate.get(PROMPT_IDS_KEY):
+        raise PairingError(
+            f"{PROMPT_IDS_KEY} differs ({reference.get(PROMPT_IDS_KEY)!r} vs {candidate.get(PROMPT_IDS_KEY)!r}): "
+            "reference and candidate were not run on the same prompts in the same order."
+        )
+    under_test = set(UNDER_TEST) | set(extra_under_test)
+    warnings, changes = [], []
+    if "base_model" not in reference or "base_model" not in candidate:
+        warnings.append(
+            "The base model couldn't be determined for both runs, so the check can't confirm "
+            "they serve the same model. Set base_model in the metadata."
+        )
+    for key in sorted((reference.keys() | candidate.keys()) - {PROMPT_IDS_KEY}):
+        ref, cand = reference.get(key), candidate.get(key)
+        if ref == cand or (key == "base_model" and (ref is None or cand is None)):
+            continue
+        if key in under_test:
+            changes.append((key, ref, cand))
+        else:
+            warnings.append(
+                f"Metadata {key!r} differs ({ref!r} vs {cand!r}) but isn't a declared change under test, "
+                "so the comparison may mix in more than the serving change."
+            )
+    return warnings, tuple(changes)
 
 
 def _flag_rate(scores: np.ndarray, threshold: float):

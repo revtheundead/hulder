@@ -52,6 +52,10 @@ _Avoid_: holdout, calib data
 The recorded scorer behaviour on the reference serving config over a fixed labelled calibration set, against which candidates are compared.
 _Avoid_: baseline, ref file
 
+**Change under test**:
+A difference between reference and candidate metadata that is the serving change being checked, such as quantization or engine version. Listed in the report, never warned about. Every other difference warns.
+_Avoid_: expected difference, allowed change
+
 **Noise floor**:
 The run-to-run variation in scores when the same serving config is run twice on the same prompts.
 _Avoid_: jitter, variance
