@@ -1,5 +1,6 @@
 """Shared pieces of the Phase 1 probe scripts: dataset pins, loaders, run manifests."""
 
+import hashlib
 import json
 import platform
 import subprocess
@@ -16,6 +17,7 @@ import hulder
 
 SPLITS = Path(".cache/probe/splits.parquet")
 ACTS = Path(".cache/probe/fp16")
+CAPTURE_FILES = ("activations.npy", "ids.json")
 
 
 class HfDataset(NamedTuple):
@@ -52,11 +54,16 @@ class Activations:
 
     @classmethod
     def load(cls, path: Path = ACTS) -> "Activations":
+        """Refuses a capture whose files no longer match the hashes in its manifest."""
+        manifest = json.loads((path / "manifest.json").read_text())
+        for name, want in manifest.get("files_sha256", {}).items():
+            if sha256_file(path / name) != want:
+                raise ValueError(f"{path / name} doesn't match files_sha256 in its manifest; the file is damaged")
         ids = json.loads((path / "ids.json").read_text())
         return cls(
             array=np.load(path / "activations.npy", mmap_mode="r"),
             row_of={i: r for r, i in enumerate(ids)},
-            capture_manifest=json.loads((path / "manifest.json").read_text()),
+            capture_manifest=manifest,
         )
 
     def at(self, ids, layer: int, position: int) -> np.ndarray:
@@ -68,6 +75,14 @@ class Activations:
 
     def for_probe(self, ids, probe: hulder.Probe) -> np.ndarray:
         return self.at(ids, probe.metadata["layer"], probe.metadata["position"])
+
+
+def sha256_file(path: Path) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 24), b""):
+            h.update(chunk)
+    return h.hexdigest()
 
 
 def _git(*args: str) -> str:

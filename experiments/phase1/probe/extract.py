@@ -24,7 +24,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import torch
-from common import SPLITS, run_manifest
+from common import CAPTURE_FILES, SPLITS, run_manifest, sha256_file
 
 from hulder.capture.hidden_states import CaptureConfig, capture
 
@@ -83,6 +83,7 @@ def main() -> None:
         "n_prompts": len(df),
         "shape": list(acts.shape),
         **saved,
+        "files_sha256": {name: sha256_file(out / name) for name in CAPTURE_FILES},
         "last_token_examples": sorted({t[0] for t in cap.position_tokens}),
         "elapsed_s": round(elapsed, 1),
         "gpu": torch.cuda.get_device_name(0),
