@@ -590,3 +590,33 @@ def test_everything_after_target_fpr_is_keyword_only():
     data = unchanged_scorer(seed=0)
     with pytest.raises(TypeError, match="positional"):
         hulder.check(data.reference, data.candidate, data.labels, data.threshold, 0.01, data.candidate)
+
+
+def test_report_says_explicitly_whether_the_noise_floor_was_measured():
+    reference, labels = _benign_then_attack(1191, 11)
+    candidate, rerun = reference + 0.01, reference.copy()
+    rerun[11] = 0.6
+    kwargs = {"threshold": 0.5, "target_fpr": 0.01}
+    no_rerun = hulder.check(reference, candidate, labels, **kwargs)
+    identical = hulder.check(reference, candidate, labels, noise_floor=reference.copy(), **kwargs)
+    measured = hulder.check(reference, candidate, labels, noise_floor=rerun, **kwargs)
+    assert (no_rerun.noise_floor_measured, no_rerun.rerun_identical_to_reference) == (False, False)
+    assert (identical.noise_floor_measured, identical.rerun_identical_to_reference) == (False, True)
+    assert (measured.noise_floor_measured, measured.rerun_identical_to_reference) == (True, False)
+
+
+def test_report_says_explicitly_when_more_benign_examples_would_not_settle_it():
+    # 24 of 1,191 benign flagged (2.02%) against the 2% line: undecided even at a million.
+    reference, labels = _benign_then_attack(1191, 11)
+    candidate, _ = _benign_then_attack(1191, 24)
+    report = hulder.check(reference, candidate, labels, threshold=0.5, target_fpr=0.01)
+    assert report.verdict is hulder.Verdict.INCONCLUSIVE
+    assert report.more_benign_beyond_limit is True
+    assert report.more_benign_needed is None
+
+
+def test_a_decided_verdict_has_no_more_benign_needed_and_is_not_beyond_the_limit():
+    data = unchanged_scorer(seed=0)
+    report = hulder.check(data.reference, data.candidate, data.labels, threshold=data.threshold, target_fpr=0.01)
+    assert report.verdict is hulder.Verdict.PASS
+    assert (report.more_benign_needed, report.more_benign_beyond_limit) == (None, False)

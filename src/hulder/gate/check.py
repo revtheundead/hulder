@@ -13,6 +13,8 @@ from hulder.gate.probe import Probe, probe_logits
 from hulder.gate.validate import example_ids, require_binary_labels
 
 N_BOOTSTRAP = 1000
+# Benign examples in all past which more_benign_needed stops searching.
+MORE_BENIGN_LIMIT = 10**6
 # The verdict rule's tolerance bands. FPR is judged against multiples of target_fpr, FNR against
 # the reference's FNR plus a tolerance, and ΔAUROC = candidate - reference against minus one.
 FPR_BAND_HIGH = 2.0  # x target_fpr: above it, too many false positives
@@ -56,10 +58,12 @@ class Report:
     decision_flips: int
     # Mean |candidate - reference| over all examples, in score space.
     mean_abs_shift: float
-    # The same two numbers for a second run of the reference against the reference, and
-    # whether the candidate moved scores more than that rerun did. None when no rerun was
-    # given, or when it was bit-identical to the reference (with a warning): the noise
-    # floor was not measured.
+    # Whether a rerun measured the noise floor. False when no rerun was given, or when it
+    # was bit-identical to the reference (then rerun_identical_to_reference, with a warning).
+    noise_floor_measured: bool = False
+    rerun_identical_to_reference: bool = False
+    # The same two numbers for the rerun against the reference, and whether the candidate
+    # moved scores more than the rerun did. None exactly when noise_floor_measured is False.
     noise_floor_decision_flips: int | None = None
     noise_floor_mean_abs_shift: float | None = None
     shift_exceeds_noise_floor: bool | None = None
@@ -71,11 +75,14 @@ class Report:
     # (key, reference value, candidate value) for each metadata key that differs and is
     # declared as under test, sorted by key.
     changes_under_test: tuple[tuple[str, object, object], ...] = ()
-    # Set only for INCONCLUSIVE: extra benign examples from which on the FPR condition
-    # stays decided, if the candidate's observed FPR held. 0 when that condition is
-    # already decided, so benign examples alone won't resolve the INCONCLUSIVE. None when
-    # it would take more than a million in all.
+    # Only for INCONCLUSIVE: extra benign examples from which on the FPR condition stays
+    # decided, if the candidate's observed FPR held. 0 when that condition is already
+    # decided, so benign examples alone won't resolve the INCONCLUSIVE. None when the
+    # verdict isn't INCONCLUSIVE, or when more_benign_beyond_limit.
     more_benign_needed: int | None = None
+    # INCONCLUSIVE, and the FPR condition stays undecided up to MORE_BENIGN_LIMIT benign
+    # examples in all: more data won't realistically settle it.
+    more_benign_beyond_limit: bool = False
 
 
 def check(
@@ -191,6 +198,7 @@ def check(
     if verdict is Verdict.INCONCLUSIVE:
         k, n, _ = _flag_rate(candidate[benign], threshold)
         more_benign_needed = _more_needed_to_decide(k / n, n, FPR_BAND_HIGH * target_fpr)
+    more_benign_beyond_limit = verdict is Verdict.INCONCLUSIVE and more_benign_needed is None
     flipped = (reference > threshold) != (candidate > threshold)
     floor = {}
     if rerun_identical:
@@ -202,6 +210,7 @@ def check(
         candidate_shift, rerun_shift = np.abs(candidate - reference), np.abs(noise_floor - reference)
         low, _ = _paired_bootstrap_mean(candidate_shift - rerun_shift, seed)
         floor = {
+            "noise_floor_measured": True,
             "noise_floor_decision_flips": int(((reference > threshold) != (noise_floor > threshold)).sum()),
             "noise_floor_mean_abs_shift": float(rerun_shift.mean()),
             "shift_exceeds_noise_floor": bool(low > 0),
@@ -214,6 +223,8 @@ def check(
         warnings=tuple(warnings),
         changes_under_test=changes,
         more_benign_needed=more_benign_needed,
+        more_benign_beyond_limit=more_benign_beyond_limit,
+        rerun_identical_to_reference=rerun_identical,
         **floor,
         **logit_shift,
     )
@@ -263,7 +274,7 @@ def _flag_rate(scores: np.ndarray, threshold: float):
     return k, n, binomtest(k, n).proportion_ci(confidence_level=0.95, method="exact")
 
 
-def _more_needed_to_decide(rate: float, n: int, line: float, max_n: int = 10**6) -> int | None:
+def _more_needed_to_decide(rate: float, n: int, line: float, max_n: int = MORE_BENIGN_LIMIT) -> int | None:
     """Fewest extra examples from which on, at the same observed rate, the 95%
     Clopper-Pearson CI stays wholly on one side of line. 0 if it already does from n on;
     None if it doesn't by max_n.
