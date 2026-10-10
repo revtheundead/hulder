@@ -1475,6 +1475,8 @@ train = [
     { name = "scikit-learn" },
 ]
 vllm = [
+    { name = "huggingface-hub" },
+    { name = "pyyaml" },
     { name = "vllm" },
 ]
 
@@ -1491,7 +1493,9 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "huggingface-hub", marker = "extra == 'vllm'", specifier = ">=1.33.0" },
     { name = "numpy", specifier = ">=2.3" },
+    { name = "pyyaml", marker = "extra == 'vllm'", specifier = ">=6.0.3" },
     { name = "scikit-learn", marker = "extra == 'train'", specifier = ">=1.7" },
     { name = "scipy", specifier = ">=1.16" },
     { name = "vllm", marker = "extra == 'vllm'", specifier = "==0.30.0" },

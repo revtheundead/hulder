@@ -16,7 +16,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-vllm = ["vllm==0.30.0"]
+# hulder.capture imports pyyaml and huggingface_hub itself; the floors are the versions
+# uv.lock resolves under the vllm pin.
+vllm = ["vllm==0.30.0", "pyyaml>=6.0.3", "huggingface-hub>=1.33.0"]
 train = ["scikit-learn>=1.7"]
 
 [dependency-groups]
