@@ -29,6 +29,9 @@ PROBE_MUST_MATCH = ("layer", "position", "base_model")
 # Metadata keys whose differences are the serving change being checked: listed in the
 # Report, never warned about. Every other key, known or not, must match.
 UNDER_TEST = ("model", "revision", "dtype", "quantization", "kv_cache_dtype", "vllm_version", "batch_size")
+# base_model says both runs serve the same model (metadata rule 3), so declaring it under
+# test would hide a model swap.
+NEVER_UNDER_TEST = ("base_model",)
 
 
 class Verdict(Enum):
@@ -146,6 +149,10 @@ def check(
         raise ValueError(f"target_fpr is {target_fpr}; it must be a rate in (0, 0.5], e.g. 0.01 for 1%")
     if isinstance(changes_under_test, str):
         raise TypeError(f"changes_under_test must be a tuple of keys, e.g. ({changes_under_test!r},), not a string")
+    if forbidden := sorted(set(changes_under_test) & set(NEVER_UNDER_TEST)):
+        raise ValueError(
+            f"{forbidden[0]} can't be a change under test: it says both runs serve the same model"
+        )
     if noise_floor_ids is not None and noise_floor is None:
         raise ValueError("noise_floor_ids were given but no noise_floor: pass the rerun's scores, or drop its ids")
     reference, candidate, labels = np.asarray(reference), np.asarray(candidate), np.asarray(labels)

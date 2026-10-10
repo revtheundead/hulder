@@ -82,6 +82,14 @@ def test_a_threshold_neither_given_nor_in_a_probe_is_a_usage_error(tmp_path, cap
     assert "--threshold is required" in capsys.readouterr().err
 
 
+def test_base_model_under_test_is_a_usage_error(tmp_path, capsys):
+    reference, labels = _benign_then_attack(1191, 11)
+    with pytest.raises(SystemExit) as exit:
+        _run(tmp_path, reference, reference + 1e-6, labels, extra=["--under-test", "base_model"])
+    assert exit.value.code == 2
+    assert "base_model can't be a change under test" in capsys.readouterr().err
+
+
 def test_changes_under_test_are_printed_before_the_verdict(tmp_path, capsys):
     # A swapped reference and candidate would show as quantization 'awq' -> None.
     reference, labels = _benign_then_attack(1191, 11)

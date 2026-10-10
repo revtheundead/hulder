@@ -588,6 +588,12 @@ def test_changes_under_test_as_a_bare_string_is_rejected():
         _check_with_meta(_META, _AWQ, changes_under_test="team")
 
 
+def test_base_model_cannot_be_declared_under_test():
+    # It says both runs serve the same model (metadata rule 3); declaring it would hide a model swap.
+    with pytest.raises(ValueError, match="base_model can't be a change under test"):
+        _check_with_meta(_META, {**_AWQ, "base_model": "other"}, changes_under_test=("base_model",))
+
+
 @pytest.mark.parametrize("target_fpr", [0.0, -0.01, 0.51, 1.0])
 def test_target_fpr_must_be_a_rate_above_zero_and_at_most_a_half(target_fpr):
     # 1.0 meant as 1% used to give a confident THRESHOLD STALE.

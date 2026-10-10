@@ -33,6 +33,10 @@ def run(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.command == "quickstart":
         return _quickstart()
+    if forbidden := sorted(set(args.under_test) & set(gate.NEVER_UNDER_TEST)):
+        parser.error(
+            f"--under-test {forbidden[0]}: {forbidden[0]} can't be a change under test, since it says both runs serve the same model"
+        )
     try:
         probe = Probe.load(args.probe) if args.probe else None
         threshold = _setting(parser, args.threshold, probe, "threshold")
