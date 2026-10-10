@@ -84,6 +84,7 @@ def check(
     labels: np.ndarray,
     threshold: float,
     target_fpr: float,
+    *,
     seed: int = 0,
     noise_floor: np.ndarray | None = None,
     reference_meta: dict | None = None,

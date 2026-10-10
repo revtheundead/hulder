@@ -583,3 +583,10 @@ def test_target_fpr_must_be_a_rate_above_zero_and_at_most_a_half(target_fpr):
     data = unchanged_scorer(seed=0)
     with pytest.raises(ValueError, match="target_fpr"):
         hulder.check(data.reference, data.candidate, data.labels, threshold=data.threshold, target_fpr=target_fpr)
+
+
+def test_everything_after_target_fpr_is_keyword_only():
+    # The library-first decision's positional call check(r, c, l, t, f, rerun) used to bind the rerun to seed.
+    data = unchanged_scorer(seed=0)
+    with pytest.raises(TypeError, match="positional"):
+        hulder.check(data.reference, data.candidate, data.labels, data.threshold, 0.01, data.candidate)
