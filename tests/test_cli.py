@@ -87,8 +87,10 @@ def test_changes_under_test_are_printed_before_the_verdict(tmp_path, capsys):
     reference, labels = _benign_then_attack(1191, 11)
     _run(tmp_path, reference, reference, labels)
     out = capsys.readouterr().out
-    assert "  quantization  None -> 'awq'" in out
-    assert out.index("Changes under test") < out.index("Verdict:")
+    change = "  quantization  None -> 'awq'"
+    assert change in out
+    # Every line of the list, not only its heading, comes before the verdict.
+    assert out.index("Changes under test") < out.index(change) < out.index("Verdict:")
 
 
 def test_under_test_declares_a_further_key(tmp_path, capsys):
