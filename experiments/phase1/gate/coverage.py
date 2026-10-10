@@ -32,12 +32,20 @@ from synthetic import (
     unchanged_scorer,
 )
 
-from hulder.gate.check import _paired_bootstrap_delta_auroc
+import hulder
 
 OUT = ROOT / "docs/results/phase1/delta_auroc_coverage.json"
 SEEDS = range(1000)
 DELTA_AUROCS = (-0.01, -0.02, -0.05, -0.1)
-METHODS: dict[str, Callable] = {"bootstrap": lambda r, c, y, seed: _paired_bootstrap_delta_auroc(r, c, y, seed)}
+
+
+def _check_delta_auroc(reference, candidate, labels, seed, threshold) -> tuple[float, float]:
+    """The ΔAUROC CI check reports, the bounds the verdict reads."""
+    delta = hulder.check(reference, candidate, labels, threshold, 0.01, seed=seed).delta_auroc
+    return delta.low, delta.high
+
+
+METHODS: dict[str, Callable] = {"bootstrap": _check_delta_auroc}
 
 
 def rate(k: int, n: int) -> dict:
@@ -55,7 +63,7 @@ def main() -> None:
             truths.append(missed_attack_delta_auroc(shift, threshold_logit=float(logit(d.threshold))))
             for name, method in METHODS.items():
                 start = time.perf_counter()
-                intervals[name].append(method(d.reference, d.candidate, d.labels, seed))
+                intervals[name].append(method(d.reference, d.candidate, d.labels, seed, d.threshold))
                 seconds[name] += time.perf_counter() - start
         truth = np.array(truths)
         results[str(delta)] = {"per_seed_truth": {"mean": truth.mean(), "sd": truth.std(ddof=1)}}

@@ -1,6 +1,6 @@
 # First real-data check: fp16 vs AWQ int4 (Phase 1)
 
-Qwen2.5-1.5B-Instruct at fp16 (reference, the canonical `fp16` capture) against the official AWQ checkpoint (`Qwen/Qwen2.5-1.5B-Instruct-AWQ@3ecffa0`, candidate), with `fp16_run1` as the noise-floor rerun. Layer 20, position −1, RTX 2070, vLLM 0.30.0. Full output in `real_check.json`.
+Qwen2.5-1.5B-Instruct at fp16 (reference, the canonical `fp16` capture) against the official AWQ checkpoint (`Qwen/Qwen2.5-1.5B-Instruct-AWQ@3ecffa0`, candidate), with `fp16_run1` as the rerun that measures the noise floor. Layer 20, position −1, RTX 2070, vLLM 0.30.0. Full output in `real_check.json`.
 
 Reproduce from the repo root:
 

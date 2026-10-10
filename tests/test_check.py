@@ -664,7 +664,19 @@ def test_weighted_auroc_matches_the_reference_auroc_on_expanded_copies():
 def test_identical_runs_give_a_delta_auroc_interval_of_exactly_zero():
     # Each resample uses the same examples for both runs, so their AUROCs are equal.
     data = unchanged_scorer(seed=0)
-    assert gate_check._paired_bootstrap_delta_auroc(data.reference, data.reference, data.labels, 0) == (0.0, 0.0)
+    report = hulder.check(data.reference, data.reference, data.labels, threshold=data.threshold, target_fpr=0.01)
+    assert report.delta_auroc == hulder.Estimate(0.0, 0.0, 0.0)
+
+
+@pytest.mark.parametrize("decimals", [None, 2])
+def test_checks_delta_auroc_bounds_match_the_readable_reference_bootstrap(decimals):
+    # _paired_bootstrap_delta_auroc copies examples and calls _auroc; check's weighted cumsum
+    # must give the same bounds from the same draws, with ties (decimals=2) as without.
+    data = unchanged_scorer(seed=0, missed_attack_shift=-1.0)
+    reference, candidate = (x if decimals is None else x.round(decimals) for x in (data.reference, data.candidate))
+    report = hulder.check(reference, candidate, data.labels, threshold=data.threshold, target_fpr=0.01)
+    low, high = gate_check._paired_bootstrap_delta_auroc(reference, candidate, data.labels, 0)
+    assert (report.delta_auroc.low, report.delta_auroc.high) == pytest.approx((low, high), abs=1e-12)
 
 
 def _fpr_case(k_flagged):

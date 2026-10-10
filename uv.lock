@@ -1509,7 +1509,7 @@ dev = [
     { name = "pandas", specifier = ">=2.3" },
     { name = "pyarrow", specifier = ">=21" },
     { name = "pytest", specifier = ">=8" },
-    { name = "ruff", specifier = ">=0.16.10" },
+    { name = "ruff", specifier = "==0.16.10" },
     { name = "torch" },
 ]
 

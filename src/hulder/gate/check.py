@@ -146,7 +146,7 @@ def check(
     changes_under_test may differ and are listed; any other difference warns.
 
     Each run's prompt_ids_sha256 comes from its metadata or, failing that, from its example
-    ids, and the noise-floor rerun's from noise_floor_ids. Two known hashes that differ raise
+    ids, and the rerun's from noise_floor_ids. Two known hashes that differ raise
     PairingError; an unknown one warns."""
     if not np.isfinite(threshold):
         raise ValueError(f"threshold is {threshold}; it must be a finite number")
@@ -246,7 +246,7 @@ def check(
     floor = {}
     if rerun_identical:
         warnings.append(
-            "The noise-floor rerun is bit-identical to the reference, so the noise floor was not measured. "
+            "The rerun is bit-identical to the reference, so the noise floor was not measured. "
             "Pass an independent second run of the reference, not the reference itself."
         )
     elif noise_floor is not None:
@@ -337,10 +337,9 @@ def check_snapshots(
     if rerun is None:
         return report
     rerun_warnings = [
-        f"The rerun's metadata {key!r} differs ({reference.metadata.get(key)!r} vs {rerun.metadata.get(key)!r}) "
+        f"The rerun's metadata {key!r} differs ({ref!r} vs {other!r}) "
         "from the reference's, though a rerun is the reference's serving config run again."
-        for key in sorted((reference.metadata.keys() | rerun.metadata.keys()) - {PROMPT_IDS_KEY})
-        if reference.metadata.get(key) != rerun.metadata.get(key)
+        for key, ref, other in _metadata_differences(reference.metadata, rerun.metadata)
     ]
     return replace(report, warnings=report.warnings + tuple(rerun_warnings))
 
@@ -404,9 +403,8 @@ def _compare_metadata(
             "The base model couldn't be determined for both runs, so the check can't confirm "
             "they serve the same model. Set base_model in the metadata."
         )
-    for key in sorted((reference.keys() | candidate.keys()) - {PROMPT_IDS_KEY}):
-        ref, cand = reference.get(key), candidate.get(key)
-        if ref == cand or (key == "base_model" and (ref is None or cand is None)):
+    for key, ref, cand in _metadata_differences(reference, candidate):
+        if key == "base_model" and (ref is None or cand is None):
             continue
         if key in under_test:
             changes.append((key, ref, cand))
@@ -416,6 +414,13 @@ def _compare_metadata(
                 "so the comparison may mix in more than the serving change."
             )
     return warnings, tuple(changes)
+
+
+def _metadata_differences(reference: dict, other: dict) -> list[tuple[str, object, object]]:
+    """(key, reference value, other value) for every key whose values differ, sorted by key.
+    A key on one side only differs from None. prompt_ids_sha256 is pairing, not metadata."""
+    keys = sorted((reference.keys() | other.keys()) - {PROMPT_IDS_KEY})
+    return [(key, reference.get(key), other.get(key)) for key in keys if reference.get(key) != other.get(key)]
 
 
 def _fpr(benign_scores: np.ndarray, threshold: float) -> Estimate:
@@ -482,9 +487,18 @@ def _auroc(scores: np.ndarray, labels: np.ndarray) -> float:
 def _paired_bootstrap_delta_auroc(
     reference: np.ndarray, candidate: np.ndarray, labels: np.ndarray, seed: int
 ) -> tuple[float, float]:
-    """95% percentile CI of AUROC(candidate) - AUROC(reference)."""
-    reference_aurocs, candidate_aurocs = _paired_bootstrap_aurocs(reference, candidate, labels, seed)
-    low, high = np.quantile(candidate_aurocs - reference_aurocs, [0.025, 0.975])
+    """95% percentile CI of AUROC(candidate) - AUROC(reference): the readable reference for
+    check's ΔAUROC bounds. Each resample copies every example as often as it was drawn, the
+    same draws as _paired_bootstrap_aurocs, and calls _auroc on the copies. check uses the
+    weighted-cumsum path instead, which a test pins to this one."""
+    rng = np.random.default_rng(seed)
+    benign, attack = np.flatnonzero(labels == 0), np.flatnonzero(labels == 1)
+    w_benign, w_attack = _resample_counts(rng, len(benign)), _resample_counts(rng, len(attack))
+    deltas = []
+    for counts_benign, counts_attack in zip(w_benign, w_attack, strict=True):
+        rows = np.r_[np.repeat(benign, counts_benign), np.repeat(attack, counts_attack)]
+        deltas.append(_auroc(candidate[rows], labels[rows]) - _auroc(reference[rows], labels[rows]))
+    low, high = np.quantile(deltas, [0.025, 0.975])
     return float(low), float(high)
 
 

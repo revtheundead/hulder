@@ -14,7 +14,7 @@ from importlib.resources import files
 from pathlib import Path
 from typing import NoReturn
 
-from hulder.gate import check as gate
+import hulder.gate.check as gate_check
 from hulder.gate.check import Report, Verdict, check_snapshots
 from hulder.gate.pairing import PairingError
 from hulder.gate.probe import Probe
@@ -56,7 +56,7 @@ def run(argv: list[str] | None = None) -> int:
         args = parser.parse_args(argv)
         if args.command == "quickstart":
             return _quickstart()
-        if forbidden := sorted(set(args.under_test) & set(gate.NEVER_UNDER_TEST)):
+        if forbidden := sorted(set(args.under_test) & set(gate_check.NEVER_UNDER_TEST)):
             parser.error(
                 f"--under-test {forbidden[0]}: {forbidden[0]} can't be a change under test, "
                 "since it says both runs serve the same model"
@@ -78,7 +78,7 @@ def run(argv: list[str] | None = None) -> int:
         if as_json:  # a bug: the JSON still says so, and the traceback follows on stderr
             print(_error_json(f"internal error: {e!r}", 1))
         raise
-    inputs = {"reference": args.reference, "candidate": args.candidate, "rerun": args.noise_floor, "probe": args.probe}
+    inputs = _inputs(args.reference, args.candidate, args.noise_floor, args.probe)
     print(to_json(report, inputs) if args.json else render(report, inputs))
     return report.verdict.exit_code
 
@@ -106,23 +106,25 @@ def _error_json(message: str, code: int) -> str:
 def _parser() -> _Parser:
     parser = _Parser(prog="hulder", description="Release gate for thresholded scorers.")
     commands = parser.add_subparsers(dest="command", required=True)
-    check = commands.add_parser(
+    check_parser = commands.add_parser(
         "check",
         help="compare a candidate serving config's snapshot against the reference's",
         description="Exit codes: 0 PASS, 10 THRESHOLD STALE, 11 SCORER DEGRADED, 12 INCONCLUSIVE, "
         "1 tool failure (including a pairing error), 2 usage error.",
     )
-    check.add_argument("--reference", required=True, help="reference snapshot (.npz)")
-    check.add_argument("--candidate", required=True, help="candidate snapshot (.npz)")
-    check.add_argument("--noise-floor", metavar="RERUN", help="a rerun of the reference, to measure the noise floor")
-    check.add_argument("--probe", help="probe (.npz) for snapshots of activations; supplies the threshold too")
-    check.add_argument("--threshold", type=_finite, help="defaults to the probe's")
-    check.add_argument("--target-fpr", type=_rate, help="defaults to the probe's, e.g. 0.01 for 1%%")
-    check.add_argument(
+    check_parser.add_argument("--reference", required=True, help="reference snapshot (.npz)")
+    check_parser.add_argument("--candidate", required=True, help="candidate snapshot (.npz)")
+    check_parser.add_argument(
+        "--noise-floor", metavar="RERUN", help="a rerun of the reference, to measure the noise floor"
+    )
+    check_parser.add_argument("--probe", help="probe (.npz) for snapshots of activations; supplies the threshold too")
+    check_parser.add_argument("--threshold", type=_finite, help="defaults to the probe's")
+    check_parser.add_argument("--target-fpr", type=_rate, help="defaults to the probe's, e.g. 0.01 for 1%%")
+    check_parser.add_argument(
         "--under-test", action="append", default=[], metavar="KEY", help="a further metadata key that may differ"
     )
-    check.add_argument("--seed", type=_seed, default=0, help="bootstrap seed (default 0)")
-    check.add_argument("--json", action="store_true", help="print the Report as JSON")
+    check_parser.add_argument("--seed", type=_seed, default=0, help="bootstrap seed (default 0)")
+    check_parser.add_argument("--json", action="store_true", help="print the Report as JSON")
     commands.add_parser("quickstart", help="run two checks on the bundled demo data")
     return parser
 
@@ -144,8 +146,8 @@ def _finite(text: str) -> float:
 
 def _rate(text: str) -> float:
     value = _number(text)
-    if not 0 < value <= gate.MAX_TARGET_FPR:  # also false for nan
-        raise argparse.ArgumentTypeError(f"{text} is not a rate in (0, {gate.MAX_TARGET_FPR}], e.g. 0.01 for 1%")
+    if not 0 < value <= gate_check.MAX_TARGET_FPR:  # also false for nan
+        raise argparse.ArgumentTypeError(f"{text} is not a rate in (0, {gate_check.MAX_TARGET_FPR}], e.g. 0.01 for 1%")
     return value
 
 
@@ -175,6 +177,11 @@ def _check(reference, candidate, rerun, probe, threshold, target_fpr, seed=0, un
         seed=seed,
         changes_under_test=tuple(under_test),
     )
+
+
+def _inputs(reference, candidate, rerun, probe) -> dict:
+    """The input files by role, as render and to_json show them; None for a role not given."""
+    return {"reference": reference, "candidate": candidate, "rerun": rerun, "probe": probe}
 
 
 def to_json(report: Report, inputs: dict) -> str:
@@ -235,7 +242,7 @@ def _more_benign(report: Report) -> list[str]:
         return ["  The FPR condition is already decided; more benign examples alone won't resolve this."]
     if report.more_benign_beyond_limit:
         return [
-            f"  More than {gate.MORE_BENIGN_LIMIT:,} benign examples in all would be needed to settle the FPR condition:",
+            f"  More than {gate_check.MORE_BENIGN_LIMIT:,} benign examples in all would be needed to settle the FPR condition:",
             f"  {EDGE_CAVEAT}.",
         ]
     lines = [
@@ -266,8 +273,8 @@ def _performance(report: Report) -> list[str]:
             f"[{report.delta_auroc.low:+.4f}, {report.delta_auroc.high:+.4f}]"
         ),
         (
-            f"  Bands: candidate FPR upper bound <= {gate.FPR_BAND_HIGH * report.target_fpr:.1%}, "
-            f"FNR upper bound <= reference FNR + {gate.FNR_TOLERANCE}, ΔAUROC lower bound >= -{gate.AUROC_TOLERANCE}"
+            f"  Bands: candidate FPR upper bound <= {gate_check.FPR_BAND_HIGH * report.target_fpr:.1%}, "
+            f"FNR upper bound <= reference FNR + {gate_check.FNR_TOLERANCE}, ΔAUROC lower bound >= -{gate_check.AUROC_TOLERANCE}"
         ),
     ]
 
@@ -325,8 +332,7 @@ def _quickstart() -> int:
         candidate = Path(str(data / candidate))
         rerun = None if rerun is None else Path(str(data / rerun))
         report = _check(reference, candidate, rerun, probe, threshold, target_fpr)
-        inputs = {"reference": reference.name, "candidate": candidate.name, "probe": probe_path.name}
-        inputs["rerun"] = None if rerun is None else rerun.name
+        inputs = _inputs(reference.name, candidate.name, None if rerun is None else rerun.name, probe_path.name)
         print(f"=== Check {number}: {title} Expect {expected.value}.\n")
         print(render(report, inputs))
         print()

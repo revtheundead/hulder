@@ -31,7 +31,7 @@ dev = [
     # Imported directly by experiments/; versions come from the vllm pin via uv.lock.
     "huggingface-hub",
     "torch",
-    "ruff>=0.16.10",
+    "ruff==0.16.10",
 ]
 
 [project.scripts]
