@@ -8,6 +8,7 @@ from pathlib import Path
 import numpy as np
 
 from hulder.gate.pairing import PROMPT_IDS_KEY, prompt_ids_sha256
+from hulder.gate.validate import example_ids
 
 
 @dataclass(frozen=True)
@@ -26,6 +27,18 @@ class Snapshot:
     def __post_init__(self) -> None:
         if (self.scores is None) == (self.activations is None):
             raise ValueError("a snapshot holds exactly one of scores or activations")
+        n = len(self.ids)
+        if np.ndim(self.ids) != 1:
+            raise ValueError(f"ids have shape {np.shape(self.ids)}; pass one id per example")
+        example_ids(self.ids, n, "ids")
+        if np.shape(self.labels) != (n,):
+            raise ValueError(f"labels have shape {np.shape(self.labels)} for {n} ids; pass one label per example")
+        if self.scores is not None and np.shape(self.scores) != (n,):
+            raise ValueError(f"scores have shape {np.shape(self.scores)} for {n} ids; pass one score per example")
+        if self.activations is not None and (np.ndim(self.activations) != 2 or len(self.activations) != n):
+            raise ValueError(
+                f"activations have shape {np.shape(self.activations)} for {n} ids; pass (n, d), one row per example"
+            )
 
     def save(self, path: str | Path) -> None:
         """Write an .npz of plain arrays plus JSON metadata, with the ids' hash for pairing

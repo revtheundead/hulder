@@ -10,6 +10,7 @@ from scipy.stats import beta, binomtest, rankdata
 
 from hulder.gate.pairing import PROMPT_IDS_KEY, check_pairing
 from hulder.gate.probe import Probe, probe_logits
+from hulder.gate.validate import example_ids
 
 N_BOOTSTRAP = 1000
 # The verdict rule's tolerance bands. FPR is judged against multiples of target_fpr, FNR against
@@ -105,6 +106,26 @@ def check(
     PairingError; an unknown one warns."""
     if not np.isfinite(threshold):
         raise ValueError(f"threshold is {threshold}; it must be a finite number")
+    reference, candidate, labels = np.asarray(reference), np.asarray(candidate), np.asarray(labels)
+    noise_floor = None if noise_floor is None else np.asarray(noise_floor)
+    if probe is None and (reference.ndim != 1 or candidate.ndim != 1):
+        raise ValueError("2-D input is activations: pass probe= to score them, or pass 1-D scores")
+    for role, run in (("candidate", candidate), ("noise_floor", noise_floor)):
+        if run is not None and run.shape != reference.shape:
+            raise ValueError(
+                f"{role} has shape {run.shape} and reference {reference.shape}; every run must hold the same examples"
+            )
+    n = len(reference)
+    if labels.shape != (n,):
+        raise ValueError(f"labels have shape {labels.shape} for {n} examples; pass one label per example")
+    reference_ids, candidate_ids, noise_floor_ids = (
+        None if ids is None else example_ids(ids, n, role)
+        for ids, role in (
+            (reference_ids, "reference_ids"),
+            (candidate_ids, "candidate_ids"),
+            (noise_floor_ids, "noise_floor_ids"),
+        )
+    )
     warnings = check_pairing(
         reference_meta, candidate_meta, reference_ids, candidate_ids, noise_floor_ids, noise_floor is not None
     )
@@ -115,8 +136,6 @@ def check(
         reference, candidate = probe_logits(probe, reference), probe_logits(probe, candidate)
         if noise_floor is not None:
             noise_floor = probe_logits(probe, noise_floor)
-    elif np.ndim(reference) != 1 or np.ndim(candidate) != 1:
-        raise ValueError("2-D input is activations: pass probe= to score them, or pass 1-D scores")
     _require_finite(reference=reference, candidate=candidate, noise_floor=noise_floor)
     logit_shift = {}
     if probe is not None:

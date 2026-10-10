@@ -496,3 +496,46 @@ def test_a_non_finite_threshold_is_rejected(threshold):
     data = unchanged_scorer(seed=0)
     with pytest.raises(ValueError, match="threshold"):
         hulder.check(data.reference, data.candidate, data.labels, threshold=threshold, target_fpr=0.01)
+
+
+@pytest.mark.parametrize(
+    ("run", "make_bad"),
+    [
+        ("noise_floor", lambda s: s[:, None]),  # (n, 1) used to broadcast against (n,) to (n, n)
+        ("noise_floor", lambda s: s[:1]),  # length 1 used to broadcast too
+        ("candidate", lambda s: s[:-1]),
+        ("labels", lambda s: s[:-1]),
+    ],
+)
+def test_runs_and_labels_must_be_one_dimensional_and_the_same_length(run, make_bad):
+    data = unchanged_scorer(seed=0)
+    args = {
+        "reference": data.reference,
+        "candidate": data.candidate,
+        "noise_floor": data.candidate,
+        "labels": data.labels,
+    }
+    args[run] = make_bad(args[run])
+    with pytest.raises(ValueError, match=run):
+        hulder.check(**args, threshold=data.threshold, target_fpr=0.01)
+
+
+@pytest.mark.parametrize("which", ["reference_ids", "candidate_ids", "noise_floor_ids"])
+@pytest.mark.parametrize(
+    ("make_bad", "problem"),
+    [(lambda ids: ids[:5], "5 ids for 2101"), (lambda ids: ["x"] * len(ids), "repeat")],
+)
+def test_ids_must_match_the_number_of_scores_and_be_unique(which, make_bad, problem):
+    data = unchanged_scorer(seed=0)
+    ids = {**_paired(data.labels), "noise_floor_ids": _paired(data.labels)["reference_ids"]}
+    ids[which] = make_bad(ids[which])
+    with pytest.raises(ValueError, match=f"{which}.*{problem}"):
+        hulder.check(
+            data.reference,
+            data.candidate,
+            data.labels,
+            threshold=data.threshold,
+            target_fpr=0.01,
+            noise_floor=data.candidate,
+            **ids,
+        )

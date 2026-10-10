@@ -80,3 +80,20 @@ def test_a_snapshot_whose_arrays_were_altered_fails_to_load(tmp_path, entry):
 def test_the_content_hash_is_not_part_of_the_metadata_check_compares(tmp_path):
     _snapshot().save(tmp_path / "s.npz")
     assert "content_sha256" not in hulder.Snapshot.load(tmp_path / "s.npz").metadata
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "match"),
+    [
+        ({"labels": np.array([0, 1])}, "labels"),
+        ({"ids": np.array(["a", "b", "c", "d"])}, "ids"),
+        ({"activations": None, "scores": np.zeros(4)}, "scores"),
+        ({"activations": None, "scores": np.zeros((3, 1))}, "scores"),
+        ({"activations": np.zeros(3)}, "activations"),
+        ({"ids": np.array(["a", "a", "b"])}, "repeat"),
+    ],
+)
+def test_a_snapshots_arrays_must_describe_the_same_examples(kwargs, match):
+    # ids 3, labels 2 and scores 4 used to save and load cleanly.
+    with pytest.raises(ValueError, match=match):
+        _snapshot(**kwargs)
