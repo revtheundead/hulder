@@ -4,8 +4,8 @@ for the main and demo probes, each at its own threshold and target FPR.
 Run from the repo root, after experiments/phase1/probe/snapshots.py:
     source scripts/dev-env.sh && uv run python experiments/phase1/gate/real_check.py
 
-Writes docs/results/phase1/real_check.json. Report doesn't carry FPR, FNR or AUROC yet, so
-those are computed here for context and kept apart from the Report.
+Writes docs/results/phase1/real_check.json. The Report carries FPR, FNR and AUROC with
+intervals for reference and candidate; the context block adds the rerun's own numbers.
 """
 
 import dataclasses

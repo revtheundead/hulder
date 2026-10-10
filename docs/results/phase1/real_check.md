@@ -15,7 +15,7 @@ The AWQ capture ran all 16,332 prompts of `splits.parquet` in file order with th
 
 ## Verdicts
 
-Both checks are **INCONCLUSIVE** (exit 12). Rates are Clopper-Pearson 95% intervals. FPR, FNR and AUROC are computed by the script, since `Report` doesn't carry them yet.
+Both checks are **INCONCLUSIVE** (exit 12). Rates are Clopper-Pearson 95% intervals, as `Report` carries them since 2026-10-10.
 
 | | Main probe (S-Labs calibration) | Demo probe (boundary-pairs calibration) |
 |---|---|---|
