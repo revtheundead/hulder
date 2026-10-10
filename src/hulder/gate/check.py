@@ -14,6 +14,8 @@ from hulder.gate.snapshot import Snapshot
 from hulder.gate.validate import example_ids, require_binary_labels
 
 N_BOOTSTRAP = 1000
+# target_fpr must lie in (0, MAX_TARGET_FPR]: a rate, and one a release gate can mean.
+MAX_TARGET_FPR = 0.5
 # Benign examples in all past which more_benign_needed stops searching.
 MORE_BENIGN_LIMIT = 10**6
 # The verdict rule's tolerance bands. FPR is judged against multiples of target_fpr, FNR against
@@ -148,8 +150,8 @@ def check(
     PairingError; an unknown one warns."""
     if not np.isfinite(threshold):
         raise ValueError(f"threshold is {threshold}; it must be a finite number")
-    if not 0 < target_fpr <= 0.5:
-        raise ValueError(f"target_fpr is {target_fpr}; it must be a rate in (0, 0.5], e.g. 0.01 for 1%")
+    if not 0 < target_fpr <= MAX_TARGET_FPR:
+        raise ValueError(f"target_fpr is {target_fpr}; it must be a rate in (0, {MAX_TARGET_FPR}], e.g. 0.01 for 1%")
     if isinstance(changes_under_test, str):
         raise TypeError(f"changes_under_test must be a tuple of keys, e.g. ({changes_under_test!r},), not a string")
     if forbidden := sorted(set(changes_under_test) & set(NEVER_UNDER_TEST)):

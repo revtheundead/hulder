@@ -7,6 +7,7 @@ a tool failure such as a PairingError or a damaged file, 2 for a usage error.
 import argparse
 import dataclasses
 import json
+import math
 import sys
 from importlib.metadata import version
 from importlib.resources import files
@@ -115,15 +116,44 @@ def _parser() -> _Parser:
     check.add_argument("--candidate", required=True, help="candidate snapshot (.npz)")
     check.add_argument("--noise-floor", metavar="RERUN", help="a rerun of the reference, to measure the noise floor")
     check.add_argument("--probe", help="probe (.npz) for snapshots of activations; supplies the threshold too")
-    check.add_argument("--threshold", type=float, help="defaults to the probe's")
-    check.add_argument("--target-fpr", type=float, help="defaults to the probe's, e.g. 0.01 for 1%%")
+    check.add_argument("--threshold", type=_finite, help="defaults to the probe's")
+    check.add_argument("--target-fpr", type=_rate, help="defaults to the probe's, e.g. 0.01 for 1%%")
     check.add_argument(
         "--under-test", action="append", default=[], metavar="KEY", help="a further metadata key that may differ"
     )
-    check.add_argument("--seed", type=int, default=0, help="bootstrap seed (default 0)")
+    check.add_argument("--seed", type=_seed, default=0, help="bootstrap seed (default 0)")
     check.add_argument("--json", action="store_true", help="print the Report as JSON")
     commands.add_parser("quickstart", help="run two checks on the bundled demo data")
     return parser
+
+
+# argparse reports an ArgumentTypeError from a type= function as a usage error naming the argument.
+def _number(text: str, kind=float):
+    try:
+        return kind(text)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"{text!r} is not a number") from None
+
+
+def _finite(text: str) -> float:
+    value = _number(text)
+    if not math.isfinite(value):
+        raise argparse.ArgumentTypeError(f"{text} is not a finite number")
+    return value
+
+
+def _rate(text: str) -> float:
+    value = _number(text)
+    if not 0 < value <= gate.MAX_TARGET_FPR:  # also false for nan
+        raise argparse.ArgumentTypeError(f"{text} is not a rate in (0, {gate.MAX_TARGET_FPR}], e.g. 0.01 for 1%")
+    return value
+
+
+def _seed(text: str) -> int:
+    value = _number(text, int)
+    if value < 0:
+        raise argparse.ArgumentTypeError(f"{text} is negative; the seed must be 0 or more")
+    return value
 
 
 def _setting(parser: _Parser, given: float | None, probe: Probe | None, key: str) -> float:

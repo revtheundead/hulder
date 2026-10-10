@@ -82,6 +82,23 @@ def test_a_threshold_neither_given_nor_in_a_probe_is_a_usage_error(tmp_path, cap
     assert "--threshold is required" in capsys.readouterr().err
 
 
+@pytest.mark.parametrize(
+    ("flag", "value"),
+    [
+        ("--target-fpr", "0.7"),
+        ("--target-fpr", "0"),
+        ("--target-fpr", "nan"),
+        ("--threshold", "nan"),
+        ("--threshold", "inf"),
+        ("--seed", "-1"),
+    ],
+)
+def test_an_argument_out_of_range_is_a_usage_error(tmp_path, capsys, flag, value):
+    reference, labels = _benign_then_attack(1191, 11)
+    assert _run(tmp_path, reference, reference + 1e-6, labels, extra=[flag, value]) == 2
+    assert f"argument {flag}" in capsys.readouterr().err
+
+
 def test_base_model_under_test_is_a_usage_error(tmp_path, capsys):
     reference, labels = _benign_then_attack(1191, 11)
     assert _run(tmp_path, reference, reference + 1e-6, labels, extra=["--under-test", "base_model"]) == 2
