@@ -60,6 +60,10 @@ _Avoid_: expected difference, allowed change
 The run-to-run variation in scores when the same serving config is run twice on the same prompts.
 _Avoid_: jitter, variance
 
+**Rerun**:
+A second run of the reference serving config on the same prompts, compared against the reference to measure the noise floor. Passed to `check` as `noise_floor=`, which holds the rerun's scores, not the floor itself.
+_Avoid_: noise-floor run, second reference, replicate
+
 **Shift**:
 An offline, paired change in scores between reference and candidate on the same prompts, counted only when it exceeds the noise floor.
 _Avoid_: drift (in gate contexts)
