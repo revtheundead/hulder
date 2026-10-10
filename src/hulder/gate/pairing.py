@@ -25,17 +25,26 @@ def check_pairing(
     noise_floor_ids: Iterable | None,
     has_noise_floor: bool,
 ) -> list[str]:
-    """Each run's ids hash comes from its metadata or else its ids. Known hashes that
-    differ from the reference's raise PairingError; an unknown one warns."""
-    reference = _ids_hash(reference_meta, reference_ids)
-    warnings = _pair(reference, _ids_hash(candidate_meta, candidate_ids), "candidate")
+    """Each run's ids hash comes from its metadata, its ids, or both, which must then agree.
+    Known hashes that differ from the reference's raise PairingError; an unknown one warns."""
+    reference = _ids_hash(reference_meta, reference_ids, "reference")
+    warnings = _pair(reference, _ids_hash(candidate_meta, candidate_ids, "candidate"), "candidate")
     if has_noise_floor:
-        warnings += _pair(reference, _ids_hash(None, noise_floor_ids), "noise-floor rerun")
+        warnings += _pair(reference, _ids_hash(None, noise_floor_ids, "noise-floor rerun"), "noise-floor rerun")
     return warnings
 
 
-def _ids_hash(meta: dict | None, ids: Iterable | None) -> str | None:
-    return (meta or {}).get(PROMPT_IDS_KEY) or (prompt_ids_sha256(ids) if ids is not None else None)
+def _ids_hash(meta: dict | None, ids: Iterable | None, role: str) -> str | None:
+    recorded = (meta or {}).get(PROMPT_IDS_KEY)
+    if ids is None:
+        return recorded
+    computed = prompt_ids_sha256(ids)
+    if recorded is not None and recorded != computed:
+        raise PairingError(
+            f"The {role}'s ids don't match the {PROMPT_IDS_KEY} in its metadata "
+            f"({computed!r} vs {recorded!r}): the ids or the metadata belong to another run."
+        )
+    return computed
 
 
 def _pair(reference: str | None, other: str | None, role: str) -> list[str]:

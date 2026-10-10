@@ -456,3 +456,11 @@ def test_rerun_ids_in_a_different_order_raise_a_pairing_error():
 def test_a_rerun_without_ids_warns_that_its_pairing_was_not_verified():
     [warning] = _check_with_rerun(None).warnings
     assert warning.startswith("Rerun pairing not verified")
+
+
+def test_ids_that_contradict_the_hash_in_their_own_metadata_raise_a_pairing_error():
+    # The reviewer's case: both metadata hashes agree, but the candidate's ids are reversed.
+    ids = [f"slabs/{i}" for i in range(len(unchanged_scorer(seed=0).labels))]
+    meta = {"base_model": "m", "prompt_ids_sha256": hulder.prompt_ids_sha256(ids)}
+    with pytest.raises(hulder.PairingError, match="candidate's ids don't match"):
+        _check_with_ids(ids, ids[::-1], reference_meta=meta, candidate_meta=dict(meta))
