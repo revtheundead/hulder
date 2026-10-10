@@ -8,7 +8,7 @@ from pathlib import Path
 import numpy as np
 
 from hulder.gate.npz import read_npz
-from hulder.gate.pairing import PROMPT_IDS_KEY, prompt_ids_sha256
+from hulder.gate.pairing import PROMPT_IDS_KEY, PairingError, prompt_ids_sha256
 from hulder.gate.validate import example_ids, require_binary_labels
 
 
@@ -33,6 +33,11 @@ class Snapshot:
         if np.ndim(self.ids) != 1:
             raise ValueError(f"ids have shape {np.shape(self.ids)}; pass one id per example")
         example_ids(self.ids, n, "ids")
+        recorded = self.metadata.get(PROMPT_IDS_KEY)
+        if recorded is not None and recorded != prompt_ids_sha256(self.ids):
+            raise PairingError(
+                f"The ids don't match the {PROMPT_IDS_KEY} in the metadata: the ids or the metadata belong to another run."
+            )
         if np.shape(self.labels) != (n,):
             raise ValueError(f"labels have shape {np.shape(self.labels)} for {n} ids; pass one label per example")
         if self.scores is not None and np.shape(self.scores) != (n,):

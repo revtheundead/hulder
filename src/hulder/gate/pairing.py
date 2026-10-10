@@ -30,7 +30,7 @@ def check_pairing(
     reference = _ids_hash(reference_meta, reference_ids, "reference")
     warnings = _pair(reference, _ids_hash(candidate_meta, candidate_ids, "candidate"), "candidate")
     if has_noise_floor:
-        warnings += _pair(reference, _ids_hash(None, noise_floor_ids, "noise-floor rerun"), "noise-floor rerun")
+        warnings += _pair(reference, _ids_hash(None, noise_floor_ids, "rerun"), "rerun")
     return warnings
 
 
@@ -49,17 +49,10 @@ def _ids_hash(meta: dict | None, ids: Iterable | None, role: str) -> str | None:
 
 def _pair(reference: str | None, other: str | None, role: str) -> list[str]:
     if reference is None or other is None:
-        if role == "candidate":
-            return [
-                (
-                    "Pairing not verified; scores assumed to be in the same order. "
-                    f"Pass example ids or {PROMPT_IDS_KEY} in the metadata for both runs."
-                )
-            ]
         return [
             (
-                f"Rerun pairing not verified; {role} scores assumed to be in the reference's order. "
-                "Pass noise_floor_ids with the reference's ids."
+                f"{role.capitalize()} pairing not verified; its scores are assumed to be in the reference's order. "
+                f"Pass example ids for the reference and the {role}."
             )
         ]
     if reference != other:

@@ -326,16 +326,16 @@ def test_a_missing_base_model_warns_that_it_could_not_be_determined():
 
 def test_metadata_on_one_side_only_warns_that_it_was_not_compared():
     report = _check_with_meta(_META, None)
-    metadata, pairing = sorted(report.warnings, key=lambda w: w.startswith("Pairing"))
+    metadata, pairing = sorted(report.warnings, key=lambda w: w.startswith("Candidate pairing"))
     assert "metadata" in metadata
     assert "not compared" in metadata
-    assert pairing.startswith("Pairing not verified")
+    assert pairing.startswith("Candidate pairing not verified")
 
 
 def test_without_metadata_nothing_is_compared_and_only_pairing_is_warned_about():
     report = _check_with_meta(None, None)
     [warning] = report.warnings
-    assert warning.startswith("Pairing not verified")
+    assert warning.startswith("Candidate pairing not verified")
     assert report.changes_under_test == ()
 
 
@@ -380,7 +380,7 @@ def test_ids_on_one_side_are_checked_against_the_hash_in_the_others_metadata():
 
 def test_without_ids_or_hashes_the_report_warns_that_pairing_was_not_verified():
     [warning] = _check_with_ids(None, None).warnings
-    assert "pairing not verified; scores assumed to be in the same order" in warning.lower()
+    assert "pairing not verified; its scores are assumed to be in the reference's order" in warning.lower()
 
 
 def test_prompt_ids_hash_depends_on_order_and_not_on_id_type_boundaries():
@@ -460,7 +460,7 @@ def test_rerun_ids_in_the_same_order_verify_the_rerun_pairing():
 
 def test_rerun_ids_in_a_different_order_raise_a_pairing_error():
     ids = _paired(unchanged_scorer(seed=0).labels)["reference_ids"]
-    with pytest.raises(hulder.PairingError, match="noise-floor rerun"):
+    with pytest.raises(hulder.PairingError, match="reference and rerun were not run"):
         _check_with_rerun(ids[::-1])
 
 

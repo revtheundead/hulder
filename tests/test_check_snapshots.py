@@ -136,3 +136,20 @@ def test_a_probe_whose_other_metadata_differs_from_the_reference_warns():
     report = hulder.check_snapshots(reference, candidate, threshold=data.threshold, target_fpr=0.01, probe=probe)
     [warning] = report.warnings
     assert "probe's metadata 'system_prompt' differs" in warning.lower()
+
+
+@pytest.mark.parametrize("role", ["candidate", "rerun"])
+def test_a_snapshot_whose_recorded_ids_hash_contradicts_its_ids_raises_a_pairing_error(role):
+    # Snapshot.load catches this for files; a Snapshot built in memory must be caught too,
+    # for the rerun as for the candidate.
+    data, reference, candidate, rerun = _snapshots()
+    runs = {"candidate": candidate, "rerun": rerun}
+    other_order = hulder.prompt_ids_sha256(runs[role].ids[::-1])
+    with pytest.raises(hulder.PairingError, match="ids don't match the prompt_ids_sha256"):
+        runs[role] = hulder.Snapshot(
+            ids=runs[role].ids,
+            labels=runs[role].labels,
+            scores=runs[role].scores,
+            metadata={**runs[role].metadata, "prompt_ids_sha256": other_order},
+        )
+        hulder.check_snapshots(reference, **runs, threshold=data.threshold, target_fpr=0.01)
