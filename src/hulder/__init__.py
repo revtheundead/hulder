@@ -1,4 +1,4 @@
-from hulder.gate.check import Estimate, Report, Verdict, check
+from hulder.gate.check import Estimate, Report, Verdict, check, check_snapshots
 from hulder.gate.pairing import PairingError, prompt_ids_sha256
 from hulder.gate.probe import Probe, apply_probe
 from hulder.gate.snapshot import Snapshot
@@ -12,6 +12,7 @@ __all__ = [
     "Verdict",
     "apply_probe",
     "check",
+    "check_snapshots",
     "prompt_ids_sha256",
 ]
 

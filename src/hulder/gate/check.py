@@ -1,15 +1,16 @@
 """The release gate: compare a scorer under reference and candidate serving configs."""
 
 from collections.abc import Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import Enum
 
 import numpy as np
 from scipy.special import expit
 from scipy.stats import beta, binomtest, rankdata
 
-from hulder.gate.pairing import PROMPT_IDS_KEY, check_pairing
+from hulder.gate.pairing import PROMPT_IDS_KEY, PairingError, check_pairing
 from hulder.gate.probe import Probe, probe_logits
+from hulder.gate.snapshot import Snapshot
 from hulder.gate.validate import example_ids, require_binary_labels
 
 N_BOOTSTRAP = 1000
@@ -256,6 +257,63 @@ def check(
         **floor,
         **logit_shift,
     )
+
+
+def check_snapshots(
+    reference: Snapshot,
+    candidate: Snapshot,
+    rerun: Snapshot | None = None,
+    *,
+    threshold: float,
+    target_fpr: float,
+    probe: Probe | None = None,
+    seed: int = 0,
+    changes_under_test: tuple[str, ...] = (),
+) -> Report:
+    """check on Snapshots, verifying everything the files carry. Labels come from the
+    reference; the candidate's and the rerun's must equal them, else PairingError. The
+    rerun is the reference's serving config run again, so any metadata difference warns."""
+    runs = {"reference": reference, "candidate": candidate, "rerun": rerun}
+    for role, snapshot in runs.items():
+        if snapshot is None:
+            continue
+        if probe is None and snapshot.scores is None:
+            raise ValueError(f"the {role} holds activations: pass the probe that scores them")
+        if probe is not None and snapshot.activations is None:
+            raise ValueError(f"the {role} snapshots hold scores, so pass no probe")
+        if role != "reference" and np.shape(snapshot.labels) == np.shape(reference.labels):
+            differ = int((np.asarray(snapshot.labels) != np.asarray(reference.labels)).sum())
+            if differ:
+                raise PairingError(
+                    f"The {role}'s labels differ from the reference's at {differ} of {len(reference.labels)} examples: "
+                    "the snapshots disagree about what the examples are."
+                )
+    inputs = {role: None if s is None else (s.scores if probe is None else s.activations) for role, s in runs.items()}
+    report = check(
+        inputs["reference"],
+        inputs["candidate"],
+        reference.labels,
+        threshold=threshold,
+        target_fpr=target_fpr,
+        seed=seed,
+        noise_floor=inputs["rerun"],
+        reference_meta=reference.metadata,
+        candidate_meta=candidate.metadata,
+        changes_under_test=changes_under_test,
+        reference_ids=reference.ids,
+        candidate_ids=candidate.ids,
+        noise_floor_ids=None if rerun is None else rerun.ids,
+        probe=probe,
+    )
+    if rerun is None:
+        return report
+    rerun_warnings = [
+        f"The rerun's metadata {key!r} differs ({reference.metadata.get(key)!r} vs {rerun.metadata.get(key)!r}) "
+        "from the reference's, though a rerun is the reference's serving config run again."
+        for key in sorted((reference.metadata.keys() | rerun.metadata.keys()) - {PROMPT_IDS_KEY})
+        if reference.metadata.get(key) != rerun.metadata.get(key)
+    ]
+    return replace(report, warnings=report.warnings + tuple(rerun_warnings))
 
 
 def _require_finite(**runs: np.ndarray | None) -> None:
