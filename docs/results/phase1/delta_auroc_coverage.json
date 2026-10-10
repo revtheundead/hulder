@@ -41,7 +41,7 @@
           ]
         },
         "mean_width": 0.004603708283739771,
-        "seconds_per_call": 0.12639546398400853
+        "seconds_per_call": 0.15755753198900674
       }
     },
     "-0.02": {
@@ -79,7 +79,7 @@
           ]
         },
         "mean_width": 0.008440948528801171,
-        "seconds_per_call": 0.11721029222099696
+        "seconds_per_call": 0.1728223162830036
       }
     },
     "-0.05": {
@@ -117,7 +117,7 @@
           ]
         },
         "mean_width": 0.01873246623024331,
-        "seconds_per_call": 0.1181084065010209
+        "seconds_per_call": 0.16278070025395935
       }
     },
     "-0.1": {
@@ -155,12 +155,12 @@
           ]
         },
         "mean_width": 0.035253251930688956,
-        "seconds_per_call": 0.12453175748000377
+        "seconds_per_call": 0.1615168210059728
       }
     }
   },
   "run_manifest": {
-    "git_commit": "002e9d06291d51008a8582b241eab215bd750ff6",
+    "git_commit": "71ba063b3e2c0f064b7dfe3a47747efd2dc7d415",
     "git_dirty": false,
     "python": "3.12.14",
     "packages": {
