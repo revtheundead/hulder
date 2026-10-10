@@ -103,24 +103,29 @@ def check(
     Each run's prompt_ids_sha256 comes from its metadata or, failing that, from its example
     ids, and the noise-floor rerun's from noise_floor_ids. Two known hashes that differ raise
     PairingError; an unknown one warns."""
+    if not np.isfinite(threshold):
+        raise ValueError(f"threshold is {threshold}; it must be a finite number")
     warnings = check_pairing(
         reference_meta, candidate_meta, reference_ids, candidate_ids, noise_floor_ids, noise_floor is not None
     )
     meta_warnings, changes = _compare_metadata(reference_meta, candidate_meta, changes_under_test)
     warnings += meta_warnings
     rerun_identical = noise_floor is not None and np.array_equal(noise_floor, reference)
-    logit_shift = {}
     if probe is not None:
         reference, candidate = probe_logits(probe, reference), probe_logits(probe, candidate)
-        logit_shift["mean_abs_logit_shift"] = float(np.abs(candidate - reference).mean())
         if noise_floor is not None:
             noise_floor = probe_logits(probe, noise_floor)
+    elif np.ndim(reference) != 1 or np.ndim(candidate) != 1:
+        raise ValueError("2-D input is activations: pass probe= to score them, or pass 1-D scores")
+    _require_finite(reference=reference, candidate=candidate, noise_floor=noise_floor)
+    logit_shift = {}
+    if probe is not None:
+        logit_shift["mean_abs_logit_shift"] = float(np.abs(candidate - reference).mean())
+        if noise_floor is not None:
             if not rerun_identical:
                 logit_shift["noise_floor_mean_abs_logit_shift"] = float(np.abs(noise_floor - reference).mean())
             noise_floor = expit(noise_floor)
         reference, candidate = expit(reference), expit(candidate)
-    elif np.ndim(reference) != 1 or np.ndim(candidate) != 1:
-        raise ValueError("2-D input is activations: pass probe= to score them, or pass 1-D scores")
     benign = labels == 0
     k, n, ci = _flag_rate(reference[benign], threshold)
     if not ci.low <= target_fpr <= ci.high:
@@ -185,6 +190,14 @@ def check(
         **floor,
         **logit_shift,
     )
+
+
+def _require_finite(**runs: np.ndarray | None) -> None:
+    """NaN is never above a threshold, so a broken run would quietly count as unflagged."""
+    for role, values in runs.items():
+        if values is not None and not np.isfinite(values).all():
+            bad = int((~np.isfinite(values)).sum())
+            raise ValueError(f"{role} has {bad} values that are not finite (NaN or inf); the run is broken")
 
 
 def _compare_metadata(

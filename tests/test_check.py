@@ -464,3 +464,35 @@ def test_ids_that_contradict_the_hash_in_their_own_metadata_raise_a_pairing_erro
     meta = {"base_model": "m", "prompt_ids_sha256": hulder.prompt_ids_sha256(ids)}
     with pytest.raises(hulder.PairingError, match="candidate's ids don't match"):
         _check_with_ids(ids, ids[::-1], reference_meta=meta, candidate_meta=dict(meta))
+
+
+@pytest.mark.parametrize("run", ["reference", "candidate", "noise_floor"])
+@pytest.mark.parametrize("bad", [np.nan, np.inf])
+def test_non_finite_scores_are_rejected(run, bad):
+    # An all-NaN candidate used to come out SCORER DEGRADED: NaN is never above the threshold.
+    data = unchanged_scorer(seed=0)
+    runs = {
+        "reference": data.reference.copy(),
+        "candidate": data.candidate.copy(),
+        "noise_floor": data.candidate.copy(),
+    }
+    runs[run][5] = bad
+    with pytest.raises(ValueError, match=f"{run}.*not finite"):
+        hulder.check(**runs, labels=data.labels, threshold=data.threshold, target_fpr=0.01)
+
+
+def test_non_finite_activations_are_rejected_after_the_probe_scores_them():
+    reference = np.array([[-3.0], [-2.0], [2.0], [3.0]], dtype=np.float32)
+    candidate = reference.copy()
+    candidate[0] = np.nan
+    with pytest.raises(ValueError, match="candidate.*not finite"):
+        hulder.check(
+            reference, candidate, np.array([0, 0, 1, 1]), threshold=0.5, target_fpr=0.01, probe=_identity_probe()
+        )
+
+
+@pytest.mark.parametrize("threshold", [np.nan, np.inf, -np.inf])
+def test_a_non_finite_threshold_is_rejected(threshold):
+    data = unchanged_scorer(seed=0)
+    with pytest.raises(ValueError, match="threshold"):
+        hulder.check(data.reference, data.candidate, data.labels, threshold=threshold, target_fpr=0.01)
