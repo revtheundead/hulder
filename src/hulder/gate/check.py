@@ -89,6 +89,9 @@ class Report:
     noise_floor_decision_flips: int | None = None
     noise_floor_mean_abs_shift: float | None = None
     shift_exceeds_noise_floor: bool | None = None
+    # mean(|candidate - reference| - |rerun - reference|) with its 95% paired bootstrap CI:
+    # shift_exceeds_noise_floor is its lower bound > 0. None exactly when the floor isn't measured.
+    shift_over_noise_floor: Estimate | None = None
     # Mean |Δlogit| for the candidate and the rerun, set only when check applied a probe to
     # activations. Score space flattens shifts where the sigmoid saturates; logits don't.
     mean_abs_logit_shift: float | None = None
@@ -228,12 +231,14 @@ def check(
         )
     elif noise_floor is not None:
         candidate_shift, rerun_shift = np.abs(candidate - reference), np.abs(noise_floor - reference)
-        low, _ = _paired_bootstrap_mean(candidate_shift - rerun_shift, seed)
+        excess = candidate_shift - rerun_shift
+        low, high = _paired_bootstrap_mean(excess, seed)
         floor = {
             "noise_floor_measured": True,
             "noise_floor_decision_flips": int(((reference > threshold) != (noise_floor > threshold)).sum()),
             "noise_floor_mean_abs_shift": float(rerun_shift.mean()),
             "shift_exceeds_noise_floor": bool(low > 0),
+            "shift_over_noise_floor": Estimate(float(excess.mean()), low, high),
         }
     return Report(
         verdict=verdict,

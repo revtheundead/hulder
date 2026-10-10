@@ -137,12 +137,15 @@ def test_more_benign_needed_past_ten_times_the_calibration_set_carries_the_cavea
 def test_json_output_carries_the_report_and_its_intervals(tmp_path, capsys):
     reference, labels = _benign_then_attack(1191, 11)
     candidate, _ = _benign_then_attack(1191, 22)
-    assert _run(tmp_path, reference, candidate, labels, extra=["--json"]) == 12
+    rerun = reference.copy()
+    rerun[100] += 0.01
+    assert _run(tmp_path, reference, candidate, labels, rerun=rerun, extra=["--json"]) == 12
     out = json.loads(capsys.readouterr().out)
     assert (out["verdict"], out["exit_code"]) == ("INCONCLUSIVE", 12)
     report = out["report"]
     assert report["candidate_fpr"]["value"] == pytest.approx(22 / 1191)
-    for key in ("reference_fpr", "candidate_fpr", "reference_fnr", "candidate_fnr", "delta_auroc"):
+    keys = ("reference_fpr", "candidate_fpr", "reference_fnr", "candidate_fnr", "delta_auroc", "shift_over_noise_floor")
+    for key in keys:
         assert report[key]["low"] <= report[key]["value"] <= report[key]["high"]
     assert report["changes_under_test"] == [["quantization", None, "awq"]]
 

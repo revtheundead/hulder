@@ -203,9 +203,8 @@ def test_a_rerun_identical_to_the_reference_leaves_the_floor_unmeasured_and_warn
 
 def _determinism_case():
     # Both bootstraps run: the ΔAUROC one and, with a rerun, the noise floor's. Report
-    # carries the ΔAUROC and AUROC bounds, so unseeding that bootstrap fails these tests
-    # (checked 2026-10-10). The floor's bootstrap shows only through
-    # shift_exceeds_noise_floor, so unseeding it still passes unless a draw tips that.
+    # carries both bootstraps' bounds (delta_auroc and shift_over_noise_floor), so
+    # unseeding either fails these tests (checked 2026-10-10).
     data = unchanged_scorer(seed=3, noise=FRESH_ENGINE_NOISE, p_zero=FRESH_ENGINE_P_ZERO, candidate_fpr=0.015)
     rerun = unchanged_scorer(seed=3, noise=FRESH_ENGINE_NOISE, p_zero=FRESH_ENGINE_P_ZERO, noise_seed=1).candidate
     return hulder.check(
@@ -782,3 +781,39 @@ def test_report_carries_auroc_for_each_run_and_the_paired_delta_with_bootstrap_i
     assert (report.delta_auroc.low, report.delta_auroc.high) == (low, high)
     for estimate in (report.reference_auroc, report.candidate_auroc, report.delta_auroc):
         assert estimate.low <= estimate.value <= estimate.high
+
+
+def test_report_carries_the_interval_the_noise_floor_decision_reads():
+    # shift_over_noise_floor is mean(|candidate - reference| - |rerun - reference|) with its
+    # 95% paired bootstrap CI; the shift exceeds the floor when the lower bound is above 0.
+    report = _determinism_case()
+    excess = report.shift_over_noise_floor
+    assert excess.value == pytest.approx(report.mean_abs_shift - report.noise_floor_mean_abs_shift)
+    assert excess.low <= excess.value <= excess.high
+    assert report.shift_exceeds_noise_floor is (excess.low > 0)
+
+
+def test_the_noise_floor_interval_depends_on_the_seed_alone():
+    # So the determinism tests, which compare whole Reports, catch an unseeded floor bootstrap.
+    data = unchanged_scorer(seed=0, noise=FRESH_ENGINE_NOISE, p_zero=FRESH_ENGINE_P_ZERO)
+    rerun = unchanged_scorer(seed=0, noise=FRESH_ENGINE_NOISE, p_zero=FRESH_ENGINE_P_ZERO, noise_seed=1).candidate
+
+    def excess(seed):
+        return hulder.check(
+            data.reference,
+            data.candidate,
+            data.labels,
+            threshold=data.threshold,
+            target_fpr=0.01,
+            seed=seed,
+            noise_floor=rerun,
+        ).shift_over_noise_floor
+
+    assert excess(7) == excess(7)
+    assert excess(7) != excess(8)
+
+
+def test_without_a_measured_floor_there_is_no_floor_interval():
+    reference, labels = _benign_then_attack(1191, 11)
+    report = hulder.check(reference, reference + 0.01, labels, threshold=0.5, target_fpr=0.01)
+    assert report.shift_over_noise_floor is None

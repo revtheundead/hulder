@@ -215,6 +215,9 @@ def _shift(report: Report) -> list[str]:
             f"  {'mean |Δlogit|':<32}{f'{report.mean_abs_logit_shift:.3g}':<{COLUMN}}"
             f"{'' if rerun_logit is None else f'{rerun_logit:.3g}'}"
         )
+    if report.shift_over_noise_floor is not None:
+        e = report.shift_over_noise_floor
+        lines.append(f"  {'candidate - rerun mean |Δscore|':<32}{e.value:.3g} [{e.low:.3g}, {e.high:.3g}]")
     lines.append(f"  {'exceeds the noise floor':<32}{exceeds}")
     return lines
 
