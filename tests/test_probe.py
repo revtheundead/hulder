@@ -76,3 +76,11 @@ def test_probe_file_round_trip_keeps_scores_standardisation_and_metadata(tmp_pat
     # Shipped probes are downloaded by others, so the file must load without pickle.
     with np.load(path, allow_pickle=False) as f:
         assert set(f.files) >= {"weights", "bias", "mean", "std"}
+
+
+def test_a_probe_file_without_a_format_version_raises_a_value_error(tmp_path):
+    path = tmp_path / "probe.npz"
+    one = np.array([1.0])
+    np.savez(path, weights=one, bias=np.float64(0), mean=one, std=one, metadata=np.array("{}"))
+    with pytest.raises(ValueError, match="no format_version"):
+        hulder.Probe.load(path)

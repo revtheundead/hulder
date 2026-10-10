@@ -90,3 +90,49 @@ def test_snapshots_of_activations_are_scored_by_the_probe():
     )
     assert report.mean_abs_logit_shift is not None
     assert report.verdict is hulder.Verdict.PASS
+
+
+_PROBE_META = {"model": "Qwen/Qwen2.5-1.5B-Instruct", "layer": 20, "position": -1, "system_prompt": "s"}
+
+
+def _activation_snapshots(probe_meta, **snapshot_meta):
+    """Reference and candidate as one-feature activations, scored by an identity probe."""
+    data, reference, candidate, _ = _snapshots()
+    probe = hulder.Probe(
+        weights=np.array([1.0]), bias=0.0, mean=np.array([0.0]), std=np.array([1.0]), metadata=probe_meta
+    )
+
+    def activations(snapshot):
+        logits = np.log(snapshot.scores / (1 - snapshot.scores)).astype(np.float32)[:, None]
+        metadata = {**snapshot.metadata, "position": -1, "system_prompt": "s", **snapshot_meta}
+        return hulder.Snapshot(ids=snapshot.ids, labels=snapshot.labels, activations=logits, metadata=metadata)
+
+    return data, probe, activations(reference), activations(candidate)
+
+
+def test_a_probe_whose_metadata_matches_the_snapshots_gives_no_warning():
+    data, probe, reference, candidate = _activation_snapshots(_PROBE_META)
+    report = hulder.check_snapshots(reference, candidate, threshold=data.threshold, target_fpr=0.01, probe=probe)
+    assert report.warnings == ()
+
+
+@pytest.mark.parametrize(("key", "value"), [("layer", 10), ("position", 0), ("base_model", "Qwen/Qwen2.5-7B-Instruct")])
+def test_a_probe_for_another_layer_position_or_model_raises_a_pairing_error(key, value):
+    # A probe of the same width applied to the wrong layer scores nonsense without failing.
+    data, probe, reference, candidate = _activation_snapshots({**_PROBE_META, key: value})
+    with pytest.raises(hulder.PairingError, match=f"probe's {key}"):
+        hulder.check_snapshots(reference, candidate, threshold=data.threshold, target_fpr=0.01, probe=probe)
+
+
+def test_a_probe_that_records_no_layer_warns_that_it_was_not_confirmed():
+    data, probe, reference, candidate = _activation_snapshots({k: v for k, v in _PROBE_META.items() if k != "layer"})
+    report = hulder.check_snapshots(reference, candidate, threshold=data.threshold, target_fpr=0.01, probe=probe)
+    [warning] = report.warnings
+    assert "couldn't confirm the probe's layer" in warning
+
+
+def test_a_probe_whose_other_metadata_differs_from_the_reference_warns():
+    data, probe, reference, candidate = _activation_snapshots({**_PROBE_META, "system_prompt": "other"})
+    report = hulder.check_snapshots(reference, candidate, threshold=data.threshold, target_fpr=0.01, probe=probe)
+    [warning] = report.warnings
+    assert "probe's metadata 'system_prompt' differs" in warning.lower()

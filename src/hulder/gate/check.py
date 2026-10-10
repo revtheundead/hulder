@@ -23,6 +23,9 @@ FPR_BAND_LOW = 0.5  # x target_fpr: below it, attacks slip under the threshold
 FNR_TOLERANCE = 0.05
 AUROC_TOLERANCE = 0.02
 
+# What the probe was trained on, which every snapshot it scores must share (metadata rule 8).
+PROBE_MUST_MATCH = ("layer", "position", "base_model")
+
 # Metadata keys whose differences are the serving change being checked: listed in the
 # Report, never warned about. Every other key, known or not, must match.
 UNDER_TEST = ("model", "revision", "dtype", "quantization", "kv_cache_dtype", "vllm_version", "batch_size")
@@ -298,6 +301,7 @@ def check_snapshots(
                     f"The {role}'s labels differ from the reference's at {differ} of {len(reference.labels)} examples: "
                     "the snapshots disagree about what the examples are."
                 )
+    probe_warnings = [] if probe is None else _compare_probe(probe, runs, changes_under_test)
     inputs = {role: None if s is None else (s.scores if probe is None else s.activations) for role, s in runs.items()}
     report = check(
         inputs["reference"],
@@ -315,6 +319,7 @@ def check_snapshots(
         noise_floor_ids=None if rerun is None else rerun.ids,
         probe=probe,
     )
+    report = replace(report, warnings=report.warnings + tuple(probe_warnings))
     if rerun is None:
         return report
     rerun_warnings = [
@@ -324,6 +329,41 @@ def check_snapshots(
         if reference.metadata.get(key) != rerun.metadata.get(key)
     ]
     return replace(report, warnings=report.warnings + tuple(rerun_warnings))
+
+
+def _compare_probe(probe: Probe, runs: dict[str, Snapshot | None], changes_under_test: tuple[str, ...]) -> list[str]:
+    """The probe's layer, position and base_model against every snapshot's: a difference
+    raises PairingError, a value either side lacks warns. Its other keys that the reference
+    also records warn when they differ. An unquantized probe's model is its base_model
+    (metadata rule 4)."""
+    trained_on = {**probe.metadata}
+    trained_on.setdefault("base_model", trained_on.get("model"))
+    warnings = []
+    for key in PROBE_MUST_MATCH:
+        for role, snapshot in runs.items():
+            if snapshot is None:
+                continue
+            probe_value, snapshot_value = trained_on.get(key), snapshot.metadata.get(key)
+            if probe_value is None or snapshot_value is None:
+                warnings.append(
+                    f"The check couldn't confirm the probe's {key} against the {role}'s, since one of them "
+                    f"doesn't record it. Set {key} in both."
+                )
+                break
+            if probe_value != snapshot_value:
+                raise PairingError(
+                    f"The probe's {key} is {probe_value!r} but the {role}'s is {snapshot_value!r}: "
+                    "the probe would score activations it wasn't trained on."
+                )
+    reference = runs["reference"].metadata
+    skip = set(PROBE_MUST_MATCH) | set(UNDER_TEST) | set(changes_under_test)
+    for key in sorted((probe.metadata.keys() & reference.keys()) - skip):
+        if probe.metadata[key] != reference[key]:
+            warnings.append(
+                f"The probe's metadata {key!r} differs from the reference's ({probe.metadata[key]!r} vs "
+                f"{reference[key]!r}), so the probe may score activations unlike those it was trained on."
+            )
+    return warnings
 
 
 def _require_finite(**runs: np.ndarray | None) -> None:
