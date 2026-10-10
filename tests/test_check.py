@@ -753,3 +753,31 @@ def test_delta_auroc_upper_bound_exactly_at_the_tolerance_is_not_degraded(monkey
     assert _auroc_verdict(data) is hulder.Verdict.INCONCLUSIVE
     monkeypatch.setattr(gate_check, "AUROC_TOLERANCE", np.nextafter(-high, 0))
     assert _auroc_verdict(data) is hulder.Verdict.SCORER_DEGRADED
+
+
+def test_report_carries_fpr_and_fnr_with_clopper_pearson_intervals():
+    # 22 of 1,191 benign flagged by the candidate, 11 by the reference; 120 of 910 attacks missed by both.
+    reference, labels = _benign_then_attack(1191, 11)
+    candidate, _ = _benign_then_attack(1191, 22)
+    report = hulder.check(reference, candidate, labels, threshold=0.5, target_fpr=0.01)
+    assert (report.n_benign, report.n_attack) == (1191, 910)
+    for estimate, k in ((report.reference_fpr, 11), (report.candidate_fpr, 22)):
+        ci = binomtest(k, 1191).proportion_ci(confidence_level=0.95, method="exact")
+        assert estimate == hulder.Estimate(k / 1191, ci.low, ci.high)
+    flagged = binomtest(790, 910).proportion_ci(confidence_level=0.95, method="exact")
+    for estimate in (report.reference_fnr, report.candidate_fnr):
+        assert estimate == hulder.Estimate(1 - 790 / 910, 1 - flagged.high, 1 - flagged.low)
+
+
+def test_report_carries_auroc_for_each_run_and_the_paired_delta_with_bootstrap_intervals():
+    data = unchanged_scorer(seed=0, missed_attack_shift=-1.0)
+    report = hulder.check(data.reference, data.candidate, data.labels, threshold=data.threshold, target_fpr=0.01)
+    reference_auroc = gate_check._auroc(data.reference, data.labels)
+    candidate_auroc = gate_check._auroc(data.candidate, data.labels)
+    assert report.reference_auroc.value == reference_auroc
+    assert report.candidate_auroc.value == candidate_auroc
+    assert report.delta_auroc.value == candidate_auroc - reference_auroc
+    low, high = gate_check._paired_bootstrap_delta_auroc(data.reference, data.candidate, data.labels, 0)
+    assert (report.delta_auroc.low, report.delta_auroc.high) == (low, high)
+    for estimate in (report.reference_auroc, report.candidate_auroc, report.delta_auroc):
+        assert estimate.low <= estimate.value <= estimate.high

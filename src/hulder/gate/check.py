@@ -48,10 +48,31 @@ _EXIT_CODES = {
 
 
 @dataclass(frozen=True)
+class Estimate:
+    """A point estimate and its 95% CI: Clopper-Pearson for rates, percentile bootstrap for AUROC."""
+
+    value: float
+    low: float
+    high: float
+
+
+@dataclass(frozen=True)
 class Report:
     """Plain data: it neither prints nor exits, and compares with ==."""
 
     verdict: Verdict
+    n_benign: int
+    n_attack: int
+    # At the threshold: flagged means score > threshold. The verdict reads the candidate's
+    # FPR and FNR bounds, the reference's FNR and ΔAUROC's bounds.
+    reference_fpr: Estimate
+    candidate_fpr: Estimate
+    reference_fnr: Estimate
+    candidate_fnr: Estimate
+    # AUROC per run, and ΔAUROC = candidate - reference, from the same paired resamples.
+    reference_auroc: Estimate
+    candidate_auroc: Estimate
+    delta_auroc: Estimate
     # Share of examples whose decision (score above the threshold or not) differs between
     # reference and candidate. A diagnostic, never an input to the verdict.
     decision_flip_rate: float
@@ -161,35 +182,33 @@ def check(
             noise_floor = expit(noise_floor)
         reference, candidate = expit(reference), expit(candidate)
     benign = labels == 0
-    k, n, ci = _flag_rate(reference[benign], threshold)
-    if not ci.low <= target_fpr <= ci.high:
+    reference_fpr, candidate_fpr = _fpr(reference[benign], threshold), _fpr(candidate[benign], threshold)
+    if not reference_fpr.low <= target_fpr <= reference_fpr.high:
         warnings.append(
-            f"The reference's FPR at threshold {threshold:.4g} is {k / n:.2%} "
-            f"[95% CI {ci.low:.2%}, {ci.high:.2%}], which excludes the {target_fpr:.2%} target, "
+            f"The reference's FPR at threshold {threshold:.4g} is {reference_fpr.value:.2%} "
+            f"[95% CI {reference_fpr.low:.2%}, {reference_fpr.high:.2%}], which excludes the {target_fpr:.2%} target, "
             "so the threshold wasn't calibrated on this snapshot. "
             "Verdicts then mix threshold generalisation with the serving change: "
             "recalibrate on the reference first."
         )
-    _, _, candidate_fpr = _flag_rate(candidate[benign], threshold)
-    # FNR is the share of attacks not flagged: 1 minus their flag rate, CI bounds swapped.
-    k, n, _ = _flag_rate(reference[~benign], threshold)
-    reference_fnr = 1 - k / n
-    _, _, candidate_flagged = _flag_rate(candidate[~benign], threshold)
-    candidate_fnr_low, candidate_fnr_high = 1 - candidate_flagged.high, 1 - candidate_flagged.low
-    delta_auroc_low, delta_auroc_high = _paired_bootstrap_delta_auroc(reference, candidate, labels, seed)
+    reference_fnr, candidate_fnr = _fnr(reference[~benign], threshold), _fnr(candidate[~benign], threshold)
+    reference_aurocs, candidate_aurocs = _paired_bootstrap_aurocs(reference, candidate, labels, seed)
+    reference_auroc = _auroc_estimate(_auroc(reference, labels), reference_aurocs)
+    candidate_auroc = _auroc_estimate(_auroc(candidate, labels), candidate_aurocs)
+    delta_auroc = _auroc_estimate(candidate_auroc.value - reference_auroc.value, candidate_aurocs - reference_aurocs)
     stale = (
         candidate_fpr.low > FPR_BAND_HIGH * target_fpr
         or candidate_fpr.high < FPR_BAND_LOW * target_fpr
-        or candidate_fnr_low > reference_fnr + FNR_TOLERANCE
+        or candidate_fnr.low > reference_fnr.value + FNR_TOLERANCE
     )
-    if delta_auroc_high < -AUROC_TOLERANCE:
+    if delta_auroc.high < -AUROC_TOLERANCE:
         verdict = Verdict.SCORER_DEGRADED
     elif stale:
         verdict = Verdict.THRESHOLD_STALE
     elif (
         candidate_fpr.high <= FPR_BAND_HIGH * target_fpr
-        and candidate_fnr_high <= reference_fnr + FNR_TOLERANCE
-        and delta_auroc_low >= -AUROC_TOLERANCE
+        and candidate_fnr.high <= reference_fnr.value + FNR_TOLERANCE
+        and delta_auroc.low >= -AUROC_TOLERANCE
     ):  # fmt: skip
         verdict = Verdict.PASS
     else:
@@ -217,6 +236,15 @@ def check(
         }
     return Report(
         verdict=verdict,
+        n_benign=int(benign.sum()),
+        n_attack=int((~benign).sum()),
+        reference_fpr=reference_fpr,
+        candidate_fpr=candidate_fpr,
+        reference_fnr=reference_fnr,
+        candidate_fnr=candidate_fnr,
+        reference_auroc=reference_auroc,
+        candidate_auroc=candidate_auroc,
+        delta_auroc=delta_auroc,
         decision_flip_rate=float(flipped.mean()),
         decision_flips=int(flipped.sum()),
         mean_abs_shift=float(np.abs(candidate - reference).mean()),
@@ -268,6 +296,22 @@ def _compare_metadata(
     return warnings, tuple(changes)
 
 
+def _fpr(benign_scores: np.ndarray, threshold: float) -> Estimate:
+    k, n, ci = _flag_rate(benign_scores, threshold)
+    return Estimate(k / n, ci.low, ci.high)
+
+
+def _fnr(attack_scores: np.ndarray, threshold: float) -> Estimate:
+    """The share of attacks not flagged: 1 minus their flag rate, CI bounds swapped."""
+    k, n, ci = _flag_rate(attack_scores, threshold)
+    return Estimate(1 - k / n, 1 - ci.high, 1 - ci.low)
+
+
+def _auroc_estimate(value: float, resampled: np.ndarray) -> Estimate:
+    low, high = np.quantile(resampled, [0.025, 0.975])
+    return Estimate(float(value), float(low), float(high))
+
+
 def _flag_rate(scores: np.ndarray, threshold: float):
     """Number flagged (score above threshold), number of scores, and the rate's 95% Clopper-Pearson CI."""
     k, n = int((scores > threshold).sum()), len(scores)
@@ -316,20 +360,24 @@ def _auroc(scores: np.ndarray, labels: np.ndarray) -> float:
 def _paired_bootstrap_delta_auroc(
     reference: np.ndarray, candidate: np.ndarray, labels: np.ndarray, seed: int
 ) -> tuple[float, float]:
-    """95% percentile CI of AUROC(candidate) - AUROC(reference).
+    """95% percentile CI of AUROC(candidate) - AUROC(reference)."""
+    reference_aurocs, candidate_aurocs = _paired_bootstrap_aurocs(reference, candidate, labels, seed)
+    low, high = np.quantile(candidate_aurocs - reference_aurocs, [0.025, 0.975])
+    return float(low), float(high)
 
-    Resampling is stratified by class, and each resample uses the same examples for both
-    configs, so the comparison stays paired.
-    """
+
+def _paired_bootstrap_aurocs(
+    reference: np.ndarray, candidate: np.ndarray, labels: np.ndarray, seed: int
+) -> tuple[np.ndarray, np.ndarray]:
+    """Each run's AUROC on N_BOOTSTRAP resamples. Resampling is stratified by class, and
+    each resample uses the same examples for both configs, so the comparison stays paired."""
     rng = np.random.default_rng(seed)
     n_benign, n_attack = int((labels == 0).sum()), int((labels == 1).sum())
     w_benign = _resample_counts(rng, n_benign)
     w_attack = _resample_counts(rng, n_attack)
-    delta = _weighted_auroc(candidate, labels, w_benign, w_attack) - _weighted_auroc(
-        reference, labels, w_benign, w_attack
+    return _weighted_auroc(reference, labels, w_benign, w_attack), _weighted_auroc(
+        candidate, labels, w_benign, w_attack
     )
-    low, high = np.quantile(delta, [0.025, 0.975])
-    return float(low), float(high)
 
 
 def _paired_bootstrap_mean(differences: np.ndarray, seed: int) -> tuple[float, float]:
