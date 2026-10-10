@@ -5,9 +5,11 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from scipy.stats import binomtest
 from synthetic import FRESH_ENGINE_NOISE, FRESH_ENGINE_P_ZERO, unchanged_scorer
 
 import hulder
+import hulder.gate.check as gate_check
 
 
 def _paired(labels):
@@ -620,3 +622,134 @@ def test_a_decided_verdict_has_no_more_benign_needed_and_is_not_beyond_the_limit
     report = hulder.check(data.reference, data.candidate, data.labels, threshold=data.threshold, target_fpr=0.01)
     assert report.verdict is hulder.Verdict.PASS
     assert (report.more_benign_needed, report.more_benign_beyond_limit) == (None, False)
+
+
+@pytest.mark.parametrize(
+    ("verdict", "code"),
+    [("PASS", 0), ("THRESHOLD_STALE", 10), ("SCORER_DEGRADED", 11), ("INCONCLUSIVE", 12)],
+)
+def test_verdict_exit_codes_follow_adr_0003(verdict, code):
+    assert hulder.Verdict[verdict].exit_code == code
+
+
+def test_weighted_auroc_matches_the_reference_auroc_on_expanded_copies():
+    # Ties within and across classes, which the half-credit rule must handle the same way.
+    rng = np.random.default_rng(0)
+    labels = np.r_[np.zeros(40, int), np.ones(30, int)]
+    scores = rng.integers(0, 12, len(labels)) / 12
+    w_benign = gate_check._resample_counts(rng, 40)[:20]
+    w_attack = gate_check._resample_counts(rng, 30)[:20]
+    fast = gate_check._weighted_auroc(scores, labels, w_benign, w_attack)
+    for row in range(20):
+        weights = np.r_[w_benign[row], w_attack[row]]
+        expected = gate_check._auroc(np.repeat(scores, weights), np.repeat(labels, weights))
+        assert fast[row] == pytest.approx(expected, abs=1e-12)
+
+
+def test_identical_runs_give_a_delta_auroc_interval_of_exactly_zero():
+    # Each resample uses the same examples for both runs, so their AUROCs are equal.
+    data = unchanged_scorer(seed=0)
+    assert gate_check._paired_bootstrap_delta_auroc(data.reference, data.reference, data.labels, 0) == (0.0, 0.0)
+
+
+def _fpr_case(k_flagged):
+    # Reference and candidate identical, so FNR and ΔAUROC sit inside their bands.
+    scores, labels = _benign_then_attack(1191, k_flagged)
+    ci = binomtest(k_flagged, 1191).proportion_ci(confidence_level=0.95, method="exact")
+    return scores, labels, ci
+
+
+def _verdict_at(scores, candidate, labels, target_fpr):
+    return hulder.check(scores, candidate, labels, threshold=0.5, target_fpr=target_fpr).verdict
+
+
+def test_fpr_upper_bound_exactly_at_twice_target_passes():
+    # PASS needs upper bound <= 2 x target: equality passes, one ulp less doesn't.
+    scores, labels, ci = _fpr_case(22)
+    assert _verdict_at(scores, scores, labels, ci.high / 2) is hulder.Verdict.PASS
+    assert _verdict_at(scores, scores, labels, np.nextafter(ci.high / 2, 0)) is hulder.Verdict.INCONCLUSIVE
+
+
+def test_fpr_lower_bound_exactly_at_twice_target_is_not_stale():
+    # STALE needs lower bound > 2 x target.
+    scores, labels, ci = _fpr_case(22)
+    assert _verdict_at(scores, scores, labels, ci.low / 2) is hulder.Verdict.INCONCLUSIVE
+    assert _verdict_at(scores, scores, labels, np.nextafter(ci.low / 2, 0)) is hulder.Verdict.THRESHOLD_STALE
+
+
+def test_fpr_upper_bound_exactly_at_half_target_is_not_stale():
+    # STALE needs upper bound < target / 2.
+    scores, labels, ci = _fpr_case(1)
+    assert _verdict_at(scores, scores, labels, 2 * ci.high) is hulder.Verdict.PASS
+    assert _verdict_at(scores, scores, labels, np.nextafter(2 * ci.high, 1)) is hulder.Verdict.THRESHOLD_STALE
+
+
+def _tolerance_reaching(base, bound):
+    """The tolerance t with base + t == bound exactly, and the largest with base + t < bound."""
+    t = bound - base
+    while base + t < bound:
+        t = np.nextafter(t, np.inf)
+    while base + t > bound:
+        t = np.nextafter(t, -np.inf)
+    assert base + t == bound
+    below = t
+    while base + below >= bound:
+        below = np.nextafter(below, -np.inf)
+    return float(t), float(below)
+
+
+def _fnr_case():
+    # The candidate misses 200 attacks where the reference missed 120; every attack still
+    # outscores every benign example, so ΔAUROC is 0, and FPR is unchanged.
+    reference, labels = _benign_then_attack(1191, 11, k_missed=120)
+    candidate, _ = _benign_then_attack(1191, 11, k_missed=200)
+    flagged = binomtest(910 - 200, 910).proportion_ci(confidence_level=0.95, method="exact")
+    # check computes the FNR as 1 - flagged / n, which can differ from missed / n in the last bit.
+    return reference, candidate, labels, 1 - (910 - 120) / 910, 1 - flagged.high, 1 - flagged.low
+
+
+def test_fnr_upper_bound_exactly_at_the_tolerance_passes(monkeypatch):
+    reference, candidate, labels, reference_fnr, _, fnr_high = _fnr_case()
+    at, below = _tolerance_reaching(reference_fnr, fnr_high)
+    monkeypatch.setattr(gate_check, "FNR_TOLERANCE", at)
+    assert _verdict_at(reference, candidate, labels, 0.01) is hulder.Verdict.PASS
+    monkeypatch.setattr(gate_check, "FNR_TOLERANCE", below)
+    assert _verdict_at(reference, candidate, labels, 0.01) is hulder.Verdict.INCONCLUSIVE
+
+
+def test_fnr_lower_bound_exactly_at_the_tolerance_is_not_stale(monkeypatch):
+    reference, candidate, labels, reference_fnr, fnr_low, _ = _fnr_case()
+    at, below = _tolerance_reaching(reference_fnr, fnr_low)
+    monkeypatch.setattr(gate_check, "FNR_TOLERANCE", at)
+    assert _verdict_at(reference, candidate, labels, 0.01) is hulder.Verdict.INCONCLUSIVE
+    monkeypatch.setattr(gate_check, "FNR_TOLERANCE", below)
+    assert _verdict_at(reference, candidate, labels, 0.01) is hulder.Verdict.THRESHOLD_STALE
+
+
+def _auroc_case():
+    # Attacks below the threshold pushed further down: only ΔAUROC moves, CI about [-0.027, -0.018].
+    data = unchanged_scorer(seed=0, missed_attack_shift=-1.0)
+    low, high = gate_check._paired_bootstrap_delta_auroc(data.reference, data.candidate, data.labels, 0)
+    return data, low, high
+
+
+def _auroc_verdict(data):
+    return hulder.check(data.reference, data.candidate, data.labels, threshold=data.threshold, target_fpr=0.01).verdict
+
+
+def test_delta_auroc_lower_bound_exactly_at_the_tolerance_passes(monkeypatch):
+    # PASS needs lower bound >= -tolerance.
+    data, low, _ = _auroc_case()
+    monkeypatch.setattr(gate_check, "AUROC_TOLERANCE", -low)
+    assert _auroc_verdict(data) is hulder.Verdict.PASS
+    monkeypatch.setattr(gate_check, "AUROC_TOLERANCE", np.nextafter(-low, 0))
+    assert _auroc_verdict(data) is hulder.Verdict.INCONCLUSIVE
+
+
+def test_delta_auroc_upper_bound_exactly_at_the_tolerance_is_not_degraded(monkeypatch):
+    # SCORER DEGRADED needs upper bound < -tolerance.
+    data, _, high = _auroc_case()
+    monkeypatch.setattr(gate_check, "AUROC_TOLERANCE", -high)
+    assert _auroc_verdict(data) is hulder.Verdict.INCONCLUSIVE
+    monkeypatch.setattr(gate_check, "AUROC_TOLERANCE", np.nextafter(-high, 0))
+    assert _auroc_verdict(data) is hulder.Verdict.SCORER_DEGRADED
