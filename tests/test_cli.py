@@ -1,4 +1,5 @@
 import json
+from importlib.metadata import version
 from pathlib import Path
 
 import numpy as np
@@ -77,17 +78,13 @@ def test_a_missing_file_exits_1(tmp_path, capsys):
 def test_a_threshold_neither_given_nor_in_a_probe_is_a_usage_error(tmp_path, capsys):
     reference, labels = _benign_then_attack(1191, 11)
     path = _write(tmp_path, "reference", reference, labels)
-    with pytest.raises(SystemExit) as exit:
-        cli.run(["check", "--reference", path, "--candidate", path, "--target-fpr", "0.01"])
-    assert exit.value.code == 2
+    assert cli.run(["check", "--reference", path, "--candidate", path, "--target-fpr", "0.01"]) == 2
     assert "--threshold is required" in capsys.readouterr().err
 
 
 def test_base_model_under_test_is_a_usage_error(tmp_path, capsys):
     reference, labels = _benign_then_attack(1191, 11)
-    with pytest.raises(SystemExit) as exit:
-        _run(tmp_path, reference, reference + 1e-6, labels, extra=["--under-test", "base_model"])
-    assert exit.value.code == 2
+    assert _run(tmp_path, reference, reference + 1e-6, labels, extra=["--under-test", "base_model"]) == 2
     assert "base_model can't be a change under test" in capsys.readouterr().err
 
 
@@ -160,6 +157,28 @@ def test_json_output_carries_the_report_and_its_intervals(tmp_path, capsys):
     for key in keys:
         assert report[key]["low"] <= report[key]["value"] <= report[key]["high"]
     assert report["changes_under_test"] == [["quantization", None, "awq"]]
+    assert (report["threshold"], report["target_fpr"]) == (0.5, 0.01)
+    assert (out["schema_version"], out["hulder_version"]) == (1, version("hulder"))
+
+
+def test_json_output_on_a_tool_failure_is_the_error_and_its_exit_code(tmp_path, capsys):
+    args = ["check", "--reference", str(tmp_path / "no.npz"), "--candidate", str(tmp_path / "no.npz")]
+    assert cli.run([*args, "--threshold", "0.5", "--target-fpr", "0.01", "--json"]) == 1
+    captured = capsys.readouterr()
+    out = json.loads(captured.out)
+    assert out["exit_code"] == 1
+    assert "No such file" in out["error"]
+    assert out["schema_version"] == 1
+    assert "hulder: error" in captured.err
+
+
+def test_json_output_on_a_usage_error_is_the_error_and_exit_code_2(tmp_path, capsys):
+    reference, labels = _benign_then_attack(1191, 11)
+    path = _write(tmp_path, "reference", reference, labels)
+    assert cli.run(["check", "--reference", path, "--candidate", path, "--target-fpr", "0.01", "--json"]) == 2
+    out = json.loads(capsys.readouterr().out)
+    assert out["exit_code"] == 2
+    assert "--threshold is required" in out["error"]
 
 
 def test_quickstart_gives_pass_for_the_rerun_and_inconclusive_with_the_shift_for_awq(capsys):

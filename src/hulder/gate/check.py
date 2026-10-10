@@ -68,6 +68,9 @@ class Report:
     """Plain data: it neither prints nor exits, and compares with ==."""
 
     verdict: Verdict
+    # The threshold and target FPR the verdict was judged at, as passed to check.
+    threshold: float
+    target_fpr: float
     n_benign: int
     n_attack: int
     # At the threshold: flagged means score > threshold. The verdict reads the candidate's
@@ -257,6 +260,8 @@ def check(
         }
     return Report(
         verdict=verdict,
+        threshold=float(threshold),
+        target_fpr=float(target_fpr),
         n_benign=int(benign.sum()),
         n_attack=int((~benign).sum()),
         reference_fpr=reference_fpr,
