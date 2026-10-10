@@ -201,6 +201,15 @@ def test_a_rerun_identical_to_the_reference_leaves_the_floor_unmeasured_and_warn
     assert "noise floor was not measured" in warning
 
 
+def test_a_candidate_identical_to_the_reference_warns():
+    # The same file passed twice, say by a mistyped CI path, would otherwise PASS silently.
+    reference, labels = _benign_then_attack(1191, 11)
+    report = hulder.check(reference, reference.copy(), labels, threshold=0.5, target_fpr=0.01, **_paired(labels))
+    assert report.verdict is hulder.Verdict.PASS
+    [warning] = report.warnings
+    assert "candidate is bit-identical to the reference" in warning
+
+
 def _determinism_case():
     # Both bootstraps run: the ΔAUROC one and, with a rerun, the noise floor's. Report
     # carries both bootstraps' bounds (delta_auroc and shift_over_noise_floor), so

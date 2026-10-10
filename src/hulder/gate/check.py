@@ -172,6 +172,11 @@ def check(
     meta_warnings, changes = _compare_metadata(reference_meta, candidate_meta, changes_under_test)
     warnings += meta_warnings
     rerun_identical = noise_floor is not None and np.array_equal(noise_floor, reference)
+    if np.array_equal(candidate, reference):
+        warnings.append(
+            "The candidate is bit-identical to the reference, so nothing was compared. "
+            "Check that the candidate file comes from the candidate serving config."
+        )
     if probe is not None:
         reference, candidate = probe_logits(probe, reference), probe_logits(probe, candidate)
         if noise_floor is not None:

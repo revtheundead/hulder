@@ -95,7 +95,8 @@ def test_changes_under_test_are_printed_before_the_verdict(tmp_path, capsys):
 
 def test_under_test_declares_a_further_key(tmp_path, capsys):
     reference, labels = _benign_then_attack(1191, 11)
-    _run(tmp_path, reference, reference, labels, extra=["--under-test", "team"], candidate_meta={"team": "b"})
+    candidate = reference + 1e-6  # not bit-identical, which would warn
+    _run(tmp_path, reference, candidate, labels, extra=["--under-test", "team"], candidate_meta={"team": "b"})
     out = capsys.readouterr().out
     assert "  team          None -> 'b'" in out
     assert "Warnings" not in out
