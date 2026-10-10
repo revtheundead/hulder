@@ -6,6 +6,8 @@
     "n_attack": 910,
     "report": {
       "verdict": "INCONCLUSIVE",
+      "threshold": 0.7688924074172974,
+      "target_fpr": 0.01,
       "n_benign": 1191,
       "n_attack": 910,
       "reference_fpr": {
@@ -51,6 +53,11 @@
       "noise_floor_decision_flips": 1,
       "noise_floor_mean_abs_shift": 7.825512147974223e-05,
       "shift_exceeds_noise_floor": true,
+      "shift_over_noise_floor": {
+        "value": 0.047813206911087036,
+        "low": 0.044220475482647806,
+        "high": 0.051545608578754135
+      },
       "mean_abs_logit_shift": 0.9281344413757324,
       "noise_floor_mean_abs_logit_shift": 0.0021738200448453426,
       "warnings": [],
@@ -106,6 +113,8 @@
     "n_attack": 180,
     "report": {
       "verdict": "INCONCLUSIVE",
+      "threshold": 0.3951607346534729,
+      "target_fpr": 0.05,
       "n_benign": 180,
       "n_attack": 180,
       "reference_fpr": {
@@ -151,6 +160,11 @@
       "noise_floor_decision_flips": 0,
       "noise_floor_mean_abs_shift": 0.00020760514598805457,
       "shift_exceeds_noise_floor": true,
+      "shift_over_noise_floor": {
+        "value": 0.05131131410598755,
+        "low": 0.04566585369786481,
+        "high": 0.057721271499920276
+      },
       "mean_abs_logit_shift": 0.5019621253013611,
       "noise_floor_mean_abs_logit_shift": 0.0019741742871701717,
       "warnings": [],
@@ -200,7 +214,7 @@
     }
   },
   "run_manifest": {
-    "git_commit": "b39cabc753a65b25676573280f936a79b8c92008",
+    "git_commit": "e6d836f3cb452ee46c0024832abfe3dee27853ca",
     "git_dirty": false,
     "python": "3.12.14",
     "packages": {
