@@ -1,4 +1,5 @@
-from hulder.gate.check import PairingError, Report, Verdict, check, prompt_ids_sha256
+from hulder.gate.check import Report, Verdict, check
+from hulder.gate.pairing import PairingError, prompt_ids_sha256
 from hulder.gate.probe import Probe, apply_probe
 from hulder.gate.snapshot import Snapshot
 

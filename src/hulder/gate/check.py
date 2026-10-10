@@ -1,7 +1,5 @@
 """The release gate: compare a scorer under reference and candidate serving configs."""
 
-import hashlib
-import json
 from collections.abc import Iterable
 from dataclasses import dataclass
 from enum import Enum
@@ -10,19 +8,20 @@ import numpy as np
 from scipy.special import expit
 from scipy.stats import beta, binomtest, rankdata
 
+from hulder.gate.pairing import PROMPT_IDS_KEY, check_pairing
 from hulder.gate.probe import Probe, probe_logits
 
 N_BOOTSTRAP = 1000
+# The verdict rule's tolerance bands. FPR is judged against multiples of target_fpr, FNR against
+# the reference's FNR plus a tolerance, and ΔAUROC = candidate - reference against minus one.
+FPR_BAND_HIGH = 2.0  # x target_fpr: above it, too many false positives
+FPR_BAND_LOW = 0.5  # x target_fpr: below it, attacks slip under the threshold
+FNR_TOLERANCE = 0.05
+AUROC_TOLERANCE = 0.02
 
 # Metadata keys whose differences are the serving change being checked: listed in the
 # Report, never warned about. Every other key, known or not, must match.
 UNDER_TEST = ("model", "revision", "dtype", "quantization", "kv_cache_dtype", "vllm_version", "batch_size")
-# Hashes the prompt ids in order. If they differ, the two runs aren't paired.
-PROMPT_IDS_KEY = "prompt_ids_sha256"
-
-
-class PairingError(ValueError):
-    """Reference and candidate were not run on the same prompts in the same order."""
 
 
 class Verdict(Enum):
@@ -104,7 +103,7 @@ def check(
     Each run's prompt_ids_sha256 comes from its metadata or, failing that, from its example
     ids, and the noise-floor rerun's from noise_floor_ids. Two known hashes that differ raise
     PairingError; an unknown one warns."""
-    warnings = _check_pairing(
+    warnings = check_pairing(
         reference_meta, candidate_meta, reference_ids, candidate_ids, noise_floor_ids, noise_floor is not None
     )
     meta_warnings, changes = _compare_metadata(reference_meta, candidate_meta, changes_under_test)
@@ -140,18 +139,18 @@ def check(
     candidate_fnr_low, candidate_fnr_high = 1 - candidate_flagged.high, 1 - candidate_flagged.low
     delta_auroc_low, delta_auroc_high = _paired_bootstrap_delta_auroc(reference, candidate, labels, seed)
     stale = (
-        candidate_fpr.low > 2 * target_fpr
-        or candidate_fpr.high < target_fpr / 2
-        or candidate_fnr_low > reference_fnr + 0.05
+        candidate_fpr.low > FPR_BAND_HIGH * target_fpr
+        or candidate_fpr.high < FPR_BAND_LOW * target_fpr
+        or candidate_fnr_low > reference_fnr + FNR_TOLERANCE
     )
-    if delta_auroc_high < -0.02:
+    if delta_auroc_high < -AUROC_TOLERANCE:
         verdict = Verdict.SCORER_DEGRADED
     elif stale:
         verdict = Verdict.THRESHOLD_STALE
     elif (
-        candidate_fpr.high <= 2 * target_fpr
-        and candidate_fnr_high <= reference_fnr + 0.05
-        and delta_auroc_low >= -0.02
+        candidate_fpr.high <= FPR_BAND_HIGH * target_fpr
+        and candidate_fnr_high <= reference_fnr + FNR_TOLERANCE
+        and delta_auroc_low >= -AUROC_TOLERANCE
     ):  # fmt: skip
         verdict = Verdict.PASS
     else:
@@ -159,7 +158,7 @@ def check(
     more_benign_needed = None
     if verdict is Verdict.INCONCLUSIVE:
         k, n, _ = _flag_rate(candidate[benign], threshold)
-        more_benign_needed = _more_needed_to_decide(k / n, n, 2 * target_fpr)
+        more_benign_needed = _more_needed_to_decide(k / n, n, FPR_BAND_HIGH * target_fpr)
     flipped = (reference > threshold) != (candidate > threshold)
     floor = {}
     if rerun_identical:
@@ -186,55 +185,6 @@ def check(
         **floor,
         **logit_shift,
     )
-
-
-def prompt_ids_sha256(ids: Iterable) -> str:
-    """Hash of example ids in order, each as a string. JSON keeps id boundaries unambiguous."""
-    return hashlib.sha256(json.dumps([str(i) for i in ids]).encode()).hexdigest()
-
-
-def _check_pairing(
-    reference_meta: dict | None,
-    candidate_meta: dict | None,
-    reference_ids: Iterable | None,
-    candidate_ids: Iterable | None,
-    noise_floor_ids: Iterable | None,
-    has_noise_floor: bool,
-) -> list[str]:
-    """Each run's ids hash comes from its metadata or else its ids. Known hashes that
-    differ from the reference's raise PairingError; an unknown one warns."""
-    reference = _ids_hash(reference_meta, reference_ids)
-    warnings = _pair(reference, _ids_hash(candidate_meta, candidate_ids), "candidate")
-    if has_noise_floor:
-        warnings += _pair(reference, _ids_hash(None, noise_floor_ids), "noise-floor rerun")
-    return warnings
-
-
-def _ids_hash(meta: dict | None, ids: Iterable | None) -> str | None:
-    return (meta or {}).get(PROMPT_IDS_KEY) or (prompt_ids_sha256(ids) if ids is not None else None)
-
-
-def _pair(reference: str | None, other: str | None, role: str) -> list[str]:
-    if reference is None or other is None:
-        if role == "candidate":
-            return [
-                (
-                    "Pairing not verified; scores assumed to be in the same order. "
-                    f"Pass example ids or {PROMPT_IDS_KEY} in the metadata for both runs."
-                )
-            ]
-        return [
-            (
-                f"Rerun pairing not verified; {role} scores assumed to be in the reference's order. "
-                "Pass noise_floor_ids with the reference's ids."
-            )
-        ]
-    if reference != other:
-        raise PairingError(
-            f"{PROMPT_IDS_KEY} differs ({reference!r} vs {other!r}): "
-            f"reference and {role} were not run on the same prompts in the same order."
-        )
-    return []
 
 
 def _compare_metadata(

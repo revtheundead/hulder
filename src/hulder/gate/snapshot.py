@@ -7,7 +7,7 @@ from pathlib import Path
 
 import numpy as np
 
-from hulder.gate.check import PROMPT_IDS_KEY, prompt_ids_sha256
+from hulder.gate.pairing import PROMPT_IDS_KEY, prompt_ids_sha256
 
 
 @dataclass(frozen=True)
