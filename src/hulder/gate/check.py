@@ -356,13 +356,13 @@ def _compare_metadata(
 
 def _fpr(benign_scores: np.ndarray, threshold: float) -> Estimate:
     k, n, ci = _flag_rate(benign_scores, threshold)
-    return Estimate(k / n, ci.low, ci.high)
+    return Estimate(k / n, float(ci.low), float(ci.high))
 
 
 def _fnr(attack_scores: np.ndarray, threshold: float) -> Estimate:
     """The share of attacks not flagged: 1 minus their flag rate, CI bounds swapped."""
     k, n, ci = _flag_rate(attack_scores, threshold)
-    return Estimate(1 - k / n, 1 - ci.high, 1 - ci.low)
+    return Estimate(1 - k / n, float(1 - ci.high), float(1 - ci.low))
 
 
 def _auroc_estimate(value: float, resampled: np.ndarray) -> Estimate:
