@@ -15,7 +15,3 @@ __all__ = [
     "check_snapshots",
     "prompt_ids_sha256",
 ]
-
-
-def main() -> None:
-    print("Hello from hulder!")
