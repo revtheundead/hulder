@@ -1,10 +1,11 @@
 import json
 from importlib.metadata import version
+from importlib.resources import files
 from pathlib import Path
 
 import numpy as np
 import pytest
-from synthetic import unchanged_scorer
+from synthetic import missed_attack_shift_for, unchanged_scorer
 
 import hulder
 from hulder import cli
@@ -44,9 +45,16 @@ def _run(tmp_path, reference, candidate, labels, rerun=None, extra=(), candidate
     return cli.run(args)
 
 
-@pytest.mark.parametrize(("candidate_fpr", "code"), [(None, 0), (0.05, 10)])
-def test_the_exit_code_is_the_verdicts(tmp_path, capsys, candidate_fpr, code):
-    data = unchanged_scorer(seed=0, candidate_fpr=candidate_fpr)
+@pytest.mark.parametrize(
+    ("change", "code"),
+    [
+        ({}, 0),
+        ({"candidate_fpr": 0.05}, 10),
+        ({"missed_attack_shift": missed_attack_shift_for(-0.05)}, 11),
+    ],
+)
+def test_the_exit_code_is_the_verdicts(tmp_path, capsys, change, code):
+    data = unchanged_scorer(seed=0, **change)
     args = ["--threshold", str(data.threshold)]
     assert _run(tmp_path, data.reference, data.candidate, data.labels, extra=args) == code
 
@@ -237,3 +245,52 @@ def test_a_damaged_file_exits_1_with_a_plain_message(tmp_path, capsys, kind, rol
     assert err.startswith(f"hulder: error: {args[role]}: ")
     assert "allow_pickle" not in err
     assert len(err.splitlines()) == 1
+
+
+def test_every_warning_is_printed_in_the_human_output_and_the_json(tmp_path, capsys):
+    # An undeclared metadata difference and a candidate identical to the reference: two warnings.
+    reference, labels = _benign_then_attack(1191, 11)
+    expected = hulder.check_snapshots(
+        hulder.Snapshot.load(_write(tmp_path, "reference", reference, labels)),
+        hulder.Snapshot.load(
+            _write(tmp_path, "candidate", reference, labels, {**_META, "quantization": "awq", "team": "b"})
+        ),
+        threshold=0.5,
+        target_fpr=0.01,
+    ).warnings
+    assert len(expected) == 2
+    _run(tmp_path, reference, reference, labels, candidate_meta={"team": "b"})
+    human = capsys.readouterr().out
+    _run(tmp_path, reference, reference, labels, candidate_meta={"team": "b"}, extra=["--json"])
+    as_json = json.loads(capsys.readouterr().out)
+    for warning in expected:
+        assert f"  - {warning}" in human
+    assert tuple(as_json["report"]["warnings"]) == expected
+
+
+def test_the_same_file_as_reference_and_candidate_passes_with_a_warning(tmp_path, capsys):
+    reference, labels = _benign_then_attack(1191, 11)
+    path = _write(tmp_path, "reference", reference, labels)
+    assert (
+        cli.run(["check", "--reference", path, "--candidate", path, "--threshold", "0.5", "--target-fpr", "0.01"]) == 0
+    )
+    assert "candidate is bit-identical to the reference" in capsys.readouterr().out
+
+
+def test_a_probe_for_another_layer_exits_1_with_a_pairing_error(tmp_path, capsys):
+    data = files("hulder.data")
+    probe = hulder.Probe.load(Path(str(data / "probe_demo.npz")))
+    wrong_layer = tmp_path / "probe_layer_10.npz"
+    hulder.Probe(probe.weights, probe.bias, probe.mean, probe.std, {**probe.metadata, "layer": 10}).save(wrong_layer)
+    snapshots = [str(data / name) for name in ("demo_fp16.npz", "demo_awq.npz")]
+    args = ["check", "--probe", str(wrong_layer), "--reference", snapshots[0], "--candidate", snapshots[1]]
+    assert cli.run(args) == 1
+    assert "pairing error: The probe's layer is 10 but the reference's is 20" in capsys.readouterr().err
+
+
+def test_quickstart_exits_1_when_a_bundled_check_gives_an_unexpected_verdict(capsys, monkeypatch):
+    # The bundled data is fixed, so another verdict means a broken install.
+    title, candidate, rerun, _ = cli.QUICKSTART[0]
+    monkeypatch.setattr(cli, "QUICKSTART", ((title, candidate, rerun, hulder.Verdict.THRESHOLD_STALE),))
+    assert cli.run(["quickstart"]) == 1
+    assert "did not give its expected verdict" in capsys.readouterr().err
