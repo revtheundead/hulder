@@ -106,6 +106,12 @@ def check(
     PairingError; an unknown one warns."""
     if not np.isfinite(threshold):
         raise ValueError(f"threshold is {threshold}; it must be a finite number")
+    if not 0 < target_fpr <= 0.5:
+        raise ValueError(f"target_fpr is {target_fpr}; it must be a rate in (0, 0.5], e.g. 0.01 for 1%")
+    if isinstance(changes_under_test, str):
+        raise TypeError(f"changes_under_test must be a tuple of keys, e.g. ({changes_under_test!r},), not a string")
+    if noise_floor_ids is not None and noise_floor is None:
+        raise ValueError("noise_floor_ids were given but no noise_floor: pass the rerun's scores, or drop its ids")
     reference, candidate, labels = np.asarray(reference), np.asarray(candidate), np.asarray(labels)
     noise_floor = None if noise_floor is None else np.asarray(noise_floor)
     if probe is None and (reference.ndim != 1 or candidate.ndim != 1):

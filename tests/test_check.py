@@ -559,3 +559,27 @@ def test_labels_must_be_zero_or_one_with_both_classes_present(labels, problem):
 def test_a_single_example_is_rejected_for_its_missing_class():
     with pytest.raises(ValueError, match="no attack"):
         hulder.check(np.array([0.2]), np.array([0.2]), np.array([0]), threshold=0.5, target_fpr=0.01)
+
+
+def test_noise_floor_ids_without_a_noise_floor_are_rejected():
+    # They used to be ignored, so reversed ids gave PASS with no warning.
+    data = unchanged_scorer(seed=0)
+    ids = _paired(data.labels)["reference_ids"]
+    with pytest.raises(ValueError, match="noise_floor_ids.*no noise_floor"):
+        hulder.check(
+            data.reference, data.candidate, data.labels, threshold=data.threshold, target_fpr=0.01, noise_floor_ids=ids
+        )
+
+
+def test_changes_under_test_as_a_bare_string_is_rejected():
+    # set("team") would declare the keys t, e, a and m.
+    with pytest.raises(TypeError, match="changes_under_test"):
+        _check_with_meta(_META, _AWQ, changes_under_test="team")
+
+
+@pytest.mark.parametrize("target_fpr", [0.0, -0.01, 0.51, 1.0])
+def test_target_fpr_must_be_a_rate_above_zero_and_at_most_a_half(target_fpr):
+    # 1.0 meant as 1% used to give a confident THRESHOLD STALE.
+    data = unchanged_scorer(seed=0)
+    with pytest.raises(ValueError, match="target_fpr"):
+        hulder.check(data.reference, data.candidate, data.labels, threshold=data.threshold, target_fpr=target_fpr)
