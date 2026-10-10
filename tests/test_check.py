@@ -203,8 +203,9 @@ def test_a_rerun_identical_to_the_reference_leaves_the_floor_unmeasured_and_warn
 
 def _determinism_case():
     # Both bootstraps run: the ΔAUROC one and, with a rerun, the noise floor's. Report
-    # carries no CI bounds yet, only the verdict and shift_exceeds_noise_floor that they
-    # decide, so an unseeded bootstrap passes these tests unless a draw tips a decision.
+    # carries the ΔAUROC and AUROC bounds, so unseeding that bootstrap fails these tests
+    # (checked 2026-10-10). The floor's bootstrap shows only through
+    # shift_exceeds_noise_floor, so unseeding it still passes unless a draw tips that.
     data = unchanged_scorer(seed=3, noise=FRESH_ENGINE_NOISE, p_zero=FRESH_ENGINE_P_ZERO, candidate_fpr=0.015)
     rerun = unchanged_scorer(seed=3, noise=FRESH_ENGINE_NOISE, p_zero=FRESH_ENGINE_P_ZERO, noise_seed=1).candidate
     return hulder.check(
