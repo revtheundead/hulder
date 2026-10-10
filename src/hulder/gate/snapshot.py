@@ -7,6 +7,7 @@ from pathlib import Path
 
 import numpy as np
 
+from hulder.gate.npz import read_npz
 from hulder.gate.pairing import PROMPT_IDS_KEY, prompt_ids_sha256
 from hulder.gate.validate import example_ids, require_binary_labels
 
@@ -61,32 +62,31 @@ class Snapshot:
 
     @classmethod
     def load(cls, path: str | Path) -> "Snapshot":
-        with np.load(path, allow_pickle=False) as f:
-            metadata = json.loads(str(f["metadata"]))
-            if "format_version" not in metadata:
-                raise ValueError(f"{path}: no format_version in its metadata, so it isn't a hulder snapshot")
-            if metadata["format_version"] != cls.FORMAT_VERSION:
-                raise ValueError(
-                    f"{path}: snapshot file format {metadata['format_version']}, this hulder reads {cls.FORMAT_VERSION}"
-                )
-            arrays = {k: f[k] for k in ("ids", "labels", "scores", "activations") if k in f}
-            if str(f["content_sha256"]) != _content_sha256(arrays, metadata):
-                raise ValueError(
-                    f"{path}: the arrays or metadata don't match the file's content_sha256; the file is damaged"
-                )
-            ids = f["ids"]
-            if PROMPT_IDS_KEY not in metadata:
-                raise ValueError(f"{path}: no {PROMPT_IDS_KEY} in its metadata, which save always writes")
-            if metadata[PROMPT_IDS_KEY] != prompt_ids_sha256(ids):
-                raise ValueError(f"{path}: the ids don't match the file's {PROMPT_IDS_KEY}; the file was altered")
-            del metadata["format_version"]
-            return cls(
-                ids=ids,
-                labels=f["labels"],
-                scores=f.get("scores"),
-                activations=f.get("activations"),
-                metadata=metadata,
+        stored, metadata = read_npz(path, "snapshot", ("content_sha256", "ids", "labels"))
+        if "format_version" not in metadata:
+            raise ValueError(f"{path}: no format_version in its metadata, so it isn't a hulder snapshot")
+        if metadata["format_version"] != cls.FORMAT_VERSION:
+            raise ValueError(
+                f"{path}: snapshot file format {metadata['format_version']}, this hulder reads {cls.FORMAT_VERSION}"
             )
+        arrays = {k: stored[k] for k in ("ids", "labels", "scores", "activations") if k in stored}
+        if str(stored["content_sha256"]) != _content_sha256(arrays, metadata):
+            raise ValueError(
+                f"{path}: the arrays or metadata don't match the file's content_sha256; the file is damaged"
+            )
+        ids = arrays["ids"]
+        if PROMPT_IDS_KEY not in metadata:
+            raise ValueError(f"{path}: no {PROMPT_IDS_KEY} in its metadata, which save always writes")
+        if metadata[PROMPT_IDS_KEY] != prompt_ids_sha256(ids):
+            raise ValueError(f"{path}: the ids don't match the file's {PROMPT_IDS_KEY}; the file was altered")
+        del metadata["format_version"]
+        return cls(
+            ids=ids,
+            labels=arrays["labels"],
+            scores=arrays.get("scores"),
+            activations=arrays.get("activations"),
+            metadata=metadata,
+        )
 
 
 def _content_sha256(arrays: dict[str, np.ndarray], metadata: dict) -> str:

@@ -7,6 +7,8 @@ from pathlib import Path
 import numpy as np
 from scipy.special import expit
 
+from hulder.gate.npz import read_npz
+
 
 @dataclass(frozen=True)
 class Probe:
@@ -33,20 +35,19 @@ class Probe:
 
     @classmethod
     def load(cls, path: str | Path) -> "Probe":
-        with np.load(path, allow_pickle=False) as f:
-            metadata = json.loads(str(f["metadata"]))
-            if "format_version" not in metadata:
-                raise ValueError(f"{path}: no format_version in its metadata, so it isn't a hulder probe")
-            version = metadata.pop("format_version")
-            if version != cls.FORMAT_VERSION:
-                raise ValueError(f"probe file format {version}, this hulder reads {cls.FORMAT_VERSION}")
-            return cls(
-                weights=f["weights"],
-                bias=float(f["bias"]),
-                mean=f["mean"],
-                std=f["std"],
-                metadata=metadata,
-            )
+        arrays, metadata = read_npz(path, "probe", ("weights", "bias", "mean", "std"))
+        if "format_version" not in metadata:
+            raise ValueError(f"{path}: no format_version in its metadata, so it isn't a hulder probe")
+        version = metadata.pop("format_version")
+        if version != cls.FORMAT_VERSION:
+            raise ValueError(f"{path}: probe file format {version}, this hulder reads {cls.FORMAT_VERSION}")
+        return cls(
+            weights=arrays["weights"],
+            bias=float(arrays["bias"]),
+            mean=arrays["mean"],
+            std=arrays["std"],
+            metadata=metadata,
+        )
 
 
 def apply_probe(probe: Probe, activations: np.ndarray) -> np.ndarray:

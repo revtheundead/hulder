@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -168,3 +169,35 @@ def test_quickstart_gives_pass_for_the_rerun_and_inconclusive_with_the_shift_for
     assert "Verdict: PASS" in first
     assert "Verdict: INCONCLUSIVE" in second
     assert second.splitlines()[2].startswith("Scores shifted beyond the noise floor: 11 decisions flipped vs 0")
+
+
+def _damaged(tmp_path, kind):
+    """A file that isn't a readable hulder npz, in one of the ways a real one gets damaged."""
+    path = tmp_path / f"{kind}.npz"
+    if kind == "text":
+        path.write_text("ids,labels,scores\n")
+    elif kind == "empty":
+        path.write_bytes(b"")
+    elif kind == "truncated":
+        reference, labels = _benign_then_attack(1191, 11)
+        whole = Path(_write(tmp_path, "whole", reference, labels)).read_bytes()
+        path.write_bytes(whole[: len(whole) // 2])
+    elif kind == "no_metadata":
+        np.savez(path, ids=np.array(["a"]))
+    elif kind == "object_array":
+        np.savez(path, metadata=np.array([{"format_version": 2}], dtype=object), allow_pickle=True)
+    return str(path)
+
+
+@pytest.mark.parametrize("kind", ["text", "empty", "truncated", "no_metadata", "object_array"])
+@pytest.mark.parametrize("role", ["--reference", "--probe"])
+def test_a_damaged_file_exits_1_with_a_plain_message(tmp_path, capsys, kind, role):
+    reference, labels = _benign_then_attack(1191, 11)
+    good = _write(tmp_path, "reference", reference, labels)
+    args = {"--reference": good, "--candidate": good, "--threshold": "0.5", "--target-fpr": "0.01"}
+    args[role] = _damaged(tmp_path, kind)
+    assert cli.run(["check", *[x for pair in args.items() for x in pair]]) == 1
+    err = capsys.readouterr().err
+    assert err.startswith(f"hulder: error: {args[role]}: ")
+    assert "allow_pickle" not in err
+    assert len(err.splitlines()) == 1
