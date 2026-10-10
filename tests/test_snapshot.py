@@ -18,6 +18,13 @@ def _snapshot(**kwargs):
     return hulder.Snapshot(**{**defaults, **kwargs})
 
 
+def _rewrite_consistently(path, arrays):
+    """Write arrays back with a content hash that matches them, as a deliberate edit would."""
+    content = {k: arrays[k] for k in ("ids", "labels", "scores", "activations") if k in arrays}
+    arrays["content_sha256"] = np.array(_content_sha256(content, json.loads(str(arrays["metadata"]))))
+    np.savez(path, **arrays)
+
+
 def test_snapshot_file_round_trip_keeps_ids_labels_activations_and_metadata(tmp_path):
     snapshot = _snapshot()
     snapshot.save(tmp_path / "s.npz")
@@ -50,9 +57,7 @@ def test_a_snapshot_whose_ids_no_longer_match_their_stored_hash_fails_to_load(tm
         arrays = dict(f)
     # Consistent arrays, so only the ids' hash in the metadata disagrees.
     arrays["ids"] = arrays["ids"][::-1]
-    content = {k: arrays[k] for k in ("ids", "labels", "activations")}
-    arrays["content_sha256"] = np.array(_content_sha256(content))
-    np.savez(tmp_path / "s.npz", **arrays)
+    _rewrite_consistently(tmp_path / "s.npz", arrays)
     with pytest.raises(ValueError, match="prompt_ids_sha256"):
         hulder.Snapshot.load(tmp_path / "s.npz")
 
@@ -106,3 +111,38 @@ def test_save_rejects_labels_the_int8_cast_would_change(tmp_path, labels, proble
     # [0.7, 257] used to be written as [0, 1].
     with pytest.raises(ValueError, match=problem):
         _snapshot(labels=np.array(labels)).save(tmp_path / "s.npz")
+
+
+def _edit_metadata(path, edit):
+    with np.load(path, allow_pickle=False) as f:
+        arrays = dict(f)
+    metadata = json.loads(str(arrays["metadata"]))
+    edit(metadata)
+    arrays["metadata"] = np.array(json.dumps(metadata))
+    return arrays
+
+
+def test_a_snapshot_whose_metadata_was_edited_fails_to_load(tmp_path):
+    # Metadata decides which differences are changes under test, so it is covered too.
+    _snapshot().save(tmp_path / "s.npz")
+    np.savez(tmp_path / "s.npz", **_edit_metadata(tmp_path / "s.npz", lambda m: m.update(quantization="awq")))
+    with pytest.raises(ValueError, match="content_sha256"):
+        hulder.Snapshot.load(tmp_path / "s.npz")
+
+
+def test_a_snapshot_without_its_ids_hash_fails_to_load(tmp_path):
+    # save always writes it, so a file without it was edited, here to hide reversed ids.
+    _snapshot().save(tmp_path / "s.npz")
+    arrays = _edit_metadata(tmp_path / "s.npz", lambda m: m.pop("prompt_ids_sha256"))
+    arrays["ids"] = arrays["ids"][::-1]
+    _rewrite_consistently(tmp_path / "s.npz", arrays)
+    with pytest.raises(ValueError, match="no prompt_ids_sha256"):
+        hulder.Snapshot.load(tmp_path / "s.npz")
+
+
+def test_a_file_without_a_format_version_is_not_a_snapshot(tmp_path):
+    _snapshot().save(tmp_path / "s.npz")
+    arrays = _edit_metadata(tmp_path / "s.npz", lambda m: m.pop("format_version"))
+    _rewrite_consistently(tmp_path / "s.npz", arrays)
+    with pytest.raises(ValueError, match="format_version"):
+        hulder.Snapshot.load(tmp_path / "s.npz")

@@ -22,7 +22,8 @@ class Snapshot:
     activations: np.ndarray | None = None
     metadata: dict = field(default_factory=dict)
 
-    FORMAT_VERSION = 1
+    # 2: the content hash covers the metadata too (2026-10-10).
+    FORMAT_VERSION = 2
 
     def __post_init__(self) -> None:
         if (self.scores is None) == (self.activations is None):
@@ -50,10 +51,11 @@ class Snapshot:
             **({"scores": self.scores} if self.scores is not None else {"activations": self.activations}),
         }
         metadata = {"format_version": self.FORMAT_VERSION, **self.metadata, PROMPT_IDS_KEY: prompt_ids_sha256(self.ids)}
+        text = json.dumps(metadata)
         np.savez(
             path,
-            metadata=np.array(json.dumps(metadata)),
-            content_sha256=np.array(_content_sha256(arrays)),
+            metadata=np.array(text),
+            content_sha256=np.array(_content_sha256(arrays, json.loads(text))),
             **arrays,
         )
 
@@ -61,15 +63,23 @@ class Snapshot:
     def load(cls, path: str | Path) -> "Snapshot":
         with np.load(path, allow_pickle=False) as f:
             metadata = json.loads(str(f["metadata"]))
-            version = metadata.pop("format_version")
-            if version != cls.FORMAT_VERSION:
-                raise ValueError(f"snapshot file format {version}, this hulder reads {cls.FORMAT_VERSION}")
+            if "format_version" not in metadata:
+                raise ValueError(f"{path}: no format_version in its metadata, so it isn't a hulder snapshot")
+            if metadata["format_version"] != cls.FORMAT_VERSION:
+                raise ValueError(
+                    f"{path}: snapshot file format {metadata['format_version']}, this hulder reads {cls.FORMAT_VERSION}"
+                )
             arrays = {k: f[k] for k in ("ids", "labels", "scores", "activations") if k in f}
-            if str(f["content_sha256"]) != _content_sha256(arrays):
-                raise ValueError(f"{path}: the arrays don't match the file's content_sha256; the file is damaged")
+            if str(f["content_sha256"]) != _content_sha256(arrays, metadata):
+                raise ValueError(
+                    f"{path}: the arrays or metadata don't match the file's content_sha256; the file is damaged"
+                )
             ids = f["ids"]
-            if PROMPT_IDS_KEY in metadata and metadata[PROMPT_IDS_KEY] != prompt_ids_sha256(ids):
+            if PROMPT_IDS_KEY not in metadata:
+                raise ValueError(f"{path}: no {PROMPT_IDS_KEY} in its metadata, which save always writes")
+            if metadata[PROMPT_IDS_KEY] != prompt_ids_sha256(ids):
                 raise ValueError(f"{path}: the ids don't match the file's {PROMPT_IDS_KEY}; the file was altered")
+            del metadata["format_version"]
             return cls(
                 ids=ids,
                 labels=f["labels"],
@@ -79,11 +89,13 @@ class Snapshot:
             )
 
 
-def _content_sha256(arrays: dict[str, np.ndarray]) -> str:
-    """Hash of each array's name, dtype, shape and bytes, in name order."""
+def _content_sha256(arrays: dict[str, np.ndarray], metadata: dict) -> str:
+    """Hash of each array's name, dtype, shape and bytes, in name order, then the metadata
+    as canonical JSON (sorted keys, no spaces)."""
     h = hashlib.sha256()
     for name in sorted(arrays):
         a = np.ascontiguousarray(arrays[name])
         h.update(f"{name}:{a.dtype.str}:{a.shape};".encode())
         h.update(a.tobytes())
+    h.update(b"metadata;" + json.dumps(metadata, sort_keys=True, separators=(",", ":")).encode())
     return h.hexdigest()
