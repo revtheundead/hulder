@@ -3,6 +3,8 @@
 from collections import Counter
 from collections.abc import Iterable
 
+import numpy as np
+
 
 def example_ids(ids: Iterable, n: int, role: str) -> list[str]:
     """The ids as strings, as prompt_ids_sha256 hashes them. One per example, none repeated."""
@@ -16,3 +18,15 @@ def example_ids(ids: Iterable, n: int, role: str) -> list[str]:
             "or pairing can't tell examples apart"
         )
     return ids
+
+
+def require_binary_labels(labels: np.ndarray) -> None:
+    """0 is benign and 1 is attack, and both must be present, since FPR needs benign
+    examples and FNR and AUROC need attacks."""
+    labels = np.asarray(labels)
+    other = sorted(set(np.unique(labels).tolist()) - {0, 1})
+    if other:
+        raise ValueError(f"labels must be 0 (benign) or 1 (attack); found {', '.join(map(str, other[:5]))}")
+    for value, name in ((0, "benign"), (1, "attack")):
+        if not (labels == value).any():
+            raise ValueError(f"labels have no {name} ({value}) examples; the gate needs both classes")

@@ -8,7 +8,7 @@ from pathlib import Path
 import numpy as np
 
 from hulder.gate.pairing import PROMPT_IDS_KEY, prompt_ids_sha256
-from hulder.gate.validate import example_ids
+from hulder.gate.validate import example_ids, require_binary_labels
 
 
 @dataclass(frozen=True)
@@ -43,6 +43,7 @@ class Snapshot:
     def save(self, path: str | Path) -> None:
         """Write an .npz of plain arrays plus JSON metadata, with the ids' hash for pairing
         and a content hash that load verifies. Never pickled, so safe to share."""
+        require_binary_labels(self.labels)  # before the int8 cast, which would turn 0.7 into 0
         arrays = {
             "ids": np.asarray(self.ids, dtype=str),
             "labels": np.asarray(self.labels, dtype=np.int8),

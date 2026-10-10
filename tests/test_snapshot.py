@@ -97,3 +97,12 @@ def test_a_snapshots_arrays_must_describe_the_same_examples(kwargs, match):
     # ids 3, labels 2 and scores 4 used to save and load cleanly.
     with pytest.raises(ValueError, match=match):
         _snapshot(**kwargs)
+
+
+@pytest.mark.parametrize(
+    ("labels", "problem"), [([0.7, 1, 0], "found 0.7"), ([0, 257, 1], "found 257"), ([0, 0, 0], "no attack")]
+)
+def test_save_rejects_labels_the_int8_cast_would_change(tmp_path, labels, problem):
+    # [0.7, 257] used to be written as [0, 1].
+    with pytest.raises(ValueError, match=problem):
+        _snapshot(labels=np.array(labels)).save(tmp_path / "s.npz")

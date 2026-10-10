@@ -10,7 +10,7 @@ from scipy.stats import beta, binomtest, rankdata
 
 from hulder.gate.pairing import PROMPT_IDS_KEY, check_pairing
 from hulder.gate.probe import Probe, probe_logits
-from hulder.gate.validate import example_ids
+from hulder.gate.validate import example_ids, require_binary_labels
 
 N_BOOTSTRAP = 1000
 # The verdict rule's tolerance bands. FPR is judged against multiples of target_fpr, FNR against
@@ -118,6 +118,7 @@ def check(
     n = len(reference)
     if labels.shape != (n,):
         raise ValueError(f"labels have shape {labels.shape} for {n} examples; pass one label per example")
+    require_binary_labels(labels)
     reference_ids, candidate_ids, noise_floor_ids = (
         None if ids is None else example_ids(ids, n, role)
         for ids, role in (

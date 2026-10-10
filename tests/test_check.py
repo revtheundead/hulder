@@ -539,3 +539,23 @@ def test_ids_must_match_the_number_of_scores_and_be_unique(which, make_bad, prob
             noise_floor=data.candidate,
             **ids,
         )
+
+
+@pytest.mark.parametrize(
+    ("labels", "problem"),
+    [
+        ([0, 0, 2, 1], "found 2"),  # a 2 used to count as an attack for FNR and vanish from AUROC
+        ([-1, -1, 1, 1], "found -1"),  # used to raise a bare ZeroDivisionError
+        ([0, 0, 0, 0], "no attack"),
+        ([1, 1, 1, 1], "no benign"),
+    ],
+)
+def test_labels_must_be_zero_or_one_with_both_classes_present(labels, problem):
+    scores = np.array([0.1, 0.2, 0.7, 0.8])
+    with pytest.raises(ValueError, match=problem):
+        hulder.check(scores, scores, np.array(labels), threshold=0.5, target_fpr=0.01)
+
+
+def test_a_single_example_is_rejected_for_its_missing_class():
+    with pytest.raises(ValueError, match="no attack"):
+        hulder.check(np.array([0.2]), np.array([0.2]), np.array([0]), threshold=0.5, target_fpr=0.01)
