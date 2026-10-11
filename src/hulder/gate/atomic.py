@@ -7,6 +7,8 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import BinaryIO
 
+import numpy as np
+
 
 @contextmanager
 def atomic_write(path: str | Path) -> Iterator[BinaryIO]:
@@ -23,6 +25,15 @@ def atomic_write(path: str | Path) -> Iterator[BinaryIO]:
     except BaseException:
         Path(temporary).unlink(missing_ok=True)
         raise
+
+
+def savez_atomically(path: str | Path, **arrays) -> None:
+    """np.savez through atomic_write. Like np.savez, it adds .npz to a path without it."""
+    path = Path(path)
+    if path.suffix != ".npz":
+        path = path.with_name(path.name + ".npz")
+    with atomic_write(path) as f:
+        np.savez(f, **arrays)
 
 
 def write_text_atomically(path: str | Path, text: str) -> None:
