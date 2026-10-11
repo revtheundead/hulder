@@ -2,13 +2,16 @@
 snapshots in. CPU only; the real run is recorded in docs/results/phase1/live_demo/."""
 
 import json
+import os
 import shutil
 import subprocess
 import sys
+from dataclasses import dataclass
 from importlib.resources import files
 from pathlib import Path
 from types import SimpleNamespace
 
+import numpy as np
 import pytest
 
 import hulder
@@ -233,6 +236,70 @@ def test_a_capture_subprocess_that_raises_exits_non_zero(tmp_path, monkeypatch):
     monkeypatch.setattr(demo, "capture_run", no_gpu)
     with pytest.raises(RuntimeError, match="CUDA"):
         demo.main(["--capture", "fp16", "--out", str(tmp_path)])
+
+
+@pytest.fixture
+def fake_engine(monkeypatch):
+    """capture_run's vLLM, torch and Hugging Face imports replaced, so it runs without the
+    [vllm] extra: the 'engine' returns zero activations captured on a fake GPU."""
+
+    @dataclass(frozen=True)
+    class CaptureConfig:
+        model: str
+        revision: str
+        layers: tuple
+        positions: tuple
+        system_prompt: str
+        quantization: str | None = None
+        dtype: str = "float16"
+        batch_size: int = 8
+        enable_thinking: bool | None = None
+
+    def capture(texts, cfg):
+        return SimpleNamespace(
+            activations=np.zeros((len(texts), 1, 1, 4), dtype=np.float16),
+            position_tokens=[["\n"]] * len(texts),
+            gpu="Fake RTX",
+            enable_thinking=None,
+        )
+
+    fakes = {
+        "torch": SimpleNamespace(version=SimpleNamespace(cuda="13.0")),
+        "hulder.capture.hidden_states": SimpleNamespace(CaptureConfig=CaptureConfig, capture=capture),
+        "hulder.capture.base_model": SimpleNamespace(
+            base_model_for=lambda model, revision, quantization: (model, None)
+        ),
+    }
+    for name, module in fakes.items():
+        monkeypatch.setitem(sys.modules, name, module)
+    monkeypatch.setattr(demo, "version", lambda package: "0.30.0")
+
+
+def test_capture_run_saves_the_snapshot_and_its_manifest(tmp_path, fake_engine):
+    demo.capture_run("awq", tmp_path)
+    snapshot = hulder.Snapshot.load(tmp_path / "awq.npz")
+    assert snapshot.ids.tolist() == [r["id"] for r in demo.prompts()]
+    assert (snapshot.metadata["quantization"], snapshot.metadata["gpu"]) == ("awq", "Fake RTX")
+    manifest = json.loads((tmp_path / "awq.json").read_text())
+    assert manifest["capture_config"]["model"] == demo.AWQ["model"]
+    assert manifest["prompts_sha256"] == demo.prompts_sha256()
+
+
+def test_a_capture_interrupted_before_its_manifest_lands_leaves_the_old_one_whole(tmp_path, fake_engine, monkeypatch):
+    # The manifest is written atomically like the snapshot, so a killed child never leaves half a .json.
+    (tmp_path / "awq.json").write_text('{"old": true}')
+    replace = os.replace
+
+    def crash_on_json(src, dst):
+        if str(dst).endswith(".json"):
+            raise OSError("interrupted before the rename")
+        replace(src, dst)
+
+    monkeypatch.setattr("hulder.gate.atomic.os.replace", crash_on_json)
+    with pytest.raises(OSError, match="interrupted"):
+        demo.capture_run("awq", tmp_path)
+    assert json.loads((tmp_path / "awq.json").read_text()) == {"old": True}
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["awq.json", "awq.npz"]
 
 
 def test_importing_the_demo_loads_no_vllm_or_torch():
