@@ -1,8 +1,11 @@
 """What the installed distribution declares: its licence, and the bundled data's attribution."""
 
+import json
 import re
 from importlib.metadata import metadata, requires
 from importlib.resources import files
+
+import hulder
 
 
 def test_hulder_is_licensed_apache_2():
@@ -22,3 +25,12 @@ def test_the_vllm_extra_declares_what_hulder_capture_imports():
     ]
     names = {re.split(r"[<>=!~ ]", r, maxsplit=1)[0].lower() for r in vllm_extra}
     assert {"vllm", "pyyaml", "huggingface-hub"} <= names
+
+
+def test_the_bundled_prompts_are_the_demo_snapshots_examples_in_order():
+    data = files("hulder.data")
+    rows = [json.loads(line) for line in (data / "demo_prompts.jsonl").read_text().splitlines()]
+    reference = hulder.Snapshot.load(str(data / "demo_fp16.npz"))
+    assert [r["id"] for r in rows] == list(reference.ids)
+    assert [r["label"] for r in rows] == reference.labels.tolist()
+    assert all(r["text"].strip() for r in rows)
