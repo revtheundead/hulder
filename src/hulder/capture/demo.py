@@ -28,19 +28,19 @@ from pathlib import Path
 import numpy as np
 
 from hulder import cli
+from hulder.capture.metadata import snapshot_metadata
 from hulder.gate.atomic import write_text_atomically
 from hulder.gate.probe import Probe
 from hulder.gate.snapshot import Snapshot
 
 DATA = files("hulder.data")
-LAYER, POSITION = 20, -1
 # The configs of the bundled demo snapshots (experiments/phase1/probe/extract.py), extracting
 # only the probe's layer and position.
 FP16 = {
     "model": "Qwen/Qwen2.5-1.5B-Instruct",
     "revision": "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
-    "layers": (LAYER,),
-    "positions": (POSITION,),
+    "layers": (20,),
+    "positions": (-1,),
     "system_prompt": "You are a helpful assistant.",
 }
 AWQ = {
@@ -151,8 +151,8 @@ def capture_run(name: str, out: Path) -> None:
     Snapshot(
         ids=np.array([r["id"] for r in rows]),
         labels=np.array([r["label"] for r in rows]),
-        activations=captured.activations[:, 0, 0].astype(np.float16),
-        metadata=snapshot_metadata(cfg, base_model, captured.gpu, version("vllm")),
+        activations=captured.activations[:, 0, 0].astype(np.float16),  # the config's only layer and position
+        metadata=snapshot_metadata(cfg, captured, base_model, version("vllm")),
     ).save(out / f"{name}.npz")
     manifest = {
         "capture_config": asdict(cfg),
@@ -165,27 +165,6 @@ def capture_run(name: str, out: Path) -> None:
         "prompts_sha256": prompts_sha256(),
     }
     write_text_atomically(out / f"{name}.json", json.dumps(manifest, indent=2) + "\n")
-
-
-def snapshot_metadata(cfg, base_model: str, gpu: str, vllm_version: str) -> dict:
-    """The keys the bundled demo snapshots record (experiments/phase1/probe/snapshots.py),
-    plus gpu, and enable_thinking when pinned. Only keys comparable across runs."""
-    metadata = {
-        "base_model": base_model,
-        "model": cfg.model,
-        "revision": cfg.revision,
-        "quantization": cfg.quantization,
-        "dtype": cfg.dtype,
-        "batch_size": cfg.batch_size,
-        "vllm_version": vllm_version,
-        "system_prompt": cfg.system_prompt,
-        "layer": LAYER,
-        "position": POSITION,
-        "gpu": gpu,
-    }
-    if cfg.enable_thinking is not None:
-        metadata["enable_thinking"] = cfg.enable_thinking
-    return metadata
 
 
 def check(out: Path) -> int:

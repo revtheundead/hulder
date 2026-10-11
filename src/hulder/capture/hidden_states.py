@@ -49,7 +49,11 @@ class CaptureConfig:
 class Capture:
     activations: np.ndarray  # (n, layers, positions, d), float16, prompt order preserved
     position_tokens: list[list[str]]  # token string at each requested position, per prompt
-    gpu: str  # torch.cuda.get_device_name(); another GPU is another serving config
+    # torch.cuda.get_device_name() of the current device, the first visible one. Under tensor
+    # parallelism the other GPUs aren't recorded, a known limit. Another GPU is another serving
+    # config.
+    gpu: str
+    enable_thinking: bool | None  # as passed to the chat template, None for its default
 
 
 def capture(prompts: list[str], cfg: CaptureConfig) -> Capture:
@@ -94,4 +98,9 @@ def capture(prompts: list[str], cfg: CaptureConfig) -> Capture:
                 os.remove(path)
             if start // cfg.batch_size % 100 == 0:
                 print(f"captured {min(start + cfg.batch_size, len(convs))}/{len(convs)}", flush=True)
-    return Capture(activations=np.stack(acts), position_tokens=tokens, gpu=torch.cuda.get_device_name())
+    return Capture(
+        activations=np.stack(acts),
+        position_tokens=tokens,
+        gpu=torch.cuda.get_device_name(),
+        enable_thinking=cfg.enable_thinking,
+    )

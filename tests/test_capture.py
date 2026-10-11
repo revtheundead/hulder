@@ -56,14 +56,15 @@ def hidden_states(monkeypatch):
 
 
 def test_enable_thinking_is_passed_to_the_chat_template_when_pinned(hidden_states):
-    hidden_states.capture(["hi"], hidden_states.CaptureConfig(**CONFIG, enable_thinking=False))
+    result = hidden_states.capture(["hi"], hidden_states.CaptureConfig(**CONFIG, enable_thinking=False))
     assert FakeLLM.calls == [{"chat_template_kwargs": {"enable_thinking": False}}]
+    assert result.enable_thinking is False
 
 
 def test_enable_thinking_is_left_to_the_template_by_default(hidden_states):
     config = hidden_states.CaptureConfig(**CONFIG)
-    hidden_states.capture(["hi"], config)
-    assert config.enable_thinking is None
+    result = hidden_states.capture(["hi"], config)
+    assert config.enable_thinking is None and result.enable_thinking is None
     assert FakeLLM.calls == [{}]
 
 

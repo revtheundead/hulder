@@ -182,7 +182,8 @@ def test_the_demo_snapshot_metadata_is_the_bundled_snapshots_plus_the_gpu():
         expected = hulder.Snapshot.load(str(files("hulder.data") / bundled)).metadata
         expected = {k: v for k, v in expected.items() if k not in ("splits_sha256", "prompt_ids_sha256")}
         cfg = hidden_states.CaptureConfig(**demo.RUNS[name])
-        got = demo.snapshot_metadata(cfg, expected["base_model"], "Fake RTX", expected["vllm_version"])
+        captured = SimpleNamespace(gpu="Fake RTX", enable_thinking=None)
+        got = demo.snapshot_metadata(cfg, captured, expected["base_model"], expected["vllm_version"])
         assert got == {**expected, "gpu": "Fake RTX"}
 
 
