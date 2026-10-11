@@ -28,6 +28,7 @@ from pathlib import Path
 import numpy as np
 
 from hulder import cli
+from hulder.gate.atomic import write_text_atomically
 from hulder.gate.probe import Probe
 from hulder.gate.snapshot import Snapshot
 
@@ -50,6 +51,8 @@ AWQ = {
 }
 # The rerun is the fp16 config again in a fresh engine, for the noise floor.
 RUNS = {"fp16": FP16, "fp16_rerun": FP16, "awq": AWQ}
+# What the parent writes to --out besides the snapshots.
+REPORTS = ("check.txt", "check.json", "manifest.json")
 # What a snapshot in --out must match to be reused, besides this_machine() and the prompts.
 RESUME_KEYS = ("model", "revision", "quantization")
 
@@ -66,20 +69,22 @@ def main(argv: list[str] | None = None) -> int:
         capture_run(args.capture, out)
         return 0
     print(f"{shutil.disk_usage(out).free / 1e9:.0f} GB free in {out.resolve()}", flush=True)
+    for report in REPORTS:  # a previous run's, which this run replaces whatever happens
+        (out / report).unlink(missing_ok=True)
     try:
         todo = [name for name in RUNS if args.force or not reusable(out, name)]
     except ValueError as e:
-        print(f"hulder: error: {e}", file=sys.stderr)
-        return 1
+        return failed(out, "resume refused", str(e))
     for name in RUNS:
         if name not in todo:
             print(f"{name}: reusing {out / f'{name}.npz'}", flush=True)
             continue
         print(f"{name}: capturing {len(prompts())} prompts in a fresh vLLM engine", flush=True)
         command = [sys.executable, "-m", "hulder.capture.demo", "--capture", name, "--out", str(out)]
-        if subprocess.run(command, check=False).returncode != 0:
-            print(f"hulder: error: the {name} capture failed; its output is above", file=sys.stderr)
-            return 1
+        if (code := subprocess.run(command, check=False).returncode) != 0:
+            return failed(
+                out, "capture failed", f"the {name} capture failed with exit code {code}; its output is above"
+            )
     return check(out)
 
 
@@ -159,7 +164,7 @@ def capture_run(name: str, out: Path) -> None:
         "python": platform.python_version(),
         "prompts_sha256": prompts_sha256(),
     }
-    (out / f"{name}.json").write_text(json.dumps(manifest, indent=2) + "\n")
+    write_text_atomically(out / f"{name}.json", json.dumps(manifest, indent=2) + "\n")
 
 
 def snapshot_metadata(cfg, base_model: str, gpu: str, vllm_version: str) -> dict:
@@ -195,24 +200,43 @@ def check(out: Path) -> int:
         threshold, target_fpr = probe.metadata["threshold"], probe.metadata["target_fpr"]
         report = cli.check_files(files["reference"], files["candidate"], files["rerun"], probe, threshold, target_fpr)
     except cli.TOOL_FAILURES as e:
-        return cli.fail_tool(e)
+        cli.fail_tool(e)
+        print("If a snapshot in --out is damaged, rerun with --force to recapture it.", file=sys.stderr)
+        record(out, status="check failed", error=str(e), check_args=check_args)
+        return 1
     inputs = cli.report_inputs(*(str(path) for path in files.values()), probe_path)
     text = cli.render(report, inputs) + "\n"
-    (out / "check.txt").write_text(text)
-    (out / "check.json").write_text(cli.to_json(report, inputs) + "\n")
+    write_text_atomically(out / "check.txt", text)
+    write_text_atomically(out / "check.json", cli.to_json(report, inputs) + "\n")
     print(text, end="")
+    record(
+        out,
+        status="done",
+        check_args=check_args,
+        exit_code=report.verdict.exit_code,
+        verdict=report.verdict.value,
+    )
+    print(f"\nThe live verdict is {report.verdict.value}. Snapshots, report and manifest are in {out}.")
+    return 0
+
+
+def failed(out: Path, status: str, error: str) -> int:
+    print(f"hulder: error: {error}", file=sys.stderr)
+    record(out, status=status, error=error)
+    return 1
+
+
+def record(out: Path, status: str, **fields) -> None:
+    """manifest.json: how this run ended ("done" or what failed) and each capture's manifest."""
     manifest = {
         "command": "python -m hulder.capture.demo",
-        "check_args": check_args,
-        "exit_code": report.verdict.exit_code,
-        "verdict": report.verdict.value,
+        "status": status,
+        **fields,
         "runs": {
             name: json.loads((out / f"{name}.json").read_text()) for name in RUNS if (out / f"{name}.json").exists()
         },
     }
-    (out / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
-    print(f"\nThe live verdict is {report.verdict.value}. Snapshots, report and manifest are in {out}.")
-    return 0
+    write_text_atomically(out / "manifest.json", json.dumps(manifest, indent=2) + "\n")
 
 
 if __name__ == "__main__":

@@ -22,7 +22,7 @@ It needs an NVIDIA GPU of compute capability 7.5 or newer (Turing onwards, which
 2. **One check.** It runs the same code as `hulder check`, with the bundled demo probe, the AWQ capture as candidate and the rerun as noise floor, and prints the same report. `manifest.json` records the equivalent `hulder check` arguments.
 3. **A record.** `check.txt`, `check.json` and `manifest.json` (configs, GPU, package versions, timings, prompt hash) are written next to the snapshots.
 
-The command exits 0 whatever the verdict, since the point is to see it. Exit 1 means a capture or the check failed.
+The command exits 0 whatever the verdict, since the point is to see it. Exit 1 means a capture or the check failed, or a snapshot in `--out` couldn't be reused, and `manifest.json` records which as its `status`. Snapshots and reports are written whole or not at all, so an interrupted run never leaves half a file.
 
 ## What to expect
 

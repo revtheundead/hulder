@@ -53,7 +53,7 @@ def test_the_demo_captures_each_run_then_checks_and_records_the_verdict(tmp_path
     assert (tmp_path / "check.txt").read_text() in printed
     assert json.loads((tmp_path / "check.json").read_text())["report"]["verdict"] == "INCONCLUSIVE"
     manifest = json.loads((tmp_path / "manifest.json").read_text())
-    assert (manifest["verdict"], manifest["exit_code"]) == ("INCONCLUSIVE", 12)
+    assert (manifest["status"], manifest["verdict"], manifest["exit_code"]) == ("done", "INCONCLUSIVE", 12)
     assert set(manifest["runs"]) == {"fp16", "fp16_rerun", "awq"}
 
 
@@ -133,11 +133,46 @@ def test_a_damaged_snapshot_is_refused_before_anything_is_captured(tmp_path, cap
     assert len(fake_captures) == 3
 
 
-def test_a_failed_capture_exits_1_and_skips_the_check(tmp_path, capsys, monkeypatch):
+def test_a_failed_capture_exits_1_skips_the_check_and_records_the_failure(tmp_path, capsys, monkeypatch):
     monkeypatch.setattr(demo.subprocess, "run", lambda command, check=False: SimpleNamespace(returncode=1))
     assert demo.main(["--out", str(tmp_path)]) == 1
     assert "the fp16 capture failed" in capsys.readouterr().err
     assert not (tmp_path / "check.txt").exists()
+    manifest = json.loads((tmp_path / "manifest.json").read_text())
+    assert manifest["status"] == "capture failed" and "fp16" in manifest["error"]
+    assert "verdict" not in manifest
+
+
+def test_a_failed_check_exits_1_prints_its_error_once_and_records_the_failure(
+    tmp_path, capsys, fake_captures, monkeypatch
+):
+    # The awq 'capture' succeeds but its file is damaged, so the check itself fails.
+    demo.main(["--out", str(tmp_path)])
+    capsys.readouterr()
+    run = demo.subprocess.run
+
+    def damaging(command, check=False):
+        result = run(command, check)
+        awq = tmp_path / "awq.npz"
+        awq.write_bytes(awq.read_bytes()[:5000])
+        return result
+
+    monkeypatch.setattr(demo.subprocess, "run", damaging)
+    assert demo.main(["--out", str(tmp_path), "--force"]) == 1
+    err = capsys.readouterr().err
+    assert err.count("awq.npz") == 1 and "--force" in err
+    assert not (tmp_path / "check.txt").exists() and not (tmp_path / "check.json").exists()
+    manifest = json.loads((tmp_path / "manifest.json").read_text())
+    assert manifest["status"] == "check failed" and "awq.npz" in manifest["error"]
+    assert "verdict" not in manifest
+
+
+def test_a_refused_resume_replaces_the_previous_runs_report(tmp_path, capsys, fake_captures):
+    demo.main(["--out", str(tmp_path)])
+    (tmp_path / "awq.npz").write_bytes(b"")
+    assert demo.main(["--out", str(tmp_path)]) == 1
+    assert not (tmp_path / "check.txt").exists()
+    assert json.loads((tmp_path / "manifest.json").read_text())["status"] == "resume refused"
 
 
 @pytest.mark.vllm
