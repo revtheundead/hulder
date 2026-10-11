@@ -60,6 +60,7 @@ def test_a_failed_capture_exits_1_and_skips_the_check(tmp_path, capsys, monkeypa
     assert not (tmp_path / "check.txt").exists()
 
 
+@pytest.mark.vllm
 def test_the_demo_snapshot_metadata_is_the_bundled_snapshots_plus_the_gpu():
     hidden_states = pytest.importorskip("hulder.capture.hidden_states")
     for name, bundled in (("fp16", "demo_fp16.npz"), ("awq", "demo_awq.npz")):
