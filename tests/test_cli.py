@@ -294,3 +294,53 @@ def test_quickstart_exits_1_when_a_bundled_check_gives_an_unexpected_verdict(cap
     monkeypatch.setattr(cli, "QUICKSTART", ((title, candidate, rerun, hulder.Verdict.THRESHOLD_STALE),))
     assert cli.run(["quickstart"]) == 1
     assert "did not give its expected verdict" in capsys.readouterr().err
+
+
+def _probe_lacking(tmp_path, field):
+    """The demo probe saved without one array (weights, bias) or metadata key (threshold, target_fpr)."""
+    probe = hulder.Probe.load(Path(str(files("hulder.data") / "probe_demo.npz")))
+    path = tmp_path / f"probe_without_{field}.npz"
+    if field in ("weights", "bias"):
+        arrays = {"weights": probe.weights, "bias": probe.bias, "mean": probe.mean, "std": probe.std}
+        del arrays[field]
+        metadata = {"format_version": hulder.Probe.FORMAT_VERSION, **probe.metadata}
+        np.savez(path, metadata=np.array(json.dumps(metadata)), **arrays)
+    else:
+        metadata = {k: v for k, v in probe.metadata.items() if k != field}
+        hulder.Probe(probe.weights, probe.bias, probe.mean, probe.std, metadata).save(path)
+    return str(path)
+
+
+def _probe_check(probe, extra=()):
+    data = files("hulder.data")
+    snapshots = [str(data / name) for name in ("demo_fp16.npz", "demo_awq.npz")]
+    return cli.run(["check", "--probe", probe, "--reference", snapshots[0], "--candidate", snapshots[1], *extra])
+
+
+@pytest.mark.parametrize("field", ["weights", "bias"])
+@pytest.mark.parametrize("overrides", [(), ("--threshold", "0.4", "--target-fpr", "0.05")])
+def test_a_probe_file_without_an_array_exits_1_naming_it(tmp_path, capsys, field, overrides):
+    # No flag can supply a probe's weights or bias, so overrides change nothing.
+    probe = _probe_lacking(tmp_path, field)
+    assert _probe_check(probe, overrides) == 1
+    err = capsys.readouterr().err
+    assert err == f"hulder: error: {probe}: lacks the arrays {field}, so it isn't a hulder probe file\n"
+
+
+@pytest.mark.parametrize("field", ["threshold", "target_fpr"])
+def test_a_probe_file_without_a_setting_and_no_flag_for_it_is_a_usage_error(tmp_path, capsys, field):
+    flag = f"--{field.replace('_', '-')}"
+    other = {"--threshold": "0.4", "--target-fpr": "0.05"}
+    del other[flag]
+    assert _probe_check(_probe_lacking(tmp_path, field), [*other.popitem()]) == 2
+    assert f"{flag} is required unless the probe records it" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("field", ["threshold", "target_fpr"])
+def test_a_probe_file_without_a_setting_runs_when_the_flag_supplies_it(tmp_path, capsys, field):
+    flag = f"--{field.replace('_', '-')}"
+    value = {
+        "--threshold": str(hulder.Probe.load(Path(str(files("hulder.data") / "probe_demo.npz"))).metadata["threshold"]),
+        "--target-fpr": "0.05",
+    }[flag]
+    assert _probe_check(_probe_lacking(tmp_path, field), [flag, value]) == 12  # the demo's INCONCLUSIVE, README §4
