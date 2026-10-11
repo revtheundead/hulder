@@ -9,7 +9,7 @@ pip install "hulder[vllm]"
 python -m hulder.capture.demo
 ```
 
-It needs an NVIDIA GPU of compute capability 7.5 or newer (Turing onwards, which vLLM's AWQ path requires) with about 6 GB free, Linux or WSL2, and about 4.5 GB of model downloads from Hugging Face. On an RTX 2070 with the models already downloaded it takes about 5 minutes. `--out DIR` picks where results go (default `hulder-demo/`). An interrupted run resumes from the snapshots already there. A snapshot is reused only if its config, vLLM version, GPU and prompts match this run, so anything else is refused, naming what differs, and `--force` recaptures it.
+It needs an NVIDIA GPU of compute capability 7.5 or newer (Turing onwards, which vLLM's AWQ path requires) with about 6 GB free, Linux or WSL2, and about 4.5 GB of model downloads from Hugging Face. On an RTX 2070 with the models already downloaded it takes 3 to 5 minutes. `--out DIR` picks where results go (default `hulder-demo/`). An interrupted run resumes from the snapshots already there. A snapshot is reused only if its config, vLLM version, GPU and prompts match this run, so anything else is refused, naming what differs, and `--force` recaptures it.
 
 ## What it does
 
@@ -26,7 +26,7 @@ The command exits 0 whatever the verdict, since the point is to see it. Exit 1 m
 
 ## What to expect
 
-On the RTX 2070 it gives **INCONCLUSIVE**, the same as the quickstart. AWQ flipped 11 of 360 decisions where the rerun flipped none, and its scores moved about 230 times as much as the rerun's, so the change is real. The candidate's false-positive rate is 7.2% [3.9%, 12.0%] against a 10% band, so the gate can't yet say whether it crossed the line. The recorded run is in `docs/results/phase1/live_demo.md`.
+On the RTX 2070 it gives **INCONCLUSIVE**, the same as the quickstart. AWQ flipped 11 of 360 decisions where the rerun flipped none, and its scores moved 180 to 230 times as much as the rerun's in the two recorded runs, so the change is real. The candidate's false-positive rate is 7.2% [3.9%, 12.0%] against a 10% band, so the gate can't yet say whether it crossed the line. The recorded run is in `docs/results/phase1/live_demo.md`.
 
 ## Why your verdict can differ from the bundled one
 

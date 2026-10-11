@@ -1,4 +1,4 @@
-Scores shifted beyond the noise floor: 11 decisions flipped vs 0 on the rerun, mean |Δscore| 0.0514 vs 0.000223.
+Scores shifted beyond the noise floor: 11 decisions flipped vs 0 on the rerun, mean |Δscore| 0.0514 vs 0.000286.
 The serving change moved the scorer; whether its FPR crossed the tolerance is undecided.
 
 Reference  .cache/live_demo/fp16.npz
@@ -18,15 +18,15 @@ Verdict: INCONCLUSIVE
 Performance at threshold 0.3952   reference                 candidate
   FPR                             4.4% [1.9%, 8.6%]         7.2% [3.9%, 12.0%]
   FNR                             0.0% [0.0%, 2.0%]         0.0% [0.0%, 2.0%]
-  AUROC                           0.9990 [0.9973, 1.0000]   0.9980 [0.9958, 0.9995]
-  ΔAUROC (candidate - reference)                            -0.0010 [-0.0032, +0.0010]
+  AUROC                           0.9990 [0.9973, 1.0000]   0.9980 [0.9959, 0.9995]
+  ΔAUROC (candidate - reference)                            -0.0010 [-0.0031, +0.0010]
   Bands: candidate FPR upper bound <= 10.0%, FNR upper bound <= reference FNR + 0.05, ΔAUROC lower bound >= -0.02
 
 Shift (paired, same prompts)      candidate                 rerun
   decisions flipped               11 (3.1%)                 0
-  mean |Δscore|                   0.0514                    0.000223
-  mean |Δlogit|                   0.501                     0.00221
-  candidate - rerun mean |Δscore| 0.0512 [0.0456, 0.0576]
+  mean |Δscore|                   0.0514                    0.000286
+  mean |Δlogit|                   0.501                     0.00255
+  candidate - rerun mean |Δscore| 0.0511 [0.0455, 0.0576]
   exceeds the noise floor         yes
 
 Exit code 12 (INCONCLUSIVE)

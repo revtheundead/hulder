@@ -41,30 +41,30 @@
       "high": 0.9999691358024692
     },
     "candidate_auroc": {
-      "value": 0.9979938268661499,
-      "low": 0.9957716049382717,
+      "value": 0.9980247020721436,
+      "low": 0.9958634259259259,
       "high": 0.9995061728395062
     },
     "delta_auroc": {
-      "value": -0.0009876489639282227,
-      "low": -0.0031790123456789665,
-      "high": 0.0010192901234568
+      "value": -0.0009567737579345703,
+      "low": -0.003148148148148122,
+      "high": 0.000990740740740767
     },
     "decision_flip_rate": 0.030555555555555555,
     "decision_flips": 11,
-    "mean_abs_shift": 0.051417313516139984,
+    "mean_abs_shift": 0.051410019397735596,
     "noise_floor_measured": true,
     "rerun_identical_to_reference": false,
     "noise_floor_decision_flips": 0,
-    "noise_floor_mean_abs_shift": 0.00022253836505115032,
+    "noise_floor_mean_abs_shift": 0.00028557077166624367,
     "shift_exceeds_noise_floor": true,
     "shift_over_noise_floor": {
-      "value": 0.051194772124290466,
-      "low": 0.045558682005600225,
-      "high": 0.05759454536070633
+      "value": 0.0511244460940361,
+      "low": 0.04551595222111145,
+      "high": 0.05761886868405983
     },
-    "mean_abs_logit_shift": 0.5008741021156311,
-    "noise_floor_mean_abs_logit_shift": 0.0022111383732408285,
+    "mean_abs_logit_shift": 0.5008722543716431,
+    "noise_floor_mean_abs_logit_shift": 0.002548398682847619,
     "warnings": [],
     "changes_under_test": [
       [
