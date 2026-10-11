@@ -153,3 +153,23 @@ def test_a_snapshot_whose_recorded_ids_hash_contradicts_its_ids_raises_a_pairing
             metadata={**runs[role].metadata, "prompt_ids_sha256": other_order},
         )
         hulder.check_snapshots(reference, **runs, threshold=data.threshold, target_fpr=0.01)
+
+
+def test_a_candidate_captured_on_another_gpu_warns():
+    # Another GPU is another serving config, so it mixes into the change under test.
+    data, reference, candidate, _ = _snapshots()
+    on_4070 = hulder.Snapshot(
+        ids=reference.ids,
+        labels=reference.labels,
+        scores=reference.scores,
+        metadata={**_META, "gpu": "NVIDIA GeForce RTX 4070"},
+    )
+    on_5070 = hulder.Snapshot(
+        ids=candidate.ids,
+        labels=candidate.labels,
+        scores=candidate.scores,
+        metadata={**_META, "quantization": "awq", "gpu": "NVIDIA GeForce RTX 5070"},
+    )
+    report = hulder.check_snapshots(on_4070, on_5070, threshold=data.threshold, target_fpr=0.01)
+    [warning] = report.warnings
+    assert "'gpu'" in warning and "RTX 5070" in warning
