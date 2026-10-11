@@ -17,19 +17,30 @@ from hulder.capture import demo
 BUNDLED = {"fp16": "demo_fp16.npz", "fp16_rerun": "demo_fp16_run1.npz", "awq": "demo_awq.npz"}
 
 
+MACHINE = {"vllm_version": "0.30.0", "gpu": "Fake RTX"}
+
+
 @pytest.fixture
 def fake_captures(monkeypatch):
-    """Each 'subprocess' copies the bundled snapshot for its run and writes a manifest."""
+    """Each 'subprocess' saves the bundled snapshot for its run, as captured on a fake GPU,
+    and writes its manifest. The parent sees the same fake GPU and vLLM version."""
     calls = []
 
     def run(command, check=False):
         name, out = command[command.index("--capture") + 1], Path(command[command.index("--out") + 1])
         calls.append(name)
-        shutil.copy(str(files("hulder.data") / BUNDLED[name]), out / f"{name}.npz")
-        (out / f"{name}.json").write_text(json.dumps({"gpu": "Fake RTX"}))
+        bundled = hulder.Snapshot.load(str(files("hulder.data") / BUNDLED[name]))
+        hulder.Snapshot(
+            ids=bundled.ids,
+            labels=bundled.labels,
+            activations=bundled.activations,
+            metadata={**bundled.metadata, "gpu": MACHINE["gpu"]},
+        ).save(out / f"{name}.npz")
+        (out / f"{name}.json").write_text(json.dumps({"gpu": MACHINE["gpu"], "prompts_sha256": demo.prompts_sha256()}))
         return SimpleNamespace(returncode=0)
 
     monkeypatch.setattr(demo.subprocess, "run", run)
+    monkeypatch.setattr(demo, "this_machine", lambda: dict(MACHINE))
     return calls
 
 
@@ -51,6 +62,65 @@ def test_a_rerun_of_the_demo_reuses_its_snapshots_unless_forced(tmp_path, capsys
     assert len(fake_captures) == 3
     demo.main(["--out", str(tmp_path), "--force"])
     assert len(fake_captures) == 6
+
+
+def test_a_snapshot_without_its_manifest_is_recaptured(tmp_path, capsys, fake_captures):
+    demo.main(["--out", str(tmp_path)])
+    (tmp_path / "awq.json").unlink()
+    assert demo.main(["--out", str(tmp_path)]) == 0
+    assert fake_captures[3:] == ["awq"]
+
+
+def test_a_manifest_without_its_snapshot_is_recaptured(tmp_path, capsys, fake_captures):
+    demo.main(["--out", str(tmp_path)])
+    (tmp_path / "fp16_rerun.npz").unlink()
+    assert demo.main(["--out", str(tmp_path)]) == 0
+    assert fake_captures[3:] == ["fp16_rerun"]
+
+
+@pytest.mark.parametrize(
+    ("change", "keys"),
+    [
+        ({"gpu": "NVIDIA GeForce RTX 4070"}, ["gpu"]),
+        ({"vllm_version": "0.31.0"}, ["vllm_version"]),
+        ({"prompts_sha256": "0" * 64}, ["prompts_sha256"]),
+    ],
+)
+def test_a_snapshot_from_another_machine_or_prompt_set_is_refused(
+    tmp_path, capsys, fake_captures, monkeypatch, change, keys
+):
+    demo.main(["--out", str(tmp_path)])
+    capsys.readouterr()
+    here = {**MACHINE, "prompts_sha256": demo.prompts_sha256(), **change}
+    monkeypatch.setattr(demo, "this_machine", lambda: {k: here[k] for k in MACHINE})
+    monkeypatch.setattr(demo, "prompts_sha256", lambda: here["prompts_sha256"])
+    assert demo.main(["--out", str(tmp_path)]) == 1
+    assert len(fake_captures) == 3
+    err = capsys.readouterr().err
+    assert all(f"{key}:" in err for key in keys) and "--force" in err
+    assert demo.main(["--out", str(tmp_path), "--force"]) == 0
+    assert len(fake_captures) == 6
+
+
+def test_another_runs_snapshot_under_this_runs_name_is_refused(tmp_path, capsys, fake_captures):
+    demo.main(["--out", str(tmp_path)])
+    capsys.readouterr()
+    for suffix in (".npz", ".json"):
+        shutil.copy(tmp_path / f"awq{suffix}", tmp_path / f"fp16{suffix}")
+    assert demo.main(["--out", str(tmp_path)]) == 1
+    err = capsys.readouterr().err
+    assert all(f"{key}:" in err for key in ("model", "revision", "quantization")) and "--force" in err
+    assert len(fake_captures) == 3
+
+
+def test_a_damaged_snapshot_is_refused_before_anything_is_captured(tmp_path, capsys, fake_captures):
+    demo.main(["--out", str(tmp_path)])
+    capsys.readouterr()
+    (tmp_path / "awq.npz").write_bytes((tmp_path / "awq.npz").read_bytes()[:5000])
+    assert demo.main(["--out", str(tmp_path)]) == 1
+    err = capsys.readouterr().err
+    assert "awq.npz" in err and "--force" in err
+    assert len(fake_captures) == 3
 
 
 def test_a_failed_capture_exits_1_and_skips_the_check(tmp_path, capsys, monkeypatch):
