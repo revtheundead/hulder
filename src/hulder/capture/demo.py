@@ -51,6 +51,8 @@ AWQ = {
 }
 # The rerun is the fp16 config again in a fresh engine, for the noise floor.
 RUNS = {"fp16": FP16, "fp16_rerun": FP16, "awq": AWQ}
+# The bundled demo snapshot each run reproduces, up to batch composition (docs/tutorial-live.md).
+BUNDLED = {"fp16": "demo_fp16.npz", "fp16_rerun": "demo_fp16_run1.npz", "awq": "demo_awq.npz"}
 # What the parent writes to --out besides the snapshots.
 REPORTS = ("check.txt", "check.json", "manifest.json")
 # What a snapshot in --out must match to be reused, besides this_machine() and the prompts.
@@ -75,11 +77,12 @@ def main(argv: list[str] | None = None) -> int:
         todo = [name for name in RUNS if args.force or not reusable(out, name)]
     except ValueError as e:
         return failed(out, "resume refused", str(e))
+    n_prompts = len(prompts())
     for name in RUNS:
         if name not in todo:
             print(f"{name}: reusing {out / f'{name}.npz'}", flush=True)
             continue
-        print(f"{name}: capturing {len(prompts())} prompts in a fresh vLLM engine", flush=True)
+        print(f"{name}: capturing {n_prompts} prompts in a fresh vLLM engine", flush=True)
         if (code := capture_subprocess(name, out)) != 0:
             return failed(
                 out, "capture failed", f"the {name} capture failed with exit code {code}; its output is above"

@@ -15,9 +15,6 @@ import hulder
 from hulder import cli
 from hulder.capture import demo
 
-BUNDLED = {"fp16": "demo_fp16.npz", "fp16_rerun": "demo_fp16_run1.npz", "awq": "demo_awq.npz"}
-
-
 MACHINE = {"vllm_version": "0.30.0", "gpu": "Fake RTX"}
 
 
@@ -29,7 +26,7 @@ def fake_captures(monkeypatch):
 
     def run(name, out):
         calls.append(name)
-        bundled = hulder.Snapshot.load(str(files("hulder.data") / BUNDLED[name]))
+        bundled = hulder.Snapshot.load(str(files("hulder.data") / demo.BUNDLED[name]))
         hulder.Snapshot(
             ids=bundled.ids,
             labels=bundled.labels,
@@ -198,7 +195,7 @@ CONFIG_DEFAULTS = {"quantization": None, "dtype": "float16", "batch_size": 8, "e
 
 
 def test_the_demo_snapshot_metadata_is_the_bundled_snapshots_plus_the_gpu():
-    for name, bundled in (("fp16", "demo_fp16.npz"), ("awq", "demo_awq.npz")):
+    for name, bundled in demo.BUNDLED.items():
         expected = hulder.Snapshot.load(str(files("hulder.data") / bundled)).metadata
         expected = {k: v for k, v in expected.items() if k not in ("splits_sha256", "prompt_ids_sha256")}
         cfg = SimpleNamespace(**{**CONFIG_DEFAULTS, **demo.RUNS[name]})

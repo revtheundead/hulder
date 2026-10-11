@@ -15,11 +15,11 @@ import numpy as np
 from common import run_manifest
 
 import hulder
+from hulder.capture.demo import BUNDLED
 
 COMMAND = "source scripts/dev-env.sh && uv run python experiments/phase1/probe/compare_live.py"
 LIVE = Path(".cache/live_demo")
 OUT = Path("docs/results/phase1/live_demo/vs_bundled.json")
-PAIRS = {"fp16": "demo_fp16.npz", "fp16_rerun": "demo_fp16_run1.npz", "awq": "demo_awq.npz"}
 
 
 def main() -> None:
@@ -27,7 +27,7 @@ def main() -> None:
     probe = hulder.Probe.load(str(data / "probe_demo.npz"))
     threshold = probe.metadata["threshold"]
     result = {}
-    for live_name, bundled_name in PAIRS.items():
+    for live_name, bundled_name in BUNDLED.items():
         live, bundled = hulder.Snapshot.load(LIVE / f"{live_name}.npz"), hulder.Snapshot.load(str(data / bundled_name))
         if list(live.ids) != list(bundled.ids):
             raise SystemExit(f"{live_name}: ids differ from {bundled_name}")
@@ -45,7 +45,7 @@ def main() -> None:
             "benign_flagged_live": int((s_live[benign] > threshold).sum()),
             "benign_flagged_bundled": int((s_bundled[benign] > threshold).sum()),
         }
-    inputs = tuple(LIVE / f"{name}.npz" for name in PAIRS)
+    inputs = tuple(LIVE / f"{name}.npz" for name in BUNDLED)
     out = {"manifest": {"command": COMMAND, **run_manifest(inputs=inputs)}, "comparison": result}
     OUT.write_text(json.dumps(out, indent=2) + "\n")
     print(json.dumps(out, indent=2))
