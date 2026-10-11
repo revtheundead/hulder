@@ -12,6 +12,7 @@ from types import SimpleNamespace
 import pytest
 
 import hulder
+from hulder import cli
 from hulder.capture import demo
 
 BUNDLED = {"fp16": "demo_fp16.npz", "fp16_rerun": "demo_fp16_run1.npz", "awq": "demo_awq.npz"}
@@ -54,6 +55,15 @@ def test_the_demo_captures_each_run_then_checks_and_records_the_verdict(tmp_path
     manifest = json.loads((tmp_path / "manifest.json").read_text())
     assert (manifest["verdict"], manifest["exit_code"]) == ("INCONCLUSIVE", 12)
     assert set(manifest["runs"]) == {"fp16", "fp16_rerun", "awq"}
+
+
+def test_the_demos_report_is_what_hulder_check_prints_for_the_same_files(tmp_path, capsys, fake_captures):
+    demo.main(["--out", str(tmp_path)])
+    capsys.readouterr()
+    check_args = json.loads((tmp_path / "manifest.json").read_text())["check_args"]
+    for report, extra in (("check.txt", []), ("check.json", ["--json"])):
+        assert cli.run([*check_args, *extra]) == 12
+        assert (tmp_path / report).read_text() == capsys.readouterr().out
 
 
 def test_a_rerun_of_the_demo_reuses_its_snapshots_unless_forced(tmp_path, capsys, fake_captures):

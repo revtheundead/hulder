@@ -19,7 +19,7 @@ It needs an NVIDIA GPU of compute capability 7.5 or newer (Turing onwards, which
    - `awq` is the candidate, the official AWQ int4 checkpoint `Qwen/Qwen2.5-1.5B-Instruct-AWQ`.
 
    Every capture reads layer 20 at the last prompt token for the 360 bundled boundary-pairs prompts (`hulder/data/demo_prompts.jsonl`), with vLLM's hidden-state connector and the settings of the offline extraction decision. Each is saved as a `Snapshot` with its metadata, including the GPU it ran on.
-2. **One check.** It runs `hulder check` with the bundled demo probe, the AWQ capture as candidate and the rerun as noise floor, and prints the report.
+2. **One check.** It runs the same code as `hulder check`, with the bundled demo probe, the AWQ capture as candidate and the rerun as noise floor, and prints the same report. `manifest.json` records the equivalent `hulder check` arguments.
 3. **A record.** `check.txt`, `check.json` and `manifest.json` (configs, GPU, package versions, timings, prompt hash) are written next to the snapshots.
 
 The command exits 0 whatever the verdict, since the point is to see it. Exit 1 means a capture or the check failed.

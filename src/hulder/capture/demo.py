@@ -13,9 +13,7 @@ verdict exits 0. Exit 1 is a failed capture or check.
 """
 
 import argparse
-import contextlib
 import hashlib
-import io
 import json
 import platform
 import shutil
@@ -30,7 +28,7 @@ from pathlib import Path
 import numpy as np
 
 from hulder import cli
-from hulder.gate.check import Verdict
+from hulder.gate.probe import Probe
 from hulder.gate.snapshot import Snapshot
 
 DATA = files("hulder.data")
@@ -186,33 +184,34 @@ def snapshot_metadata(cfg, base_model: str, gpu: str, vllm_version: str) -> dict
 
 
 def check(out: Path) -> int:
-    """hulder check on the captures with the bundled probe; writes check.txt, check.json and
-    manifest.json to out."""
-    probe = str(DATA / "probe_demo.npz")
-    args = ["check", "--probe", probe, "--reference", str(out / "fp16.npz"), "--candidate", str(out / "awq.npz")]
-    args += ["--noise-floor", str(out / "fp16_rerun.npz")]
-    reports = {}
-    for name, extra in (("check.txt", []), ("check.json", ["--json"])):
-        printed = io.StringIO()
-        with contextlib.redirect_stdout(printed):
-            code = cli.run([*args, *extra])
-        reports[name] = printed.getvalue()
-        (out / name).write_text(reports[name])
-    print(reports["check.txt"], end="")
-    verdicts = {v.exit_code: v.value for v in Verdict}
+    """hulder check on the captures with the bundled probe, through the same code as the CLI;
+    writes check.txt, check.json and manifest.json to out."""
+    probe_path = str(DATA / "probe_demo.npz")
+    files = {"reference": out / "fp16.npz", "candidate": out / "awq.npz", "rerun": out / "fp16_rerun.npz"}
+    check_args = ["check", "--probe", probe_path, "--reference", str(files["reference"])]
+    check_args += ["--candidate", str(files["candidate"]), "--noise-floor", str(files["rerun"])]
+    try:
+        probe = Probe.load(probe_path)
+        threshold, target_fpr = probe.metadata["threshold"], probe.metadata["target_fpr"]
+        report = cli.check_files(files["reference"], files["candidate"], files["rerun"], probe, threshold, target_fpr)
+    except cli.TOOL_FAILURES as e:
+        return cli.fail_tool(e)
+    inputs = cli.report_inputs(*(str(path) for path in files.values()), probe_path)
+    text = cli.render(report, inputs) + "\n"
+    (out / "check.txt").write_text(text)
+    (out / "check.json").write_text(cli.to_json(report, inputs) + "\n")
+    print(text, end="")
     manifest = {
         "command": "python -m hulder.capture.demo",
-        "check_args": args,
-        "exit_code": code,
-        "verdict": verdicts.get(code),
+        "check_args": check_args,
+        "exit_code": report.verdict.exit_code,
+        "verdict": report.verdict.value,
         "runs": {
             name: json.loads((out / f"{name}.json").read_text()) for name in RUNS if (out / f"{name}.json").exists()
         },
     }
     (out / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
-    if code not in verdicts:
-        return 1
-    print(f"\nThe live verdict is {verdicts[code]}. Snapshots, report and manifest are in {out}.")
+    print(f"\nThe live verdict is {report.verdict.value}. Snapshots, report and manifest are in {out}.")
     return 0
 
 
