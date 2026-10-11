@@ -80,12 +80,17 @@ def main(argv: list[str] | None = None) -> int:
             print(f"{name}: reusing {out / f'{name}.npz'}", flush=True)
             continue
         print(f"{name}: capturing {len(prompts())} prompts in a fresh vLLM engine", flush=True)
-        command = [sys.executable, "-m", "hulder.capture.demo", "--capture", name, "--out", str(out)]
-        if (code := subprocess.run(command, check=False).returncode) != 0:
+        if (code := capture_subprocess(name, out)) != 0:
             return failed(
                 out, "capture failed", f"the {name} capture failed with exit code {code}; its output is above"
             )
     return check(out)
+
+
+def capture_subprocess(name: str, out: Path) -> int:
+    """Run one capture in a fresh Python process, whose exit frees its engine's GPU memory."""
+    command = [sys.executable, "-m", "hulder.capture.demo", "--capture", name, "--out", str(out)]
+    return subprocess.run(command, check=False).returncode
 
 
 def reusable(out: Path, name: str) -> bool:
@@ -211,11 +216,28 @@ def record(out: Path, status: str, **fields) -> None:
         "command": "python -m hulder.capture.demo",
         "status": status,
         **fields,
+        **source_commit(),
         "runs": {
             name: json.loads((out / f"{name}.json").read_text()) for name in RUNS if (out / f"{name}.json").exists()
         },
     }
     write_text_atomically(out / "manifest.json", json.dumps(manifest, indent=2) + "\n")
+
+
+def source_commit(package: Path = Path(__file__).parent) -> dict:
+    """The git commit of the hulder source this runs from, and whether tracked files differ
+    from it. None for both unless hulder runs from its own checkout (src/hulder/ in it), so
+    an install inside another project's repo doesn't record that repo's commit."""
+
+    def git(*args: str) -> str:
+        return subprocess.check_output(["git", "-C", str(package), *args], text=True, stderr=subprocess.DEVNULL).strip()
+
+    try:
+        if Path(git("rev-parse", "--show-toplevel")) / "src" / "hulder" != package.parent:
+            raise ValueError("not hulder's own checkout")
+        return {"git_commit": git("rev-parse", "HEAD"), "git_dirty": bool(git("status", "--porcelain", "-uno"))}
+    except (OSError, subprocess.CalledProcessError, ValueError):
+        return {"git_commit": None, "git_dirty": None}
 
 
 if __name__ == "__main__":

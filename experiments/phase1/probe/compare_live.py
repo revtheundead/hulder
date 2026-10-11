@@ -3,7 +3,8 @@
 Run from the repo root, after `python -m hulder.capture.demo --out .cache/live_demo`:
     source scripts/dev-env.sh && uv run python experiments/phase1/probe/compare_live.py
 
-Writes docs/results/phase1/live_demo/vs_bundled.json.
+Writes docs/results/phase1/live_demo/vs_bundled.json: the comparison, and a manifest with the
+commit, packages and the live snapshots' hashes.
 """
 
 import json
@@ -11,9 +12,11 @@ from importlib.resources import files
 from pathlib import Path
 
 import numpy as np
+from common import run_manifest
 
 import hulder
 
+COMMAND = "source scripts/dev-env.sh && uv run python experiments/phase1/probe/compare_live.py"
 LIVE = Path(".cache/live_demo")
 OUT = Path("docs/results/phase1/live_demo/vs_bundled.json")
 PAIRS = {"fp16": "demo_fp16.npz", "fp16_rerun": "demo_fp16_run1.npz", "awq": "demo_awq.npz"}
@@ -42,8 +45,10 @@ def main() -> None:
             "benign_flagged_live": int((s_live[benign] > threshold).sum()),
             "benign_flagged_bundled": int((s_bundled[benign] > threshold).sum()),
         }
-    OUT.write_text(json.dumps(result, indent=2) + "\n")
-    print(json.dumps(result, indent=2))
+    inputs = tuple(LIVE / f"{name}.npz" for name in PAIRS)
+    out = {"manifest": {"command": COMMAND, **run_manifest(inputs=inputs)}, "comparison": result}
+    OUT.write_text(json.dumps(out, indent=2) + "\n")
+    print(json.dumps(out, indent=2))
 
 
 if __name__ == "__main__":

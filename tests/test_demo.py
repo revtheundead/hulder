@@ -1,4 +1,4 @@
-"""The live tutorial's orchestration, with a fake capture subprocess that copies the bundled
+"""The live tutorial's orchestration, with a fake capture subprocess that saves the bundled
 snapshots in. CPU only; the real run is recorded in docs/results/phase1/live_demo/."""
 
 import json
@@ -27,8 +27,7 @@ def fake_captures(monkeypatch):
     and writes its manifest. The parent sees the same fake GPU and vLLM version."""
     calls = []
 
-    def run(command, check=False):
-        name, out = command[command.index("--capture") + 1], Path(command[command.index("--out") + 1])
+    def run(name, out):
         calls.append(name)
         bundled = hulder.Snapshot.load(str(files("hulder.data") / BUNDLED[name]))
         hulder.Snapshot(
@@ -38,9 +37,9 @@ def fake_captures(monkeypatch):
             metadata={**bundled.metadata, "gpu": MACHINE["gpu"]},
         ).save(out / f"{name}.npz")
         (out / f"{name}.json").write_text(json.dumps({"gpu": MACHINE["gpu"], "prompts_sha256": demo.prompts_sha256()}))
-        return SimpleNamespace(returncode=0)
+        return 0
 
-    monkeypatch.setattr(demo.subprocess, "run", run)
+    monkeypatch.setattr(demo, "capture_subprocess", run)
     monkeypatch.setattr(demo, "this_machine", lambda: dict(MACHINE))
     return calls
 
@@ -55,6 +54,24 @@ def test_the_demo_captures_each_run_then_checks_and_records_the_verdict(tmp_path
     manifest = json.loads((tmp_path / "manifest.json").read_text())
     assert (manifest["status"], manifest["verdict"], manifest["exit_code"]) == ("done", "INCONCLUSIVE", 12)
     assert set(manifest["runs"]) == {"fp16", "fp16_rerun", "awq"}
+
+
+def test_the_manifest_records_the_hulder_commit_it_ran_from(tmp_path, capsys, fake_captures):
+    # The tests run from the repo's editable install, so the source is a git checkout.
+    demo.main(["--out", str(tmp_path)])
+    manifest = json.loads((tmp_path / "manifest.json").read_text())
+    head = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True, cwd=Path(demo.__file__).parent).strip()
+    assert manifest["git_commit"] == head
+    assert isinstance(manifest["git_dirty"], bool)
+
+
+def test_no_commit_is_recorded_for_an_installed_hulder_even_inside_another_repo(tmp_path):
+    # pip install into a venv inside some other project's repo must not record that repo's commit.
+    site_packages = tmp_path / ".venv/lib/python3.12/site-packages/hulder/capture"
+    site_packages.mkdir(parents=True)
+    assert demo.source_commit(site_packages) == {"git_commit": None, "git_dirty": None}
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    assert demo.source_commit(site_packages) == {"git_commit": None, "git_dirty": None}
 
 
 def test_the_demos_report_is_what_hulder_check_prints_for_the_same_files(tmp_path, capsys, fake_captures):
@@ -134,7 +151,7 @@ def test_a_damaged_snapshot_is_refused_before_anything_is_captured(tmp_path, cap
 
 
 def test_a_failed_capture_exits_1_skips_the_check_and_records_the_failure(tmp_path, capsys, monkeypatch):
-    monkeypatch.setattr(demo.subprocess, "run", lambda command, check=False: SimpleNamespace(returncode=1))
+    monkeypatch.setattr(demo, "capture_subprocess", lambda name, out: 1)
     assert demo.main(["--out", str(tmp_path)]) == 1
     assert "the fp16 capture failed" in capsys.readouterr().err
     assert not (tmp_path / "check.txt").exists()
@@ -149,15 +166,15 @@ def test_a_failed_check_exits_1_prints_its_error_once_and_records_the_failure(
     # The awq 'capture' succeeds but its file is damaged, so the check itself fails.
     demo.main(["--out", str(tmp_path)])
     capsys.readouterr()
-    run = demo.subprocess.run
+    run = demo.capture_subprocess
 
-    def damaging(command, check=False):
-        result = run(command, check)
+    def damaging(name, out):
+        result = run(name, out)
         awq = tmp_path / "awq.npz"
         awq.write_bytes(awq.read_bytes()[:5000])
         return result
 
-    monkeypatch.setattr(demo.subprocess, "run", damaging)
+    monkeypatch.setattr(demo, "capture_subprocess", damaging)
     assert demo.main(["--out", str(tmp_path), "--force"]) == 1
     err = capsys.readouterr().err
     assert err.count("awq.npz") == 1 and "--force" in err
@@ -199,6 +216,15 @@ def test_the_config_defaults_the_metadata_test_assumes_are_capture_configs():
             **CONFIG_DEFAULTS,
             **{key: run[key] for key in CONFIG_DEFAULTS if key in run},
         }
+
+
+def test_each_capture_runs_this_module_in_a_fresh_python_process(tmp_path, monkeypatch):
+    commands = []
+    monkeypatch.setattr(
+        demo.subprocess, "run", lambda command, check: commands.append(command) or SimpleNamespace(returncode=3)
+    )
+    assert demo.capture_subprocess("awq", tmp_path) == 3
+    assert commands == [[sys.executable, "-m", "hulder.capture.demo", "--capture", "awq", "--out", str(tmp_path)]]
 
 
 def test_a_capture_subprocess_that_raises_exits_non_zero(tmp_path, monkeypatch):
