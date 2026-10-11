@@ -84,3 +84,13 @@ def test_a_probe_file_without_a_format_version_raises_a_value_error(tmp_path):
     np.savez(path, weights=one, bias=np.float64(0), mean=one, std=one, metadata=np.array("{}"))
     with pytest.raises(ValueError, match="no format_version"):
         hulder.Probe.load(path)
+
+
+@pytest.mark.parametrize("key", ["threshold", "target_fpr"])
+@pytest.mark.parametrize("value", [None, "high", True, [0.5]])
+def test_a_probe_file_whose_setting_is_not_a_number_raises_a_value_error_naming_it(tmp_path, key, value):
+    path = tmp_path / "probe.npz"
+    probe = tiny_probe()
+    hulder.Probe(probe.weights, probe.bias, probe.mean, probe.std, {key: value}).save(path)
+    with pytest.raises(ValueError, match=f"^{path}: its {key} is .*, not a number$"):
+        hulder.Probe.load(path)

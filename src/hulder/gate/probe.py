@@ -41,6 +41,11 @@ class Probe:
         version = metadata.pop("format_version")
         if version != cls.FORMAT_VERSION:
             raise ValueError(f"{path}: probe file format {version}, this hulder reads {cls.FORMAT_VERSION}")
+        # Optional, but a recorded one must be a number; its range is check's to judge (metadata rule 9).
+        for key in ("threshold", "target_fpr"):
+            value = metadata.get(key, 0.0)
+            if isinstance(value, bool) or not isinstance(value, int | float):
+                raise ValueError(f"{path}: its {key} is {value!r}, not a number")  # noqa: TRY004, a damaged file
         return cls(
             weights=arrays["weights"],
             bias=float(arrays["bias"]),

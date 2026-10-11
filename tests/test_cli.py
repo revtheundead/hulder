@@ -344,3 +344,11 @@ def test_a_probe_file_without_a_setting_runs_when_the_flag_supplies_it(tmp_path,
         "--target-fpr": "0.05",
     }[flag]
     assert _probe_check(_probe_lacking(tmp_path, field), [flag, value]) == 12  # the demo's INCONCLUSIVE, README §4
+
+
+def test_a_probe_file_whose_threshold_is_null_exits_1_naming_it(tmp_path, capsys):
+    probe = hulder.Probe.load(Path(str(files("hulder.data") / "probe_demo.npz")))
+    path = tmp_path / "probe_null_threshold.npz"
+    hulder.Probe(probe.weights, probe.bias, probe.mean, probe.std, {**probe.metadata, "threshold": None}).save(path)
+    assert _probe_check(str(path)) == 1
+    assert capsys.readouterr().err == f"hulder: error: {path}: its threshold is None, not a number\n"
