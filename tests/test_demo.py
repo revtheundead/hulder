@@ -175,16 +175,41 @@ def test_a_refused_resume_replaces_the_previous_runs_report(tmp_path, capsys, fa
     assert json.loads((tmp_path / "manifest.json").read_text())["status"] == "resume refused"
 
 
-@pytest.mark.vllm
+# CaptureConfig's defaults for the keys the demo's runs leave unset, so the metadata test
+# runs without vLLM; the --runvllm test below checks they are still CaptureConfig's.
+CONFIG_DEFAULTS = {"quantization": None, "dtype": "float16", "batch_size": 8, "enable_thinking": None}
+
+
 def test_the_demo_snapshot_metadata_is_the_bundled_snapshots_plus_the_gpu():
-    hidden_states = pytest.importorskip("hulder.capture.hidden_states")
     for name, bundled in (("fp16", "demo_fp16.npz"), ("awq", "demo_awq.npz")):
         expected = hulder.Snapshot.load(str(files("hulder.data") / bundled)).metadata
         expected = {k: v for k, v in expected.items() if k not in ("splits_sha256", "prompt_ids_sha256")}
-        cfg = hidden_states.CaptureConfig(**demo.RUNS[name])
+        cfg = SimpleNamespace(**{**CONFIG_DEFAULTS, **demo.RUNS[name]})
         captured = SimpleNamespace(gpu="Fake RTX", enable_thinking=None)
         got = demo.snapshot_metadata(cfg, captured, expected["base_model"], expected["vllm_version"])
         assert got == {**expected, "gpu": "Fake RTX"}
+
+
+@pytest.mark.vllm
+def test_the_config_defaults_the_metadata_test_assumes_are_capture_configs():
+    hidden_states = pytest.importorskip("hulder.capture.hidden_states")
+    for run in demo.RUNS.values():
+        cfg = hidden_states.CaptureConfig(**run)
+        assert {key: getattr(cfg, key) for key in CONFIG_DEFAULTS} == {
+            **CONFIG_DEFAULTS,
+            **{key: run[key] for key in CONFIG_DEFAULTS if key in run},
+        }
+
+
+def test_a_capture_subprocess_that_raises_exits_non_zero(tmp_path, monkeypatch):
+    # The parent sees a failed capture only through the child's exit code, so the child must
+    # let the exception out (python -m exits 1 on it) rather than return 0.
+    def no_gpu(name, out):
+        raise RuntimeError("CUDA unavailable")
+
+    monkeypatch.setattr(demo, "capture_run", no_gpu)
+    with pytest.raises(RuntimeError, match="CUDA"):
+        demo.main(["--capture", "fp16", "--out", str(tmp_path)])
 
 
 def test_importing_the_demo_loads_no_vllm_or_torch():
