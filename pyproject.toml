@@ -9,11 +9,27 @@ authors = [
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 requires-python = ">=3.12"
+keywords = ["activation probes", "llm", "vllm", "quantization", "release gate", "mlops", "monitoring"]
+# No License :: classifier: PEP 639 forbids one alongside the license expression above.
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Quality Assurance",
+]
 # Base install: the gate library and CLI, numpy and scipy only.
 dependencies = [
     "numpy>=2.3",
     "scipy>=1.16",
 ]
+
+[project.urls]
+Source = "https://github.com/revtheundead/hulder"
+Issues = "https://github.com/revtheundead/hulder/issues"
 
 [project.optional-dependencies]
 # hulder.capture imports pyyaml and huggingface_hub itself; the floors are the versions
