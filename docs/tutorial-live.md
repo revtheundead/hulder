@@ -43,4 +43,4 @@ What should hold everywhere is the shape of the result. The rerun's shift is tin
 
 ## Next
 
-Your own probe and serving configs follow the same steps. Capture each config with `hulder.capture.capture` (experimental in v0.1), save a `Snapshot` per run (README §4), and run `hulder check`. `examples/live_demo/live_demo.py` is a short worked example of all three, using only hulder's public API.
+Your own probe and serving configs follow the same steps. Capture each config with `hulder.capture.capture` (experimental in v0.1), save a `Snapshot` per run (README, "Check your own serving change"), and run `hulder check`. `examples/live_demo/live_demo.py` is a short worked example of all three, using only hulder's public API.

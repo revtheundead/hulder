@@ -33,4 +33,4 @@ Unexplained: with caching on, the first pass already differs from caching off at
 
 ## Decision
 
-The offline extraction decision (accepted): connector path, prefix caching off, fixed batch composition. The README §6 D1 note covers the chunked-prefill requirement.
+The offline extraction decision (accepted): connector path, prefix caching off, fixed batch composition. The docs/design.md §5 D1 note covers the chunked-prefill requirement.

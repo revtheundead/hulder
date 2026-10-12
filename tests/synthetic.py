@@ -1,4 +1,4 @@
-"""Synthetic paired scores with known ground truth, for testing the gate (README §7).
+"""Synthetic paired scores with known ground truth, for testing the gate (docs/design.md §6).
 
 Scores are sigmoid(logit). Benign logits are N(-separation, 1) and attack logits N(0, 1),
 so the scorer's AUROC is Phi(separation / sqrt(2)). The candidate sees the same examples

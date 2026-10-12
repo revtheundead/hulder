@@ -1,4 +1,4 @@
-"""The gate's own false-alarm and detection rates on synthetic data (README §7).
+"""The gate's own false-alarm and detection rates on synthetic data (docs/design.md §6).
 
 Uses the generators in tests/synthetic.py, sized like the S-Labs calibration set
 (1,191 benign, 910 attack), with the threshold fitted on the reference sample.
