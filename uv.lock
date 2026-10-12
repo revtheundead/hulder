@@ -1490,6 +1490,10 @@ dev = [
     { name = "ruff" },
     { name = "torch" },
 ]
+test = [
+    { name = "pytest" },
+    { name = "ruff" },
+]
 
 [package.metadata]
 requires-dist = [
@@ -1511,6 +1515,10 @@ dev = [
     { name = "pytest", specifier = ">=8" },
     { name = "ruff", specifier = "==0.16.10" },
     { name = "torch" },
+]
+test = [
+    { name = "pytest", specifier = ">=8" },
+    { name = "ruff", specifier = "==0.16.10" },
 ]
 
 [[package]]

@@ -185,13 +185,13 @@ def check(out: Path) -> int:
     try:
         probe = Probe.load(probe_path)
         threshold, target_fpr = probe.metadata["threshold"], probe.metadata["target_fpr"]
-        report = cli.check_files(files["reference"], files["candidate"], files["rerun"], probe, threshold, target_fpr)
-    except cli.TOOL_FAILURES as e:
-        cli.fail_tool(e)
+        report = cli._check_files(files["reference"], files["candidate"], files["rerun"], probe, threshold, target_fpr)
+    except cli._TOOL_FAILURES as e:
+        cli._fail_tool(e)
         print("If a snapshot in --out is damaged, rerun with --force to recapture it.", file=sys.stderr)
         record(out, status="check failed", error=str(e), check_args=check_args)
         return 1
-    inputs = cli.report_inputs(*(str(path) for path in files.values()), probe_path)
+    inputs = cli._report_inputs(*(str(path) for path in files.values()), probe_path)
     text = cli.render(report, inputs) + "\n"
     write_text_atomically(out / "check.txt", text)
     write_text_atomically(out / "check.json", cli.to_json(report, inputs) + "\n")
