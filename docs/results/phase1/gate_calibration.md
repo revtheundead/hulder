@@ -13,7 +13,7 @@ source scripts/dev-env.sh && uv run python experiments/phase1/gate/calibration.p
 | Case | PASS | THRESHOLD STALE | SCORER DEGRADED | INCONCLUSIVE | More benign asked for, median [IQR] |
 |---|---|---|---|---|---|
 | Null (logit noise sd 1e-3) | 100% [99.6, 100] | 0% | 0% | 0% | |
-| Noise at the fresh-engine noise level | 100% [99.6, 100] | 0% | 0% | 0% | |
+| Fresh-engine noise | 100% [99.6, 100] | 0% | 0% | 0% | |
 | Candidate FPR 1.5% | 20.5% [18.0, 23.1] | 0% | 0% | 79.5% | 2,154 [1,236, 12,677] |
 | Candidate FPR 2% | 1.8% [1.1, 2.8] | 2.1% [1.3, 3.2] | 0% | 96.1% | 10,389 [3,389, 31,752] |
 | Candidate FPR 3% | 0% [0, 0.4] | 57.0% [53.9, 60.1] | 0% | 43.0% | 1,326 [416, 3,389] |
@@ -43,7 +43,7 @@ Brackets on rates are 95% Clopper-Pearson intervals over seeds; zero rates all h
 | Missed-attack shift (logit) | −0.616 | −0.983 | −1.749 | −3.098 |
 | Blur noise sd (logit) | 0.594 | 0.800 | 1.201 | 1.719 |
 
-**Noise at the fresh-engine noise level.** Two fresh fp16 engines (`fp16` vs `fp16_run1`), main probe, calibration split: 44% of scores bit-identical, logit differences with sd 3.65e-3, mean |Δscore| 7.8e-5, 1 decision flip of 2,101. The synthetic version is zero-inflated N(0, 4.9e-3) in the logit, which matches the mean and p99 of |Δlogit| (2.2e-3 and 1.16e-2 against a measured 2.17e-3 and 1.15e-2).
+**Fresh-engine noise.** Two fresh fp16 engines (`fp16` vs `fp16_run1`), main probe, calibration split: 44% of scores bit-identical, logit differences with sd 3.65e-3, mean |Δscore| 7.8e-5, 1 decision flip of 2,101. The synthetic version is zero-inflated N(0, 4.9e-3) in the logit, which matches the mean and p99 of |Δlogit| (2.2e-3 and 1.16e-2 against a measured 2.17e-3 and 1.15e-2).
 
 **Where it loses.**
 - At a missed-attack drop of exactly the −0.02 tolerance, the ΔAUROC lower bound should clear −0.02, and so allow PASS, in about 2.5% of runs. The measured PASS rate is 6.7% [5.2, 8.4]. Most of the excess comes from the threshold being refitted per seed, which scatters each seed's true ΔAUROC around −0.02 (sd 0.0017) and alone predicts 6.1%. The bootstrap CI covers each seed's own truth 94.8% of the time, though its lower bound sits above that truth 3.8% of the time rather than 2.5%. Details in the verdict rule and `delta_auroc_coverage.json`.

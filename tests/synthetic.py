@@ -21,7 +21,7 @@ import hulder
 N_BENIGN = 1191
 N_ATTACK = 910
 
-# Run-to-run noise of two fresh fp16 engines, measured with the
+# Run-to-run noise of two fresh fp16 engines (docs/results/phase1/extraction_reruns.md), measured with the
 # main probe on the calibration split, fp16 vs fp16_run1: 44% of scores are bit-identical
 # and the logit differences have sd 3.65e-3. Zero-inflated N(0, 4.9e-3) matches both, and
 # predicts mean |delta logit| 2.2e-3 and p99 1.16e-2 against a measured 2.17e-3 and 1.15e-2.

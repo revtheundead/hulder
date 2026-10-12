@@ -32,11 +32,11 @@ The 2026-10-12 run used `--out .cache/live_demo_2026-10-12`. Its captures took 6
 
 In both runs the verdict, flip counts and FPR interval match the bundled quickstart (the README's "How to read a report").
 
-**The noise floor varies between runs.** An earlier run at `f97124e`, before the resume and manifest changes and with no files kept, gave the same verdict, flips and FPR. Across the three runs the rerun's mean \|Δscore\| was 0.000223, 0.000286 and 0.000205. Every capture is a fresh engine on the same 360 prompts, so the noise floor of two fp16 reruns on one GPU varies by up to about 40%. The AWQ shift is 180 to 250 times the noise floor across the three runs.
+**The noise floor varies between runs.** An earlier run at `f97124e`, before the resume and manifest changes and with no files kept, gave the same verdict, flips and FPR. Across the three runs the rerun's mean \|Δscore\| was 0.000223, 0.000286 and 0.000205. Every capture is a fresh engine on the same 360 prompts, so the noise floor of two fp16 reruns on one GPU varies by up to about 40%, because captures are not bit-identical across engine runs (docs/design.md §10). The AWQ shift is 180 to 250 times the noise floor across the three runs.
 
 ## Against the bundled snapshots
 
-Not bit-identical, as expected. These 360 prompts were captured on their own, while the bundled snapshots came from a capture of all 16,332 probe prompts, so batch-mates differ. For the 2026-10-11 run, from `experiments/phase1/probe/compare_live.py`, written to `live_demo/vs_bundled.json`. It was not rerun for the 2026-10-12 run, whose verdict and flips are the same:
+Not bit-identical, as expected. These 360 prompts were captured on their own, while the bundled snapshots came from a capture of all 16,332 probe prompts, so batch-mates differ, and batch composition changes activations slightly. For the 2026-10-11 run, from `experiments/phase1/probe/compare_live.py`, written to `live_demo/vs_bundled.json`. It was not rerun for the 2026-10-12 run, whose verdict and flips are the same:
 
 | Live run | Bundled | Median relative L2 | Max | Mean \|Δscore\| | Decisions differing |
 |---|---|---|---|---|---|
@@ -44,7 +44,7 @@ Not bit-identical, as expected. These 360 prompts were captured on their own, wh
 | fp16_rerun | demo_fp16_run1 | 1.2e-3 | 2.1e-3 | 3.2e-4 | 0 |
 | awq | demo_awq | 4.6e-3 | 8.5e-3 | 1.2e-3 | 0 |
 
-The batch-composition effect is about the size the earlier rerun study found at layer 20 (around 3e-3), and about four times larger under AWQ.
+The batch-composition effect is about the size the earlier rerun study found at layer 20 (around 3e-3), and about four times larger under AWQ, matching AWQ's run-to-run noise, about four times fp16's.
 
 ## Where this loses
 

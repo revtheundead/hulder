@@ -35,7 +35,7 @@ On the RTX 2070 it gives **INCONCLUSIVE**, the same as the quickstart. AWQ flipp
 
 Your captures will not be bit-identical to the bundled snapshots, and on another GPU the verdict itself can change.
 
-- **Batch composition.** vLLM's numbers depend slightly on which prompts share a batch. The bundled snapshots came from a capture of all 16,332 probe prompts in fixed batches, so these 360 had other batch-mates. On the same RTX 2070 that alone moves the activations by about 0.1% (fp16) to 0.5% (AWQ) in relative L2, with no decision changed.
+- **Batch composition.** vLLM's numbers depend slightly on which prompts share a batch, and captures are not bit-identical across engine runs (docs/design.md §10). The bundled snapshots came from a capture of all 16,332 probe prompts in fixed batches, so these 360 had other batch-mates. On the same RTX 2070 that alone moves the activations by about 0.1% (fp16) to 0.5% (AWQ) in relative L2, with no decision changed.
 - **Another GPU.** Different hardware runs different kernels, so every number moves. That is itself a serving change, which is why snapshots record `gpu` and a GPU difference between reference and candidate warns.
 - **A verdict near a boundary.** The demo's AWQ candidate flags 13 of 180 benign examples. At 10 or fewer the FPR interval would sit under the 10% band and the verdict would be PASS, and at 27 or more it would be THRESHOLD STALE. Three fewer flags on your GPU would give PASS.
 
