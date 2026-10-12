@@ -1,4 +1,4 @@
-"""The README's code runs as written."""
+"""The README's code runs as written, and its report walkthrough quotes the real quickstart."""
 
 import re
 from pathlib import Path
@@ -27,10 +27,41 @@ def test_the_readmes_snapshot_example_saves_a_snapshot_that_loads(tmp_path, monk
     assert snapshot.metadata["layer"] == 20
 
 
-def test_the_readmes_hulder_check_output_is_what_the_cli_prints(capsys, monkeypatch):
-    # README §4 shows real output on the bundled demo; it must stay in step with the CLI.
-    [command, shown] = re.findall(r"```\n\$ (hulder check .*?)\n\n(.*?)\n```", README.read_text(), re.DOTALL)[0]
+# Numbers the walkthrough uses to explain, not to quote: the CI level and the AUROC scale.
+EXPLANATORY = {"95%", "1.0", "0.5"}
+NUMBER = re.compile(r"(?<![\w.])[-+]?\d+(?:[.,]\d+)*%?(?![\w])")
+
+
+def walkthrough() -> tuple[str, str]:
+    """The report shown under "How to read a report", and the prose around it."""
+    section = re.search(r"^## How to read a report\n(.*?)^## ", README.read_text(), re.DOTALL | re.MULTILINE).group(1)
+    [report] = re.findall(r"```\n(.*?)\n```", section, re.DOTALL)
+    prose = re.sub(r"```.*?```", "", section, flags=re.DOTALL)
+    return report, re.sub(r"(?m)^\d+\. ", "", prose)  # list markers aren't quoted numbers
+
+
+def quickstart(capsys) -> str:
+    assert cli.run(["quickstart"]) == 0
+    return capsys.readouterr().out
+
+
+def test_the_walkthroughs_report_is_check_2_of_the_quickstart_as_printed(capsys):
+    report, _ = walkthrough()
+    assert "\n" + report + "\n" in quickstart(capsys)
+
+
+def test_every_number_the_walkthrough_quotes_is_in_the_quickstart_output(capsys):
+    _, prose = walkthrough()
+    printed = set(re.findall(r"[-+]?\d+(?:[.,]\d+)*%?", quickstart(capsys)))
+    quoted = set(NUMBER.findall(prose)) - EXPLANATORY
+    assert quoted, "the walkthrough quotes no numbers"
+    assert sorted(quoted - printed) == []
+
+
+def test_the_readmes_hulder_check_command_prints_the_walkthroughs_report(capsys, monkeypatch):
+    [command] = re.findall(r"```\n\$ (hulder check .*?)\n```", README.read_text(), re.DOTALL)
     monkeypatch.chdir(README.parent)
     argv = command.replace("\\\n", " ").split()[1:]
     assert cli.run(argv) == 12
-    assert capsys.readouterr().out.rstrip("\n") == shown
+    report, _ = walkthrough()
+    assert capsys.readouterr().out.rstrip("\n").replace("src/hulder/data/", "") == report

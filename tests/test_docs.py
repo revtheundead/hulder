@@ -13,7 +13,7 @@ GONE = ("hulder.capture.demo", "hulder/capture/demo", "hulder/data/demo_prompts"
 def prose_and_package() -> list[Path]:
     package = [p for p in (ROOT / "src" / "hulder").rglob("*") if p.is_file() and "__pycache__" not in p.parts]
     prose = [ROOT / "README.md", ROOT / "CONTEXT.md", *ROOT.glob("examples/**/*.md")]
-    prose += [p for p in (ROOT / "docs").rglob("*.md")]
+    prose += [*ROOT.glob("docs/*.md"), *ROOT.glob("docs/results/**/*.md")]
     return package + prose
 
 

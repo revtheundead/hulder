@@ -538,8 +538,8 @@
     }
   },
   "run_manifest": {
-    "git_commit": "4d08e4b0386f5006e6d6796c9e80303d53f92c2d",
-    "git_dirty": true,
+    "git_commit": "c677f0fe6251d9f2ab876acdd7b4f0be2290ce05",
+    "git_dirty": false,
     "python": "3.12.14",
     "packages": {
       "numpy": "2.3.5",

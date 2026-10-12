@@ -38,5 +38,5 @@ Both checks are **INCONCLUSIVE** (exit 12). Rates are Clopper-Pearson 95% interv
 ## Where this loses
 
 - **The main probe's FPR sits almost on the line.** At 2.10% observed against a 2% band, `more_benign_needed` is 78,344. That is no realistic calibration set, and more data won't settle it. This matches the synthetic result that a true 2% FPR is INCONCLUSIVE 96% of the time at this size. A team would have to decide on the point estimate, and the gate doesn't make that call for them.
-- **The demo set is small.** 180 benign at a 5% target give an interval about 8 points wide, so the quickstart will show INCONCLUSIVE, as README §8 anticipates. 300 more benign examples would settle it if the observed rate held.
+- **The demo set is small.** 180 benign at a 5% target give an interval about 8 points wide, so the quickstart will show INCONCLUSIVE, as docs/design.md §7 anticipates. 300 more benign examples would settle it if the observed rate held.
 - **Turing only.** AWQ here runs through Marlin with fp16 activations on an RTX 2070. Other GPUs or kernels can shift scores differently.

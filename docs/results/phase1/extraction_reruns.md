@@ -1,6 +1,6 @@
 # Fresh-engine captures are not bit-identical at scale (Phase 1)
 
-Three fp16 captures of the 16,332 probe prompts, each a fresh engine with an identical `CaptureConfig`. Full numbers in `extraction_reruns.json`.
+Three fp16 captures of the 16,332 probe prompts, each a fresh engine with an identical `CaptureConfig`. The root cause is open (docs/design.md §10). Full numbers in `extraction_reruns.json`.
 
 Reproduce from the repo root (each `extract.py` run writes `.cache/probe/fp16`; rename runs 1 and 3 after capture):
 

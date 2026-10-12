@@ -36,7 +36,7 @@ def test_the_vllm_extra_declares_what_hulder_capture_imports():
 
 
 def test_the_pypi_description_is_the_short_page_with_absolute_links():
-    # README.md is also the agent brief and its relative links break on PyPI.
+    # README.md's relative links break on PyPI, so PyPI gets docs/pypi.md.
     description = metadata("hulder")["Description"]
     assert description.startswith("# Hulder")
     assert "https://github.com/revtheundead/hulder" in description

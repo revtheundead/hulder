@@ -1,6 +1,6 @@
 # Source this before any uv or vLLM command: `source scripts/dev-env.sh`.
 # Keeps the interpreter, model weights and every JIT/compile cache inside the
-# repo, so the workspace deletes cleanly (README §9.1).
+# repo, so the workspace deletes cleanly (docs/design.md §8.1).
 
 HULDER_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 export HULDER_ROOT

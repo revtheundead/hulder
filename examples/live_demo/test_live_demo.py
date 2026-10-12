@@ -47,7 +47,7 @@ def test_the_demo_captures_each_run_then_checks_and_records_the_verdict(tmp_path
     assert demo.main(["--out", str(tmp_path)]) == 0
     assert fake_captures == ["fp16", "fp16_rerun", "awq"]
     printed = capsys.readouterr().out
-    assert "Verdict: INCONCLUSIVE" in printed  # the bundled AWQ verdict (README §4)
+    assert "Verdict: INCONCLUSIVE" in printed  # the bundled AWQ verdict (the README's report walkthrough)
     assert (tmp_path / "check.txt").read_text() in printed
     assert json.loads((tmp_path / "check.json").read_text())["report"]["verdict"] == "INCONCLUSIVE"
     manifest = json.loads((tmp_path / "manifest.json").read_text())

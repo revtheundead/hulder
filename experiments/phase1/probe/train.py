@@ -1,14 +1,14 @@
 """Train the v0.1 example probe and apply the dataset decision's boundary-pairs rule.
 
-Split roles (README §8):
+Split roles (docs/design.md §7):
   train        fits weights and the standardisation mean/std
-  validation   picks layer and C, at position -1 (README §6 D2 default)
+  validation   picks layer and C, at position -1 (docs/design.md §5 D2 default)
   calibration  sets the threshold for 1% FPR on benign scores
   test         in-distribution metrics, touched once
   bpairs_*     held out; scored only, for the AUROC >= 0.85 rule
 
 The threshold is the empirical (1 - 0.01) quantile of benign calibration scores, rounded
-up. This is provisional: conformal vs binomial-tail is the Phase 2 written decision (README §7).
+up. This is provisional: conformal vs binomial-tail is the Phase 2 written decision (docs/design.md §6).
 
 Run from the repo root, after extract.py --config fp16:
     source scripts/dev-env.sh && uv run python experiments/phase1/probe/train.py

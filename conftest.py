@@ -1,5 +1,5 @@
 """Opt-in test groups, skipped by default so the fast run stays fast and CPU-only:
-slow tests (the gate's own calibration, README §7) run with --runslow, and tests that
+slow tests (the gate's own calibration, docs/design.md §6) run with --runslow, and tests that
 import vLLM (the capture extra) with --runvllm."""
 
 import pytest

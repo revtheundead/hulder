@@ -1,0 +1,337 @@
+# Hulder design
+
+How Hulder works and why: the problem, the deliverables, the design decisions, the statistical method behind `hulder check`, the experiment and the roadmap. The [README](../README.md) is the user guide. Decisions are recorded as written decisions in [docs/design.md], results in [`docs/results/`](results/), and the terms used here are defined in [`CONTEXT.md`](../CONTEXT.md).
+
+## 1. The problem
+
+> **Status of this section.** The prior-art claims below were gathered from search results and paper summaries, not from reading every source in full. Items marked † are listed in §12 and must be verified before anything is built on them.
+
+Frontier labs now screen traffic with **activation probes**, small classifiers that read the served model's own hidden states. Because those activations are computed during generation anyway, a probe costs almost nothing compared with running a second LLM as a judge. Anthropic (Constitutional Classifiers++) and Google DeepMind (production probes for Gemini, arXiv 2601.11516) both published in January 2026 on making probes production-ready, and both converged on a **probe-first cascade**: a cheap probe screens all traffic, and an expensive LLM classifier only sees flagged cases. GDM reports using the LLM less than 10% of the time while getting a lower false-negative rate than the LLM alone.†
+
+Two gaps follow from that.
+
+**Gap 1. Self-hosters don't have this.** Teams serving open models on vLLM typically bolt on guardrails via NeMo Guardrails, LLM Guard or LlamaFirewall, and use a separate guard model (e.g. Llama Guard on its own vLLM server) for model-based checks. That is the expensive pattern. Existing open-source probe tooling is either research-grade or not in a production engine:
+- `vllm-lens` runs probes and hooks inside vLLM but forces `enforce_eager=True`, disabling CUDA graphs, which costs throughput.†
+- IBM's `vLLM-Hook` targets inspection and steering for research.†
+- `AIsafePy` has a probe tier in its cascade, but probe features only work on HF Transformers, not a serving engine.†
+
+Gap 1 is the adoption argument for the whole project, so it is the first thing to verify.
+
+**Gap 2. Probes are calibrated against one serving configuration, and teams keep changing it.** Weight quantization (FP8, AWQ int4), FP8 KV cache, engine upgrades and batching changes all perturb the hidden states a probe reads. The probe's threshold was chosen on the old numbers. The failure is silent in one of two ways:
+- scores drift up, the false-positive rate climbs, escalations to the expensive judge multiply, and the cost savings evaporate (and the judge can be overloaded); or
+- scores drift down, real attacks slip under the threshold, and nobody notices because the monitor is the thing that degraded.
+
+GDM explicitly names robustness to distribution shift as a hard open problem for probes. Related work shows ordinary typos break single-position probes ("Latent Undertow", arXiv 2609.15994) and studies probe robustness to inference-time numerical non-determinism ("Same Probe, Different Numbers", arXiv 2609.31796). **The deliberate serving-config changes teams make to cut cost are the gap this project targets.** 2609.31796 is the closest prior work and has been read in full. It keeps weights fixed, runs in HF Transformers rather than a serving engine, and reports accuracy and verdict flips rather than FPR/FNR at a tuned threshold or recalibration, so the plan is unchanged.
+
+## 2. What this project is
+
+A tool people should actually use. Three deliverables, in priority order.
+
+1. **`hulder check`**, a release gate shipped as a pip-installable library with a thin CLI and a GitHub Action. It checks any **scorer**, meaning any thresholded score derived from a model, under two serving configs. Activation probes are the flagship case. Given reference and candidate scores (or activations plus a probe) on the same labelled examples, it answers three questions with honest uncertainty. Did the scores shift? Does the scorer still separate the classes? If only the threshold is stale, what is the recalibrated threshold for the same target FPR? It returns a verdict, and the CLI turns that into a CI exit code.
+2. **The vLLM runtime plugin.** In-server probe scoring at production settings (CUDA graphs intact, no host-device sync on the hot path), with metrics and drift alarms.
+3. **The benchmarks page.** The experiment, run with the tool: train a linear probe on open models, serve them under several serving configs, and publish what `hulder check` says about each. It demonstrates the tool and is reported in full whatever it shows.
+
+The probe-first cascade (gateway, bounded escalation queue, LLM judge, failure policies) is an **example deployment** that shows the plugin and gate in a realistic stack, not a deliverable of its own.
+
+**What the gate can detect so far (measured on synthetic scores).** These numbers come from 1,000 simulated runs per row, with about 1,200 benign and 900 attack examples and a 1% false-positive target. They assume the threshold was set on the reference itself. Real serving configs come next.
+- An unchanged serving config passes in every run, including at the run-to-run noise measured between two fresh fp16 vLLM engines.
+- If a change pushes the false-positive rate to 5%, the gate says THRESHOLD STALE in 999 of 1,000 runs.
+- At 3% it never passes. It says THRESHOLD STALE in 57% of runs and INCONCLUSIVE in the rest.
+- At 1.5% to 2% it mostly says INCONCLUSIVE, and reports how many more benign examples would settle it. The median is about 2,200 more at 1.5% and 10,400 at 2%, so small rises need a much bigger calibration set to judge.
+- If a change lowers AUROC by 0.05 or more, the gate says SCORER DEGRADED in every run, and it never does for a drop of 0.01.
+
+Details and the cases where it loses are in `docs/results/phase1/gate_calibration.md`.
+
+**Positioning.** This is a component, not a replacement stack. People adopt pieces that slot into what they already run. The target adopter is a team already self-hosting on vLLM who would otherwise run Llama Guard on every request.
+
+**Scorers the gate applies to.** The gate needs only scores and labels, so it applies wherever a threshold was tuned on one serving config and the config then changes.
+- *Activation probes* (flagship, v0.1). Hulder captures the activations itself through the `vllm` extra.
+- *Semantic-cache similarity* (v0.2 worked example). Paraphrase-based caching: a small embedding model at fp32 and at int8, comparing the cosine-similarity threshold above which a cached answer is served. It uses PAWS-Wiki sentence pairs, whose negatives differ from their pair only in word order, so a false positive is a cached answer served for a sentence that means something else. It runs on CPU and downloads PAWS at runtime.
+- *Further use cases, not in scope:* guard-model probabilities (for example Llama Guard's probability of "unsafe") and embedding classifiers. Both work through bring-your-own scores but get no worked example.
+
+### Non-goals
+
+- Producing scores for every kind of scorer. Beyond activation probes, users bring their own scores.
+- Inventing new probe architectures. A linear (logistic regression) probe is deliberately simple; the project is about operating probes, not designing them.
+- A general guardrail framework. Integrate with existing ones as a scorer instead.
+- Per-token streaming monitoring in the first version. Start with one score per request at the end of prefill.
+- Multi-GPU, tensor parallelism, or datacenter-scale load. One GPU, realistic loads, honest extrapolation.
+- Beating Llama Guard on accuracy. The claim is cost and latency at acceptable accuracy, plus knowing when accuracy has silently dropped.
+- A llama.cpp or custom C++ engine. Possible later port; not in scope now.
+
+## 3. Worked example (the behaviour we are building toward)
+
+A team serves a ~9B open model on vLLM in bf16, with a prompt-attack probe on layer 20, thresholded at 0.730 for a 1% false-positive rate. They want to switch to FP8 weights and FP8 KV cache to halve memory.
+
+They capture layer-20 activations for a labelled calibration set under each serving config: the reference twice, so the gate can measure the noise floor, and the candidate once. v0.1 has no capture command. The `vllm` extra's `hulder.capture` runs vLLM offline with the extraction settings of the offline extraction decision, or any other capture works. Its `capture`, `CaptureConfig` and `snapshot_metadata` are public but experimental in v0.1 and may change in 0.x. Each run is saved as a `Snapshot`, and `hulder check` compares the candidate with the reference on CPU. The README's "Check your own serving change" shows the code, and its "How to read a report" walks through real output on the bundled fp16 vs AWQ int4 demo. In this FP8 scenario the verdict would read THRESHOLD STALE and the exit code 10.
+
+A THRESHOLD STALE verdict means the scorer still separates the classes but the threshold no longer gives the target FPR, so it needs recalibrating on the candidate. v0.1 reports the verdict only. A recalibrated threshold for the same target FPR is planned for v0.2 (§11). From Python, `hulder.check_snapshots(reference, candidate, rerun, threshold=..., target_fpr=..., probe=probe)` does what the CLI does on loaded `Snapshot`s and returns the `Report`. `hulder.check` takes plain arrays. Scores from any other scorer go in as JSONL instead of snapshots (v0.2, §11).
+
+The other important verdict is `SCORER DEGRADED` (e.g. AUROC falls to 0.81), where no threshold fixes it and the probe must be retrained on the new config. **The scenario's numbers (0.730, 3.4%, 0.81) are illustrative.**
+
+In production the runtime emits:
+
+```
+probe_score_p50{probe="attack_v3"}             0.12
+probe_flag_rate{probe="attack_v3"}             1.1%
+probe_drift_stat{probe="attack_v3"}            0.08   (alarm at 0.25)
+probe_latency_ms_p99{probe="attack_v3"}        0.3
+probe_errors_total{probe="attack_v3"}          0
+escalation_queue_depth                         3
+judge_circuit_state                            closed
+```
+
+The capacity link is what makes this a systems problem. At 2,000 req/s with a judge that handles 50 req/s, a 1% flag rate is 20 req/s (fine). A stale threshold pushing flags to 3.4% is 68 req/s, and an unbounded queue grows until something falls over. The statistical failure causes the capacity failure.
+
+## 4. Architecture
+
+```
+                   ┌──────────────────────────────────────────────┐
+client ──► gateway │ vLLM generation server                       │
+  ▲       (policy, │  forward pass ──► layer-L tap ──► probe ──►  │── score
+  │        routing)│  (continuous batching, CUDA graphs intact)   │
+  │                └──────────────────────────────────────────────┘
+  │                                   │ score > threshold
+  │                                   ▼
+  │                       escalation queue (bounded)
+  │                                   │
+  │                                   ▼
+  │                       judge service (LLM classifier;
+  │                        slow, expensive, can fail)
+  │                                   │
+  └──────── allow / block / degrade ◄─┘
+
+control plane (stretch): probe registry (versions, thresholds) · rollout controller
+               (canary + hulder check) · Prometheus/Grafana · alerts
+```
+
+### Package layering
+
+```
+ producers of arrays                   core library (numpy, scipy; no GPU)
+
+ hulder[vllm] capture ──┐            ├─activations─► apply_probe(probe, activations)
+ bundled sample data ───┘                          │ scores
+                                                   ▼
+ bring-your-own scores ───────scores──► check(reference, candidate, labels,
+  (JSONL, v0.2)                               threshold, target_fpr) ──► Report
+                                                   │
+                                                   ▼
+                              CLI: parse args · call check · print Report · exit code
+```
+
+### Components
+
+| Component | Responsibility | Depth |
+|---|---|---|
+| Gate library (`check`, `apply_probe`) | Paired shift test, performance CIs, recalibration, verdict, returned as a `Report`. Numpy only | **Deep (stats)** |
+| CLI | Parse arguments, load inputs, call the library, print the report, set the exit code. No statistics | Thin |
+| Snapshot capture (`hulder[vllm]`) | Extract activations from vLLM for a calibration set and save them with a run manifest | Medium |
+| Score loader | Read bring-your-own scores (JSONL of id, score and label per serving config) and align the two configs by id (v0.2) | Thin |
+| Probe training (`hulder[train]`) | Train a logistic regression probe on captured activations, export it | Simple on purpose |
+| In-server scoring | Compute probe score inside vLLM without breaking CUDA graphs or syncing the hot path; return per-request scores | **Deep (systems)** |
+| Gateway + policy | Per-route thresholds, fail-open/fail-closed, escalation decisions | Medium |
+| Escalation queue + judge | Bounded queue, admission control, degraded modes, circuit breaker on the judge | **Deep (robustness)** |
+| Probe registry | Versioned probes and thresholds, hot swap, shadow scoring | Stretch |
+| Rollout controller | Canary a config change, run `hulder check` on the canary, promote or roll back | Stretch |
+| Observability | Metrics above, dashboards, drift alarms | Medium |
+
+## 5. Key design decisions (to be settled as written decisions)
+
+**D1. Where the probe runs in the server.** Settled by a written decision for the runtime plugin (v0.3). This is separate from the offline extraction decision, which settles only the offline extraction path the gate uses in v0.1, where CUDA graphs don't matter. Candidate options, to be measured rather than argued:
+- *A. Fused into the forward pass.* Register an out-of-tree model class via a vLLM plugin that computes `w·h + b` at layer L into a persistent, graph-capturable buffer. Lowest overhead; tight coupling to engine internals; the hard part is mapping batch rows back to requests.
+- *B. vLLM's native hidden-state extraction* (added in v0.18 via the KV-connector path, built for Eagle-3 draft training), with a consumer that scores. Uses supported plumbing; may be built around disk/offline use and add latency. It requires chunked prefill off, unlike typical production servers, which run with it on (the offline extraction decision accepts this offline; for in-server use it is a cost to measure).
+- *C. Async sidecar.* Ship hidden states over shared memory to a separate process. Failure isolation and hot swap; copy bandwidth cost; cannot block before tokens stream.
+
+Deliverable is a measured comparison (throughput, p50/p99 latency, GPU memory) against a no-probe baseline and against `vllm-lens` eager mode.
+
+**D2. Which token position.** Start with the last prompt token at end of prefill (one score per request, enables blocking before generation). Per-token streaming is a stretch goal. The default position is the last token of the full chat-templated prompt, which the engine is guaranteed to compute. Published probe work often reads the end of the user turn instead, before the generation prompt (e.g. arXiv 2602.14161 uses Llama-3's `<|eot_id|>` at position −5), so the two positions are compared as an ablation on the benchmarks page on the same probe task. Prefix caching on/off is part of the serving config and is tested in the v0.1 extraction prototype.
+
+**D3. How scores leave the server.** Extra response field, response header, or side-channel endpoint. Must stay OpenAI-API compatible for clients that ignore it.
+
+**D4. Failure policy.** When the probe errors or times out, per route: `fail_closed` (escalate to judge) or `fail_open` (allow and log). When the judge is overloaded or down: block, allow-and-log, or hold with timeout. Every path is explicit, tested and observable. *Deferred: settled before the example deployment (v1.0).*
+
+**D5. Custom kernels.** No custom CUDA/Triton kernel unless D1 measurements show the plain implementation costs meaningful throughput. A probe is one small matrix-vector product; the expectation is that a kernel is unnecessary. If measurement says otherwise, the kernel is justified work and gets a written decision.
+
+**D6. Gateway language.** Default Python (FastAPI, asyncio). Only change if measurement shows the gateway is the bottleneck. Language chosen per layer on evidence, and said so. *Deferred: settled before the example deployment (v1.0).*
+
+## 6. Statistical method for `hulder check`
+
+- **Paired design.** Both configs see the same prompts, so compare per-prompt score differences (paired bootstrap or Wilcoxon signed-rank), which has far more power than a two-sample test on unpaired score distributions.
+- **Noise floor first.** Run the baseline config twice (and across batch sizes) to measure run-to-run variation from numerical non-determinism. A shift only counts if it exceeds the floor. This also positions the work relative to arXiv 2609.31796.
+- **For a linear probe, the projection is sufficient.** The probe's output depends only on `w·h + b`, so the 1D projection onto `w` fully determines probe behaviour. A multivariate test (e.g. MMD on the layer-L activations) is reported as a general-shift diagnostic, not as the verdict.
+- **Performance with intervals.** AUROC with bootstrap CI; FPR and FNR at threshold with exact binomial (Clopper-Pearson) or Wilson intervals.
+- **Recalibration.** Choose the new threshold from benign calibration scores with a finite-sample guarantee. Decide between a conformal-style quantile (controls expected FPR) and a binomial-tail bound (controls FPR with high probability). written decision required.
+- **Decision flip rate (diagnostic).** The fraction of examples whose probe decision (score above or below the threshold) differs between reference and candidate on the same prompts. Reported alongside the verdict, never an input to it. arXiv 2609.31796 recommends it as the main per-example measure, because aggregate accuracy understated the number of changed decisions by a factor of two to nine.
+- **Multiple configs.** Holm correction when checking several candidates at once.
+- **Validation.** Every statistical routine is tested on synthetic data with known ground truth (injected shifts of known size, null cases) before real data. False-alarm and detection rates of the gate itself are reported.
+
+## 7. The experiment
+
+- **Models.** A small (~1 to 2B) open model for v0.1 and fast iteration, and Qwen3-4B in bf16 for the benchmarks page. Of the Qwen3 dense sizes (0.6B, 1.7B, 4B, 8B, 14B, 32B), it is the largest whose bf16 weights leave room for KV cache on the 12 GB lab GPUs (§8.1): 8.04 GB at revision `1cfa9a72`. Qwen publishes official AWQ int4 (`Qwen/Qwen3-4B-AWQ` at `74d4bd2b`) and block-quantized FP8 (`Qwen/Qwen3-4B-FP8` at `96b30dc1`) checkpoints of it, whose cards name it as `base_model`. All three cards declare Apache-2.0. An 8B model in bf16 fits none of the lab GPUs (Qwen3-8B is 16.38 GB of weights at `b968826d`). Sizes are the safetensors totals from the Hugging Face API at those revisions (§14). Its hybrid-thinking chat template is captured with `enable_thinking` pinned in `CaptureConfig`. Each must have an official AWQ checkpoint of the same base model from the same publisher, otherwise the AWQ comparison measures a different model rather than a serving config. Self-quantizing is the fallback. Each must also be fp16-stable, which rules out Gemma-3 (arXiv 2609.31796 §3.4 reports its fp16 residual activations overflow to NaN).
+- **Task.** Prompt attack (injection or jailbreak) detection, named so because the chosen datasets' attack classes mix both. Benign examples include hard negatives (benign text that looks like an instruction) so a 1% FPR target means something. Datasets and licences in the dataset decision: S-Labs for training, calibration and in-distribution test, 3nesdeniz boundary-pairs as a held-out hard-negative test set that also supplies the quickstart's sample activations.
+- **Critical detail.** Train the probe on activations extracted from the serving engine itself (vLLM, bf16), not from HF Transformers. Engine mismatch is itself a source of shift, and training on HF would contaminate the baseline.
+- **Configs** (each vs the bf16 reference): FP8 weights, AWQ int4, FP8 KV cache, batch size 1 vs large, two vLLM versions, and bf16 rerun (noise floor). Add more only if cheap.
+- **Layers.** Report for 2 to 3 layers; the effect of quantization may depend on depth.
+- **Output.** A table of AUROC, FPR/FNR at the original threshold, recalibrated threshold, and gate verdict per config, plus plots of score distributions.
+- **Quickstart demo probe (demo only).** The main S-Labs probe failed the dataset decision's rule on boundary-pairs (AUROC 0.839 < 0.85), so the quickstart ships a separate demo probe trained on 600 boundary-pairs examples with a 5% FPR target (`docs/results/phase1/probe_demo.md`). It shows how the gate works and is not a prompt-attack monitor. If its fp16 vs AWQ check comes out INCONCLUSIVE at this sample size, the quickstart shows that verdict as is.
+- **The gate's own calibration.** Its false-alarm rate on unchanged scorers and its THRESHOLD STALE detection rate against the candidate's true FPR, at the benchmark's calibration-set size. The v0.1 synthetic curve at 1,191 benign is in `docs/results/phase1/gate_calibration.md`.
+- **Finding to report: a probe that separates on surface features fails on hard negatives.** The S-Labs probe reaches test AUROC 0.994, and even layer 4 separates S-Labs validation at 0.996, which points to surface features of the text. At its 1% FPR threshold it flags 95% of benign boundary-pairs prompts, whose median score is 0.986 against 0.011 for S-Labs calibration benign. The benchmarks page reports this finding alongside the serving-config results, because it bounds what any in-distribution AUROC says about deployment (`docs/results/phase1/probe_main.md`).
+
+## 8. Tech stack
+
+| Layer | Choice | Notes |
+|---|---|---|
+| Language | Python 3.12 | `uv` for envs, `ruff`, type hints, `pytest` |
+| Core library | numpy, scipy | The base install. No black-box stats libraries for the gate's core logic, and no torch or vLLM import |
+| Serving | vLLM, pinned version, in the `hulder[vllm]` extra | Upgrade deliberately; version change is one of the experiment configs |
+| ML | scikit-learn in the `hulder[train]` extra | Probe training is ~50 lines by design |
+| Embedding model (v0.2 example) | A small sentence embedding model, e.g. `BAAI/bge-small-en-v1.5` (MIT, 33M parameters), at fp32 and int8 on CPU | Model and int8 path chosen in v0.2 (§12). In an examples extra, not the base install |
+| Gateway | FastAPI + asyncio | See D6 |
+| Judge | Llama Guard (current version) on a second vLLM server; plus a mock judge that can be made slow or broken on demand | Mock is essential for fault injection |
+| Observability | Prometheus, Grafana, OpenTelemetry traces | |
+| Load / chaos | Locust or k6; scripted fault injection | |
+| Packaging | Docker Compose locally | GKE deployment is an optional stretch that doubles as Google Cloud PMLE cert practice |
+| CI | GitHub Actions for CPU tests; GPU tests run manually with recorded results | |
+| Compute | Laptop for development; the university's teaching-lab GPUs for experiments | See §8.1 |
+
+### 8.1 Development environment
+
+Two tiers, because the local GPU cannot run the headline experiment.
+
+**Local (development).** Windows laptop with an RTX 2070 (Turing, compute capability 7.5, 8 GB VRAM), 32 GB RAM. vLLM runs on Turing, but Turing has no bf16 support and no native FP8 (FP8 there is weight-only W8A16 via Marlin kernels). So the laptop cannot produce the bf16 reference or the native FP8 configs, and its throughput numbers are not representative.
+
+Used for:
+- all `hulder` statistics, unit tests and synthetic validation (CPU)
+- gateway, queue, mock judge and the Prometheus/Grafana harness
+- runtime plumbing prototypes on a ~1B model in fp16 with conservative `--gpu-memory-utilization` and `--max-model-len`
+- the v0.1 demo: fp16 vs AWQ int4 on a ~1B model (vLLM's AWQ path needs compute capability 7.5, `auto_awq.py:230` at v0.30.0)
+
+Workspace rules:
+- A dedicated WSL2 distro (`hulder`), created fresh from an official Ubuntu image, **not cloned** from an existing distro. Teardown is `wsl --unregister hulder`.
+- Code lives on the distro's Linux filesystem (`~/hulder`), never under `/mnt/c`. Edit via VS Code's WSL extension.
+- GPU access comes from the Windows NVIDIA driver only. No Linux NVIDIA driver and no CUDA toolkit inside WSL; PyTorch and vLLM wheels bundle the CUDA runtime.
+- Python via `uv` with a project `.venv` and committed `uv.lock`. The interpreter is uv-managed CPython 3.12.14 (pinned in `.python-version`), installed inside the repo under `.cache/uv-python`, and `pyproject.toml` forbids implicit downloads. So `source scripts/dev-env.sh` before any `uv` command, which also keeps `HF_HOME` and the compile caches inside the repo. Without it, `uv run` fails with "No interpreter found for Python 3.12.14 in managed installations", and following uv's hint without the script would install Python outside the repo. First-time setup:
+
+  ```bash
+  source scripts/dev-env.sh && uv python install 3.12.14 && uv sync
+  ```
+- Tests. `uv run pytest` is the fast run, CPU only. Two groups are opt-in. `--runslow` adds the gate's seeded calibration runs (about 9 minutes), and `--runvllm` adds the tests that import vLLM, which skip cleanly where the `[vllm]` extra isn't installed, as in GitHub CI. `uv run pytest --runvllm -m vllm` runs that group alone.
+
+  ```bash
+  source scripts/dev-env.sh && uv run pytest --runvllm --runslow
+  ```
+- `HF_HOME` points inside the project (`.cache/hf`, gitignored) so model weights are deleted with the workspace.
+- Docker Engine and the NVIDIA Container Toolkit installed inside the distro, not Docker Desktop. Compose volumes as bind mounts under the project.
+- `.wslconfig` caps WSL memory and CPUs so Windows stays usable.
+
+**Remote (experiments and benchmarks).** The University of Leeds teaching-lab machines, used mainly in person. They have RTX 4070 and RTX 5070 cards (12 GB) and one RTX 5080 (16 GB), all with native bf16 and FP8. The 4070 is the canonical machine because it is Ada (sm_89), the architecture of NVIDIA's L4 and L40S datacenter GPUs. vLLM 0.30.0's docs list FP8 W8A8 on Ada, Hopper and Blackwell (compute capability 8.9 and up), so Ada is supported but not documented as better supported than the others. Which FP8 kernel vLLM selects for Qwen3-4B-FP8's 128×128 block-quantized weights on each lab card is unverified†, as is FP8 on the Blackwell 50-series (sm_120) under the pin (§12). Every comparison runs on one GPU model, since a different GPU is itself a serving change. Snapshots record `gpu`, and a difference warns. Same repo, `uv sync`, same lockfile. Sessions are bounded, so captures are resumable and results and run manifests are committed before leaving. Used for the benchmarks page, all bf16 / FP8 / KV-cache configs, Qwen3-4B, and every overhead or throughput benchmark. Consumer-card throughput doesn't represent datacenter GPUs, so overhead is reported relative to a no-probe baseline on the same card. The budget is £0 with no paid fallback. If lab access fails, the overhead table and the benchmarks page shrink to what the 2070 can show, which is fp16 and AWQ configs, the noise floor and engine versions, with no bf16 or FP8 results and no throughput claims.
+
+## 9. Repository layout (target)
+
+```
+hulder/
+  README.md            user guide: install, quickstart, how to read a report
+  CONTEXT.md           domain glossary, kept current
+  docs/
+    design.md          this file
+    results/           experiment tables, plots, run manifests
+  src/hulder/
+    gate/              check, apply_probe, Report, recalibrate, stats (base install, numpy only)
+    inputs/            loaders: bundled sample data, bring-your-own scores (JSONL)
+    cli.py             thin wrapper: parse, call gate, print, exit code
+    data/              bundled quickstart sample activations, example probe
+    capture/           vLLM snapshot capture (hulder[vllm] extra)
+    train/             probe training + export (hulder[train] extra)
+    runtime/           vLLM plugin / in-server scoring
+    gateway/           policy, routing, escalation queue, judge client
+    control/           probe registry, rollout controller (stretch)
+  harness/             docker-compose, load tests, fault injection
+  tests/               unit (CPU), stats validation (synthetic), gpu/ (manual)
+```
+
+## 10. Known limits
+
+**Tested on one GPU and one model.** v0.1 has run only on an RTX 2070 (Turing) with Qwen2.5-1.5B-Instruct under vLLM 0.30.0, fp16 against the official AWQ int4 checkpoint. No bf16, FP8, FP8 KV-cache or engine-upgrade results exist yet.
+
+**Captures are not bit-identical across engine runs.** Three fresh-engine fp16 captures of 16,332 prompts at an identical config differed on 53 to 56% of prompts (mean |Δscore| about 8e-5, up to 2 decision flips; `docs/results/phase1/extraction_reruns.md`). Batch composition also moves activations slightly. The cause is unknown. So pass a rerun of the reference as `--noise-floor`, and expect the floor itself to vary: three runs of the live tutorial gave 0.000205 to 0.000286, up to about 40% apart (`docs/results/phase1/live_demo.md`). The verdict was the same in all three.
+
+**The rerun must be of the reference.** A noisier candidate's own noise is not measured. AWQ's run-to-run noise is about 4 times fp16's, so an fp16 rerun can understate it. The AWQ shift in the demo is still 180 to 250 times the floor.
+
+**Prefix caching changes activations even without cache hits.** The cause is unexplained (`docs/results/phase1/extraction_prototype.md`). `hulder.capture` requires it off.
+
+**Fixed tolerance bands.** The candidate FPR must stay between 0.5 and 2 times the target, FNR within 0.05 of the reference, and ΔAUROC above -0.02. These are constants in `hulder/gate/check.py`, not options.
+
+**No recalibration.** THRESHOLD STALE says the threshold is stale but doesn't propose a new one.
+
+**Small FPR rises need large calibration sets.** With about 1,200 benign examples, a rise from 1% to 1.5% or 2% is usually INCONCLUSIVE (§2). The report says how many more examples would settle it.
+
+**Swapped roles go undetected.** Passing the candidate as reference turns a degradation into PASS. Check the "Changes under test" lines, which show a swap as `quantization: 'awq' -> None`.
+
+**API rough edges.** `Snapshot == Snapshot` raises `ValueError`, and `Report` isn't hashable. There is no `hulder snapshot` command, and capture is the experimental `hulder.capture` Python API.
+
+## 11. Roadmap
+
+v0.1 is the gate on activation probes: `hulder check` and `hulder quickstart` on CPU, `hulder.capture` for vLLM, and the live tutorial on a local GPU. Next, in priority order:
+
+- **v0.2, gate complete.** A recalibrated threshold for THRESHOLD STALE, with a written decision choosing between a conformal quantile and a binomial-tail bound. Bring-your-own scores as JSONL of id, score and label per serving config. A GitHub Action wrapping the CLI. A second worked example, semantic-cache similarity at fp32 vs int8 on CPU.
+- **After v0.1, smaller items.** A `hulder snapshot` command around `hulder.capture`. A rerun of the candidate as the noise floor (`--rerun-of candidate`). Configurable tolerance bands, recorded in the report. The multivariate shift diagnostic of §6 (MMD on activations). Equality and hashing for `Snapshot` and `Report`.
+- **v0.3, runtime plugin.** In-server probe scoring with CUDA graphs on (D1, D3), metrics and drift alarms, with overhead measured against a no-probe baseline and `vllm-lens`.
+- **Benchmarks page.** Qwen3-4B in bf16 against FP8, AWQ and FP8 KV cache on one GPU model, with the noise floor, 2 to 3 layers and the token-position ablation (§5 D2, §7).
+- **v1.0, example deployment.** The probe-first cascade with failure policies (D4, D6), a docs site and a write-up.
+
+## 12. Assumptions to verify before building on them
+
+- ~~Contents of arXiv 2609.31796 ("Same Probe, Different Numbers").~~ Resolved: read in full. It keeps weights fixed and doesn't measure thresholded FPR/FNR or recalibration, so the plan is unchanged.
+- Prior-art claims in §1 (marked †): the Anthropic and GDM cascade details and the GDM "<10% LLM usage" figure; `vllm-lens` forcing eager mode; IBM `vLLM-Hook` being research-oriented; `AIsafePy` probes being HF-Transformers-only. Read the actual sources and correct §1 where they differ.
+- The current state of vLLM hidden-state extraction (v0.18+), whether it works at serving time for arbitrary layers, and its latency cost.
+- Whether an out-of-tree model class can compute and export per-request probe scores with CUDA graphs enabled.
+- FP8 weights, FP8 KV cache and AWQ under the pinned vLLM on the lab GPUs. Expected on the Ada 4070, unverified on the Blackwell 5070 and 5080 (sm_120). Checked by a smoke capture on the lab GPUs. The local Turing GPU is ruled out for FP8 and bf16 configs (§8.1).
+- The FP8 kernel vLLM 0.30.0 selects for Qwen3-4B-FP8 on the 4070 and the 5070 (§8.1), from its `Selected <kernel> for <module>` startup line in that smoke capture. Its docs try DeepGEMM and CUTLASS before Marlin and Triton for block-quantized FP8, and the first two may need Hopper or newer, so Ada may run a less exercised kernel than datacenter Hopper.
+- The headroom Qwen3-4B bf16 leaves on a 12 GB card. The hardware decision's "about 2 GB for KV cache" is an estimate: 0.9 of 12 GiB less 7.49 GiB of weights is about 3.3 GiB before activations and CUDA graphs. Read the KV-cache size vLLM logs in that smoke capture.
+- Whether vLLM's `cpu_offload_gb` works with the hidden-state connector, so Qwen3-8B in bf16 can be captured on a 12 GB card (an offload test in the same session).
+- Current `vllm-lens` behaviour (still eager-only?) and whether anyone has shipped production-speed probes for vLLM since September 2026.
+- Dataset licences and label quality.
+- Semantic-cache example (v0.2): that int8 quantization of the chosen embedding model runs on CPU and actually changes the similarities. The dataset is settled by the semantic-cache dataset decision.
+
+## 13. Success criteria
+
+**Usability**
+- A quickstart that goes from `pip install` to a first verdict in under a minute without a GPU, using shipped pre-extracted sample activations. The live vLLM run is a second tutorial, run from a clone.
+- Pretrained example probes for 1 to 2 open models, each shipped with its reference snapshot and training config.
+- An end-to-end demo: a serving-config change caught by the GitHub Action before rollout.
+- Versioned releases on PyPI, tests and CI on every push, and a short docs site.
+
+**Technical**
+- Benchmarks page across at least five serving configs with noise floor and confidence intervals, reproducible from a documented command per result. It reports every config run, including PASS, INCONCLUSIVE, and cases where the gate is wrong.
+- Gate with measured false-alarm and detection rates on synthetic shifts.
+- Runtime plugin with measured overhead against a no-probe baseline and against eager-mode hooks, including honest cases where it loses.
+- Example deployment that stays responsive under judge failure and overload, with the behaviour documented and tested.
+- Design doc with written decisions covering every decision in §5.
+- A public write-up a vLLM user could act on.
+
+---
+
+## 14. References
+
+- Building Production-Ready Probes For Gemini, arXiv 2601.11516 · https://arxiv.org/abs/2601.11516
+- AI Safety at the Frontier, paper highlights January 2026 (Anthropic and GDM probe cascades) · https://aisafetyfrontier.substack.com/p/paper-highlights-of-january-2026
+- Same Probe, Different Numbers, arXiv 2609.31796 · https://arxiv.org/abs/2609.31796
+- Latent Undertow: How Ordinary Typos Break Probes, arXiv 2609.15994 · https://arxiv.org/abs/2609.15994
+- Stop Early, Spend Less: hidden-state probes for streaming moderation, arXiv 2606.10487 · https://arxiv.org/abs/2606.10487
+- vllm-lens · https://pypi.org/project/vllm-lens/
+- IBM vLLM-Hook · https://github.com/IBM/vLLM-Hook
+- AIsafePy · https://pypi.org/project/aisafepy
+- Extracting hidden states from vLLM (vLLM blog, March 2026) · https://vllm-project.github.io/2026/03/30/extract-hidden-states.html
+- NeMo Guardrails · https://github.com/NVIDIA-NeMo/Guardrails
+- Llama Guard self-hosting with vLLM (NeMo docs) · https://docs.nvidia.com/nemo/guardrails/user_guides/advanced/llama-guard-deployment.html
+- vLLM GPU compute capability matrix (Speediyo) · https://www.speediyo.com/ai-infra/vllm-gpu-compute-capability-matrix
+- Turing microarchitecture (Wikipedia) · https://en.wikipedia.org/wiki/Turing_(microarchitecture)
+- Qwen3 Technical Report, arXiv 2505.09388 · https://arxiv.org/abs/2505.09388
+- Qwen3-4B at `1cfa9a7208912126459214e8b04321603b3df60c` (bf16, Apache-2.0) · https://huggingface.co/Qwen/Qwen3-4B/tree/1cfa9a7208912126459214e8b04321603b3df60c
+- Qwen3-4B-AWQ at `74d4bd2bd4bff9cafc9345221320bffb08b406a3` (Apache-2.0) · https://huggingface.co/Qwen/Qwen3-4B-AWQ/tree/74d4bd2bd4bff9cafc9345221320bffb08b406a3
+- Qwen3-4B-FP8 at `96b30dc13593a244a5e59e84687309f53c375cfa` (e4m3, 128×128 blocks, Apache-2.0) · https://huggingface.co/Qwen/Qwen3-4B-FP8/tree/96b30dc13593a244a5e59e84687309f53c375cfa
+- Qwen3-8B at `b968826d9c46dd6066d109eabc6255188de91218` (bf16, Apache-2.0) · https://huggingface.co/Qwen/Qwen3-8B/tree/b968826d9c46dd6066d109eabc6255188de91218
+- Model sizes and licences: the Hugging Face model API, e.g. https://huggingface.co/api/models/Qwen/Qwen3-4B?blobs=true (checked 2026-10-11)
+- vLLM 0.30.0, FP8 W8A8 docs · https://github.com/vllm-project/vllm/blob/v0.30.0/docs/features/quantization/llm_compressor/fp8.md
+- NVIDIA L4 and L40S (Ada Lovelace) · https://www.nvidia.com/en-us/data-center/l4/ · https://www.nvidia.com/en-us/data-center/l40s/

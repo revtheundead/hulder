@@ -1,5 +1,5 @@
 # Lint and the fast suite on the base install, without the vllm extra. Tests that need
-# vLLM, and the slow calibration runs, are opt-in and run locally (README §9.1).
+# vLLM, and the slow calibration runs, are opt-in and run locally (docs/design.md §8.1).
 name: CI
 
 # Pushes to main only, so a branch with an open PR runs once, on pull_request.

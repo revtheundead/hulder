@@ -1,6 +1,6 @@
 # Bundled quickstart data
 
-`hulder quickstart` checks these files. They are for demonstration only. The demo probe is not a prompt-attack monitor (README §8).
+`hulder quickstart` checks these files. They are for demonstration only. The demo probe is not a prompt-attack monitor (docs/design.md §7).
 
 | File | What it is |
 |---|---|
