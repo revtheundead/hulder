@@ -2,11 +2,13 @@
 
 The live tutorial (`docs/tutorial-live.md`) run on the local GPU, recorded for the v0.1 exit criterion (README §11).
 
-**Command** (from the repo root, at commit `5f88802`, clean tree, which `manifest.json` records):
+**Command** (from the repo root, at commit `5f88802`, clean tree, which `manifest.json` records). The same run today:
 
 ```bash
-source scripts/dev-env.sh && uv run python -m hulder.capture.demo --out .cache/live_demo --force
+source scripts/dev-env.sh && uv run python examples/live_demo/live_demo.py --out .cache/live_demo --force
 ```
+
+At `5f88802` the tutorial was a module inside the package, so the recorded `manifest.json` names that module's command, not this one. It has since moved to `examples/live_demo/` and calls `hulder check` as a command rather than through the CLI's internals. The configs, prompts and check are unchanged. The recorded files in `live_demo/` are left as they were written.
 
 The outputs are copied to `live_demo/` (`check.txt`, `check.json`, `manifest.json`). The snapshots stay in `.cache/` and are not committed. vLLM 0.30.0, torch 2.13.0 (CUDA 13.0), NVIDIA GeForce RTX 2070, with the models already in `HF_HOME`. The captures took 50 s, 40 s and 49 s, and the whole command 3 min 10 s.
 

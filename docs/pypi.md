@@ -12,7 +12,7 @@ Teams tune a probe's threshold on one serving config, then change it: FP8 or AWQ
 pip install hulder
 ```
 
-The base install is numpy and scipy only and runs on CPU. Capturing activations from vLLM needs the `vllm` extra (`pip install "hulder[vllm]"`).
+The base install is numpy and scipy only and runs on CPU. Capturing activations from vLLM needs the `vllm` extra (`pip install "hulder[vllm]"`), which adds `hulder.capture`, experimental in v0.1.
 
 ## Quickstart
 

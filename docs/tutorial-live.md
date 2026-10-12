@@ -2,14 +2,17 @@
 
 `hulder quickstart` checks activations that ship with the package. This tutorial captures the same examples yourself with vLLM, under the same three serving configs, and runs the same check. It shows the whole path a real release check takes, from serving config to verdict.
 
+The tutorial is an example in this repository (`examples/live_demo/`), not part of the pip package, so it runs from a clone.
+
 ## Run it
 
 ```bash
-pip install "hulder[vllm]"
-python -m hulder.capture.demo
+git clone https://github.com/revtheundead/hulder && cd hulder
+source scripts/dev-env.sh && uv python install 3.12.14 && uv sync
+uv run python examples/live_demo/live_demo.py
 ```
 
-It needs an NVIDIA GPU of compute capability 7.5 or newer (Turing onwards, which vLLM's AWQ path requires) with about 6 GB free, Linux or WSL2, and about 4.5 GB of model downloads from Hugging Face. On an RTX 2070 with the models already downloaded it takes 3 to 5 minutes. `--out DIR` picks where results go (default `hulder-demo/`). An interrupted run resumes from the snapshots already there. A snapshot is reused only if its config, vLLM version, GPU and prompts match this run, so anything else is refused, naming what differs, and `--force` recaptures it.
+It needs an NVIDIA GPU of compute capability 7.5 or newer (Turing onwards, which vLLM's AWQ path requires) with about 6 GB free, Linux or WSL2, and about 4.5 GB of model downloads from Hugging Face. `uv sync` installs hulder from the clone with its `vllm` extra. On an RTX 2070 with the models already downloaded it takes 3 to 5 minutes. `--out DIR` picks where results go (default `hulder-demo/`). An interrupted run resumes from the snapshots already there. A snapshot is reused only if its config, vLLM version, GPU and prompts match this run, so anything else is refused, naming what differs, and `--force` recaptures it.
 
 ## What it does
 
@@ -18,8 +21,8 @@ It needs an NVIDIA GPU of compute capability 7.5 or newer (Turing onwards, which
    - `fp16_rerun` is the same serving config again. Comparing it with the reference measures the noise floor, the variation you get without changing anything.
    - `awq` is the candidate, the official AWQ int4 checkpoint `Qwen/Qwen2.5-1.5B-Instruct-AWQ`.
 
-   Every capture reads layer 20 at the last prompt token for the 360 bundled boundary-pairs prompts (`hulder/data/demo_prompts.jsonl`), with vLLM's hidden-state connector and the settings of the offline extraction decision. Each is saved as a `Snapshot` with its metadata, including the GPU it ran on.
-2. **One check.** It runs the same code as `hulder check`, with the bundled demo probe, the AWQ capture as candidate and the rerun as noise floor, and prints the same report. `manifest.json` records the equivalent `hulder check` arguments.
+   Every capture reads layer 20 at the last prompt token for the 360 boundary-pairs prompts in `examples/live_demo/demo_prompts.jsonl`, with vLLM's hidden-state connector and the settings of the offline extraction decision. Each is saved as a `Snapshot` with its metadata, including the GPU it ran on.
+2. **One check.** It runs `hulder check` with the demo probe bundled in hulder, the AWQ capture as candidate and the rerun as noise floor, and prints its report. It runs it a second time with `--json` for `check.json`. `manifest.json` records the `hulder check` arguments.
 3. **A record.** `check.txt`, `check.json` and `manifest.json` (configs, GPU, package versions, timings, prompt hash) are written next to the snapshots.
 
 The command exits 0 whatever the verdict, since the point is to see it. Exit 1 means a capture or the check failed, or a snapshot in `--out` couldn't be reused, and `manifest.json` records which as its `status`. Snapshots and reports are written whole or not at all, so an interrupted run never leaves half a file.
@@ -40,4 +43,4 @@ What should hold everywhere is the shape of the result. The rerun's shift is tin
 
 ## Next
 
-Your own probe and serving configs follow the same steps. Capture each config with `hulder.capture.hidden_states.capture`, save a `Snapshot` per run (README §4), and run `hulder check`. `src/hulder/capture/demo.py` is a short worked example of all three.
+Your own probe and serving configs follow the same steps. Capture each config with `hulder.capture.capture` (experimental in v0.1), save a `Snapshot` per run (README §4), and run `hulder check`. `examples/live_demo/live_demo.py` is a short worked example of all three, using only hulder's public API.
