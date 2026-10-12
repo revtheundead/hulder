@@ -24,15 +24,16 @@ train = ["scikit-learn>=1.7"]
 [dependency-groups]
 # Default for `uv run`/`uv sync`, so local work keeps both extras installed.
 dev = [
+    {include-group = "test"},
     "hulder[vllm,train]",
-    "pytest>=8",
     "pandas>=2.3",
     "pyarrow>=21",
     # Imported directly by experiments/; versions come from the vllm pin via uv.lock.
     "huggingface-hub",
     "torch",
-    "ruff==0.16.10",
 ]
+# The fast suite and lint on the base install, as CI runs them.
+test = ["pytest>=8", "ruff==0.16.10"]
 
 [project.scripts]
 hulder = "hulder.cli:main"

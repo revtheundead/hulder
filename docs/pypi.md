@@ -1,5 +1,7 @@
 # Hulder
 
+[![CI](https://github.com/revtheundead/hulder/actions/workflows/ci.yml/badge.svg)](https://github.com/revtheundead/hulder/actions/workflows/ci.yml)
+
 A release gate for activation probes, and any other thresholded scorer, across LLM serving configs.
 
 Teams tune a probe's threshold on one serving config, then change it: FP8 or AWQ weights, an FP8 KV cache, a vLLM upgrade. The hidden states move, and the threshold silently stops giving its target false-positive rate. `hulder check` compares a reference and a candidate on the same labelled examples and returns PASS, THRESHOLD STALE, SCORER DEGRADED or INCONCLUSIVE, with confidence intervals and a CI exit code.
