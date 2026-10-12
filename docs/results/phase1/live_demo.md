@@ -11,6 +11,8 @@ The live tutorial (`docs/tutorial-live.md`) run on the local GPU, recorded for t
 
 Each folder holds the run's `check.txt`, `check.json` and `manifest.json`. The snapshots are not committed. The first run's stay in `.cache/live_demo/` for `compare_live.py`, and the second's were deleted after recording. Both runs used vLLM 0.30.0, torch 2.13.0 (CUDA 13.0) and an NVIDIA GeForce RTX 2070, with the models already in `HF_HOME`.
 
+The 2026-10-11 run, and the earlier one at `f97124e`, predate the probe-metadata check of metadata rule 9, which rejects a probe file whose recorded threshold or target FPR isn't a number. It doesn't affect capture or the verdict.
+
 **The move.** Between the two runs the tutorial moved out of the package into `examples/live_demo/`. It now calls the `hulder check` command rather than the CLI's internals. The configs, prompts and check are unchanged. So the first run's manifest names the old command, and its files are left as they were written. To repeat a run today, from the repo root:
 
 ```bash
