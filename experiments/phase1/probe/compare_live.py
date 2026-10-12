@@ -1,6 +1,6 @@
 """How far the live tutorial's captures are from the bundled demo snapshots, per run.
 
-Run from the repo root, after `python -m hulder.capture.demo --out .cache/live_demo`:
+Run from the repo root, after `uv run python examples/live_demo/live_demo.py --out .cache/live_demo`:
     source scripts/dev-env.sh && uv run python experiments/phase1/probe/compare_live.py
 
 Writes docs/results/phase1/live_demo/vs_bundled.json: the comparison, and a manifest with the
@@ -15,11 +15,12 @@ import numpy as np
 from common import run_manifest
 
 import hulder
-from hulder.capture.demo import BUNDLED
 
 COMMAND = "source scripts/dev-env.sh && uv run python experiments/phase1/probe/compare_live.py"
 LIVE = Path(".cache/live_demo")
 OUT = Path("docs/results/phase1/live_demo/vs_bundled.json")
+# The bundled demo snapshot each live run reproduces, as in examples/live_demo/live_demo.py.
+BUNDLED = {"fp16": "demo_fp16.npz", "fp16_rerun": "demo_fp16_run1.npz", "awq": "demo_awq.npz"}
 
 
 def main() -> None:

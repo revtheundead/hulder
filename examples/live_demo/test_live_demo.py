@@ -1,5 +1,5 @@
 """The live tutorial's orchestration, with a fake capture subprocess that saves the bundled
-snapshots in. CPU only; the real run is recorded in docs/results/phase1/live_demo/."""
+snapshots in. CPU only; the real runs are recorded in docs/results/phase1/live_demo/."""
 
 import json
 import os
@@ -7,16 +7,15 @@ import shutil
 import subprocess
 import sys
 from dataclasses import dataclass
-from importlib.resources import files
 from pathlib import Path
 from types import SimpleNamespace
 
+import live_demo as demo
 import numpy as np
 import pytest
 
 import hulder
-from hulder import cli
-from hulder.capture import demo
+import hulder.capture
 
 MACHINE = {"vllm_version": "0.30.0", "gpu": "Fake RTX"}
 
@@ -29,7 +28,7 @@ def fake_captures(monkeypatch):
 
     def run(name, out):
         calls.append(name)
-        bundled = hulder.Snapshot.load(str(files("hulder.data") / demo.BUNDLED[name]))
+        bundled = hulder.Snapshot.load(demo.DATA / demo.BUNDLED[name])
         hulder.Snapshot(
             ids=bundled.ids,
             labels=bundled.labels,
@@ -57,7 +56,7 @@ def test_the_demo_captures_each_run_then_checks_and_records_the_verdict(tmp_path
 
 
 def test_the_manifest_records_the_hulder_commit_it_ran_from(tmp_path, capsys, fake_captures):
-    # The tests run from the repo's editable install, so the source is a git checkout.
+    # The tests run from the repo, a git checkout.
     demo.main(["--out", str(tmp_path)])
     manifest = json.loads((tmp_path / "manifest.json").read_text())
     head = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True, cwd=Path(demo.__file__).parent).strip()
@@ -65,13 +64,14 @@ def test_the_manifest_records_the_hulder_commit_it_ran_from(tmp_path, capsys, fa
     assert isinstance(manifest["git_dirty"], bool)
 
 
-def test_no_commit_is_recorded_for_an_installed_hulder_even_inside_another_repo(tmp_path):
-    # pip install into a venv inside some other project's repo must not record that repo's commit.
-    site_packages = tmp_path / ".venv/lib/python3.12/site-packages/hulder/capture"
-    site_packages.mkdir(parents=True)
-    assert demo.source_commit(site_packages) == {"git_commit": None, "git_dirty": None}
+@pytest.mark.parametrize("where", ["scripts/live_demo", "examples/live_demo"])
+def test_no_commit_is_recorded_for_a_copy_of_the_example_inside_another_repo(tmp_path, where):
+    # A copy in some other project's repo must not record that repo's commit, even at the same path.
+    copy = tmp_path / where
+    copy.mkdir(parents=True)
+    assert demo.source_commit(copy) == {"git_commit": None, "git_dirty": None}
     subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
-    assert demo.source_commit(site_packages) == {"git_commit": None, "git_dirty": None}
+    assert demo.source_commit(copy) == {"git_commit": None, "git_dirty": None}
 
 
 def test_the_demos_report_is_what_hulder_check_prints_for_the_same_files(tmp_path, capsys, fake_captures):
@@ -79,8 +79,9 @@ def test_the_demos_report_is_what_hulder_check_prints_for_the_same_files(tmp_pat
     capsys.readouterr()
     check_args = json.loads((tmp_path / "manifest.json").read_text())["check_args"]
     for report, extra in (("check.txt", []), ("check.json", ["--json"])):
-        assert cli.run([*check_args, *extra]) == 12
-        assert (tmp_path / report).read_text() == capsys.readouterr().out
+        run = subprocess.run(["hulder", *check_args, *extra], capture_output=True, text=True, check=False)
+        assert run.returncode == 12
+        assert (tmp_path / report).read_text() == run.stdout
 
 
 def test_a_rerun_of_the_demo_reuses_its_snapshots_unless_forced(tmp_path, capsys, fake_captures):
@@ -199,37 +200,38 @@ CONFIG_DEFAULTS = {"quantization": None, "dtype": "float16", "batch_size": 8, "e
 
 def test_the_demo_snapshot_metadata_is_the_bundled_snapshots_plus_the_gpu():
     for name, bundled in demo.BUNDLED.items():
-        expected = hulder.Snapshot.load(str(files("hulder.data") / bundled)).metadata
+        expected = hulder.Snapshot.load(demo.DATA / bundled).metadata
         expected = {k: v for k, v in expected.items() if k not in ("splits_sha256", "prompt_ids_sha256")}
         cfg = SimpleNamespace(**{**CONFIG_DEFAULTS, **demo.RUNS[name]})
         captured = SimpleNamespace(gpu="Fake RTX", enable_thinking=None)
-        got = demo.snapshot_metadata(cfg, captured, expected["base_model"], expected["vllm_version"])
+        got = hulder.capture.snapshot_metadata(cfg, captured, expected["base_model"], expected["vllm_version"])
         assert got == {**expected, "gpu": "Fake RTX"}
 
 
 @pytest.mark.vllm
 def test_the_config_defaults_the_metadata_test_assumes_are_capture_configs():
-    hidden_states = pytest.importorskip("hulder.capture.hidden_states")
+    pytest.importorskip("vllm")
     for run in demo.RUNS.values():
-        cfg = hidden_states.CaptureConfig(**run)
+        cfg = hulder.capture.CaptureConfig(**run)
         assert {key: getattr(cfg, key) for key in CONFIG_DEFAULTS} == {
             **CONFIG_DEFAULTS,
             **{key: run[key] for key in CONFIG_DEFAULTS if key in run},
         }
 
 
-def test_each_capture_runs_this_module_in_a_fresh_python_process(tmp_path, monkeypatch):
+def test_each_capture_runs_this_script_in_a_fresh_python_process(tmp_path, monkeypatch):
     commands = []
     monkeypatch.setattr(
         demo.subprocess, "run", lambda command, check: commands.append(command) or SimpleNamespace(returncode=3)
     )
     assert demo.capture_subprocess("awq", tmp_path) == 3
-    assert commands == [[sys.executable, "-m", "hulder.capture.demo", "--capture", "awq", "--out", str(tmp_path)]]
+    script = str(Path(demo.__file__).resolve())
+    assert commands == [[sys.executable, script, "--capture", "awq", "--out", str(tmp_path)]]
 
 
 def test_a_capture_subprocess_that_raises_exits_non_zero(tmp_path, monkeypatch):
     # The parent sees a failed capture only through the child's exit code, so the child must
-    # let the exception out (python -m exits 1 on it) rather than return 0.
+    # let the exception out (python exits 1 on it) rather than return 0.
     def no_gpu(name, out):
         raise RuntimeError("CUDA unavailable")
 
@@ -240,7 +242,7 @@ def test_a_capture_subprocess_that_raises_exits_non_zero(tmp_path, monkeypatch):
 
 @pytest.fixture
 def fake_engine(monkeypatch):
-    """capture_run's vLLM, torch and Hugging Face imports replaced, so it runs without the
+    """capture_run's vLLM, torch and Hugging Face calls replaced, so it runs without the
     [vllm] extra: the 'engine' returns zero activations captured on a fake GPU."""
 
     @dataclass(frozen=True)
@@ -265,13 +267,12 @@ def fake_engine(monkeypatch):
 
     fakes = {
         "torch": SimpleNamespace(version=SimpleNamespace(cuda="13.0")),
+        # hulder.capture loads CaptureConfig and capture from here on first use.
         "hulder.capture.hidden_states": SimpleNamespace(CaptureConfig=CaptureConfig, capture=capture),
-        "hulder.capture.base_model": SimpleNamespace(
-            base_model_for=lambda model, revision, quantization: (model, None)
-        ),
     }
     for name, module in fakes.items():
         monkeypatch.setitem(sys.modules, name, module)
+    monkeypatch.setattr(hulder.capture, "base_model_for", lambda model, revision, quantization: (model, None))
     monkeypatch.setattr(demo, "version", lambda package: "0.30.0")
 
 
@@ -295,7 +296,7 @@ def test_a_capture_interrupted_before_its_manifest_lands_leaves_the_old_one_whol
             raise OSError("interrupted before the rename")
         replace(src, dst)
 
-    monkeypatch.setattr("hulder.gate.atomic.os.replace", crash_on_json)
+    monkeypatch.setattr(demo.os, "replace", crash_on_json)
     with pytest.raises(OSError, match="interrupted"):
         demo.capture_run("awq", tmp_path)
     assert json.loads((tmp_path / "awq.json").read_text()) == {"old": True}
@@ -304,5 +305,25 @@ def test_a_capture_interrupted_before_its_manifest_lands_leaves_the_old_one_whol
 
 def test_importing_the_demo_loads_no_vllm_or_torch():
     # The parent process only orchestrates and checks; vLLM loads in each capture subprocess.
-    code = "import sys, hulder.capture.demo; print(','.join(m for m in ('vllm', 'torch') if m in sys.modules))"
-    assert subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=True).stdout.strip() == ""
+    code = "import sys, live_demo; print(','.join(m for m in ('vllm', 'torch') if m in sys.modules))"
+    here = Path(demo.__file__).parent
+    run = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=True, cwd=here)
+    assert run.stdout.strip() == ""
+
+
+def test_the_prompts_are_the_bundled_demo_snapshots_examples_in_order():
+    rows = demo.prompts()
+    reference = hulder.Snapshot.load(demo.DATA / "demo_fp16.npz")
+    assert [r["id"] for r in rows] == list(reference.ids)
+    assert [r["label"] for r in rows] == reference.labels.tolist()
+    assert all(r["text"].strip() for r in rows)
+
+
+def test_the_example_imports_only_hulders_public_api():
+    # The library-first decision: hulder.__all__ and hulder.capture.__all__, and the hulder command.
+    source = Path(demo.__file__).read_text()
+    imports = [line.strip() for line in source.splitlines() if "hulder" in line and "import" in line]
+    assert imports == [
+        "import hulder",
+        "from hulder.capture import CaptureConfig, base_model_for, capture, snapshot_metadata",
+    ]

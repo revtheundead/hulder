@@ -5,6 +5,8 @@ capture, CaptureConfig and Capture import vLLM and torch, so they load on first 
 other names, and importing this package, need neither.
 """
 
+import importlib
+
 from hulder.capture.base_model import base_model_for
 from hulder.capture.metadata import snapshot_metadata
 
@@ -15,7 +17,5 @@ _NEEDS_VLLM = ("Capture", "CaptureConfig", "capture")
 
 def __getattr__(name: str):
     if name in _NEEDS_VLLM:
-        from hulder.capture import hidden_states
-
-        return getattr(hidden_states, name)
+        return getattr(importlib.import_module("hulder.capture.hidden_states"), name)
     raise AttributeError(f"module 'hulder.capture' has no attribute {name!r}")
