@@ -1,6 +1,6 @@
 # Hulder design
 
-How Hulder works and why: the problem, the deliverables, the design decisions, the statistical method behind `hulder check`, the experiment and the roadmap. The [README](../README.md) is the user guide. Decisions are recorded as written decisions in [docs/design.md], results in [`docs/results/`](results/), and the terms used here are defined in [`CONTEXT.md`](../CONTEXT.md).
+How Hulder works and why: the problem, the deliverables, the design decisions, the statistical method behind `hulder check`, the experiment and the roadmap. The [README](../README.md) is the user guide. Results are in [`docs/results/`](results/), and the terms used here are defined in [`CONTEXT.md`](../CONTEXT.md).
 
 ## 1. The problem
 
@@ -27,13 +27,13 @@ GDM explicitly names robustness to distribution shift as a hard open problem for
 
 A tool people should actually use. Three deliverables, in priority order.
 
-1. **`hulder check`**, a release gate shipped as a pip-installable library with a thin CLI and a GitHub Action. It checks any **scorer**, meaning any thresholded score derived from a model, under two serving configs. Activation probes are the flagship case. Given reference and candidate scores (or activations plus a probe) on the same labelled examples, it answers three questions with honest uncertainty. Did the scores shift? Does the scorer still separate the classes? If only the threshold is stale, what is the recalibrated threshold for the same target FPR? It returns a verdict, and the CLI turns that into a CI exit code.
+1. **`hulder check`**, a release gate shipped as a pip-installable library with a thin CLI and a GitHub Action (§4). It checks any **scorer**, meaning any thresholded score derived from a model, under two serving configs. Activation probes are the flagship case. Given reference and candidate scores (or activations plus a probe) on the same labelled examples, it answers three questions with honest uncertainty. Did the scores shift? Does the scorer still separate the classes? If only the threshold is stale, what is the recalibrated threshold for the same target FPR? It returns a verdict, and the CLI turns that into a CI exit code (§4).
 2. **The vLLM runtime plugin.** In-server probe scoring at production settings (CUDA graphs intact, no host-device sync on the hot path), with metrics and drift alarms.
 3. **The benchmarks page.** The experiment, run with the tool: train a linear probe on open models, serve them under several serving configs, and publish what `hulder check` says about each. It demonstrates the tool and is reported in full whatever it shows.
 
 The probe-first cascade (gateway, bounded escalation queue, LLM judge, failure policies) is an **example deployment** that shows the plugin and gate in a realistic stack, not a deliverable of its own.
 
-**What the gate can detect so far (measured on synthetic scores).** These numbers come from 1,000 simulated runs per row, with about 1,200 benign and 900 attack examples and a 1% false-positive target. They assume the threshold was set on the reference itself. Real serving configs come next.
+**What the gate can detect so far (measured on synthetic scores).** These numbers come from 1,000 simulated runs per row, with about 1,200 benign and 900 attack examples and a 1% false-positive target. They assume the threshold was set on the reference itself (§6). Real serving configs come next.
 - An unchanged serving config passes in every run, including at the run-to-run noise measured between two fresh fp16 vLLM engines.
 - If a change pushes the false-positive rate to 5%, the gate says THRESHOLD STALE in 999 of 1,000 runs.
 - At 3% it never passes. It says THRESHOLD STALE in 57% of runs and INCONCLUSIVE in the rest.
@@ -46,7 +46,7 @@ Details and the cases where it loses are in `docs/results/phase1/gate_calibratio
 
 **Scorers the gate applies to.** The gate needs only scores and labels, so it applies wherever a threshold was tuned on one serving config and the config then changes.
 - *Activation probes* (flagship, v0.1). Hulder captures the activations itself through the `vllm` extra.
-- *Semantic-cache similarity* (v0.2 worked example). Paraphrase-based caching: a small embedding model at fp32 and at int8, comparing the cosine-similarity threshold above which a cached answer is served. It uses PAWS-Wiki sentence pairs, whose negatives differ from their pair only in word order, so a false positive is a cached answer served for a sentence that means something else. It runs on CPU and downloads PAWS at runtime.
+- *Semantic-cache similarity* (v0.2 worked example). Paraphrase-based caching: a small embedding model at fp32 and at int8, comparing the cosine-similarity threshold above which a cached answer is served. It uses PAWS-Wiki sentence pairs, whose negatives differ from their pair only in word order, so a false positive is a cached answer served for a sentence that means something else. It runs on CPU and downloads PAWS at runtime (§7).
 - *Further use cases, not in scope:* guard-model probabilities (for example Llama Guard's probability of "unsafe") and embedding classifiers. Both work through bring-your-own scores but get no worked example.
 
 ### Non-goals
@@ -63,7 +63,7 @@ Details and the cases where it loses are in `docs/results/phase1/gate_calibratio
 
 A team serves a ~9B open model on vLLM in bf16, with a prompt-attack probe on layer 20, thresholded at 0.730 for a 1% false-positive rate. They want to switch to FP8 weights and FP8 KV cache to halve memory.
 
-They capture layer-20 activations for a labelled calibration set under each serving config: the reference twice, so the gate can measure the noise floor, and the candidate once. v0.1 has no capture command. The `vllm` extra's `hulder.capture` runs vLLM offline with the extraction settings of the offline extraction decision, or any other capture works. Its `capture`, `CaptureConfig` and `snapshot_metadata` are public but experimental in v0.1 and may change in 0.x. Each run is saved as a `Snapshot`, and `hulder check` compares the candidate with the reference on CPU. The README's "Check your own serving change" shows the code, and its "How to read a report" walks through real output on the bundled fp16 vs AWQ int4 demo. In this FP8 scenario the verdict would read THRESHOLD STALE and the exit code 10.
+They capture layer-20 activations for a labelled calibration set under each serving config: the reference twice, so the gate can measure the noise floor, and the candidate once. v0.1 has no capture command. The `vllm` extra's `hulder.capture` runs vLLM offline with the extraction settings of §5, or any other capture works. Its `capture`, `CaptureConfig` and `snapshot_metadata` are public but experimental in v0.1 and may change in 0.x (§4). Each run is saved as a `Snapshot`, and `hulder check` compares the candidate with the reference on CPU. The README's "Check your own serving change" shows the code, and its "How to read a report" walks through real output on the bundled fp16 vs AWQ int4 demo. In this FP8 scenario the verdict would read THRESHOLD STALE and the exit code 10.
 
 A THRESHOLD STALE verdict means the scorer still separates the classes but the threshold no longer gives the target FPR, so it needs recalibrating on the candidate. v0.1 reports the verdict only. A recalibrated threshold for the same target FPR is planned for v0.2 (§11). From Python, `hulder.check_snapshots(reference, candidate, rerun, threshold=..., target_fpr=..., probe=probe)` does what the CLI does on loaded `Snapshot`s and returns the `Report`. `hulder.check` takes plain arrays. Scores from any other scorer go in as JSONL instead of snapshots (v0.2, §11).
 
@@ -110,7 +110,8 @@ control plane (stretch): probe registry (versions, thresholds) · rollout contro
 ```
  producers of arrays                   core library (numpy, scipy; no GPU)
 
- hulder[vllm] capture ──┐            ├─activations─► apply_probe(probe, activations)
+ hulder[vllm] capture ──┐
+  (§5)                  ├─activations─► apply_probe(probe, activations)
  bundled sample data ───┘                          │ scores
                                                    ▼
  bring-your-own scores ───────scores──► check(reference, candidate, labels,
@@ -136,24 +137,59 @@ control plane (stretch): probe registry (versions, thresholds) · rollout contro
 | Rollout controller | Canary a config change, run `hulder check` on the canary, promote or roll back | Stretch |
 | Observability | Metrics above, dashboards, drift alarms | Medium |
 
-## 5. Key design decisions (to be settled as written decisions)
+### Public API (v0.1)
 
-**D1. Where the probe runs in the server.** Settled by a written decision for the runtime plugin (v0.3). This is separate from the offline extraction decision, which settles only the offline extraction path the gate uses in v0.1, where CUDA graphs don't matter. Candidate options, to be measured rather than argued:
+v0.1's public API is `hulder check` and `hulder quickstart`, with their arguments, exit codes and `--json` layout, and the names in `hulder.__all__`: `Estimate`, `PairingError`, `Probe`, `Report`, `Snapshot`, `Verdict`, `apply_probe`, `check`, `check_snapshots` and `prompt_ids_sha256`. A test keeps `__all__` equal to this list.
+
+- `hulder.check(reference, candidate, labels, threshold, target_fpr, *, noise_floor=None, ...)` takes plain arrays. `reference` and `candidate` hold the same examples in the same order, as 1-D scores, or as 2-D activations with `probe=`. Everything after `target_fpr` is keyword-only, so a rerun can't bind to the wrong positional argument.
+- `hulder.check_snapshots(reference, candidate, rerun=None, *, threshold, target_fpr, probe=None, seed=0, changes_under_test=())` is `check` on `Snapshot`s. It takes labels from the reference, raises `PairingError` if another snapshot's labels differ, and applies the metadata rules of §6. The CLI calls it.
+- `hulder.apply_probe(probe, activations)` returns the scores `check` computes from activations.
+- `Report` is a plain data object that neither prints nor exits. It carries the verdict with the threshold and target FPR it was judged at, FPR and FNR with Clopper-Pearson intervals, AUROC and ΔAUROC with paired bootstrap intervals, decision flips, mean |Δscore| (and mean |Δlogit| when Hulder applies the probe) and the noise-floor comparison.
+
+`hulder.capture`, in the `vllm` extra, is public but experimental in v0.1, so its names (`capture`, `CaptureConfig`, `Capture`, `snapshot_metadata`, `base_model_for`) may change in any 0.x release. Importing it needs no vLLM. Everything else is internal, including `hulder.cli`'s functions and the submodules of `hulder.capture`.
+
+| Install | Pulls in | Gives |
+|---|---|---|
+| `pip install hulder` | numpy, scipy | `check`, `check_snapshots`, `apply_probe`, the CLI, the quickstart on bundled data |
+| `pip install "hulder[vllm]"` | vLLM, pinned | `hulder.capture`, the extraction path of §5 |
+| `pip install "hulder[train]"` | scikit-learn | probe training |
+
+The library is the core and the CLI only parses, calls and reports. Other tools (CI scripts, notebooks, a rollout controller) then call the same code instead of parsing text, and every statistical test targets the library. Nothing in the base install imports vLLM or torch, which a test enforces. vLLM as a core dependency was rejected because its torch and CUDA wheels run to several GB, which would break the CPU quickstart and exclude users who bring their own scores.
+
+### Exit codes
+
+`hulder check` exits 0 for PASS, 10 for THRESHOLD STALE, 11 for SCORER DEGRADED and 12 for INCONCLUSIVE. Exit 1 is a tool failure and 2 a usage error. Verdicts start at 10 because argparse exits 2 on a usage error and an uncaught exception exits 1, so a verdict on 1 or 2 could be a crash or a mistyped command in disguise. With 2 meaning THRESHOLD STALE, a typo in a CI job could trigger a recalibration on a run that never happened.
+
+- A command-line value out of range, such as a `--target-fpr` outside (0, 0.5], a non-finite `--threshold` or a negative `--seed`, is a usage error. The same value read from a probe file is a tool failure, because the file is at fault.
+- `hulder quickstart` exits 1 when a bundled check gives an unexpected verdict, since fixed data giving another verdict means a broken install.
+- With `--json`, stdout always holds one JSON object. A verdict gives the whole `Report` with `schema_version` and `hulder_version`. A failure gives `schema_version`, `hulder_version`, `error` and `exit_code`, with the message on stderr as well. `schema_version` changes only when a key is renamed or removed.
+
+## 5. Key design decisions
+
+**D1. Where the probe runs in the server.** Settled for the runtime plugin (v0.3). This is separate from the offline extraction path the gate uses in v0.1 (below), where CUDA graphs don't matter. Candidate options, to be measured rather than argued:
 - *A. Fused into the forward pass.* Register an out-of-tree model class via a vLLM plugin that computes `w·h + b` at layer L into a persistent, graph-capturable buffer. Lowest overhead; tight coupling to engine internals; the hard part is mapping batch rows back to requests.
-- *B. vLLM's native hidden-state extraction* (added in v0.18 via the KV-connector path, built for Eagle-3 draft training), with a consumer that scores. Uses supported plumbing; may be built around disk/offline use and add latency. It requires chunked prefill off, unlike typical production servers, which run with it on (the offline extraction decision accepts this offline; for in-server use it is a cost to measure).
+- *B. vLLM's native hidden-state extraction* (added in v0.18 via the KV-connector path, built for Eagle-3 draft training), with a consumer that scores. Uses supported plumbing; may be built around disk/offline use and add latency. It requires chunked prefill off, unlike typical production servers, which run with it on (acceptable offline; for in-server use it is a cost to measure).
 - *C. Async sidecar.* Ship hidden states over shared memory to a separate process. Failure isolation and hot swap; copy bandwidth cost; cannot block before tokens stream.
 
 Deliverable is a measured comparison (throughput, p50/p99 latency, GPU memory) against a no-probe baseline and against `vllm-lens` eager mode.
 
-**D2. Which token position.** Start with the last prompt token at end of prefill (one score per request, enables blocking before generation). Per-token streaming is a stretch goal. The default position is the last token of the full chat-templated prompt, which the engine is guaranteed to compute. Published probe work often reads the end of the user turn instead, before the generation prompt (e.g. arXiv 2602.14161 uses Llama-3's `<|eot_id|>` at position −5), so the two positions are compared as an ablation on the benchmarks page on the same probe task. Prefix caching on/off is part of the serving config and is tested in the v0.1 extraction prototype.
+**D2. Which token position.** Start with the last prompt token at end of prefill (one score per request, enables blocking before generation). Per-token streaming is a stretch goal. The default position is the last token of the full chat-templated prompt, which the engine is guaranteed to compute. Published probe work often reads the end of the user turn instead, before the generation prompt (e.g. arXiv 2602.14161 uses Llama-3's `<|eot_id|>` at position −5), so the two positions are compared as an ablation on the benchmarks page on the same probe task. Prefix caching on/off is part of the serving config and is tested in the v0.1 extraction prototype (below).
 
 **D3. How scores leave the server.** Extra response field, response header, or side-channel endpoint. Must stay OpenAI-API compatible for clients that ignore it.
 
 **D4. Failure policy.** When the probe errors or times out, per route: `fail_closed` (escalate to judge) or `fail_open` (allow and log). When the judge is overloaded or down: block, allow-and-log, or hold with timeout. Every path is explicit, tested and observable. *Deferred: settled before the example deployment (v1.0).*
 
-**D5. Custom kernels.** No custom CUDA/Triton kernel unless D1 measurements show the plain implementation costs meaningful throughput. A probe is one small matrix-vector product; the expectation is that a kernel is unnecessary. If measurement says otherwise, the kernel is justified work and gets a written decision.
+**D5. Custom kernels.** No custom CUDA/Triton kernel unless D1 measurements show the plain implementation costs meaningful throughput. A probe is one small matrix-vector product; the expectation is that a kernel is unnecessary. If measurement says otherwise, the kernel is justified work and is recorded here with its measurement.
 
 **D6. Gateway language.** Default Python (FastAPI, asyncio). Only change if measurement shows the gateway is the bottleneck. Language chosen per layer on evidence, and said so. *Deferred: settled before the example deployment (v1.0).*
+
+**Offline extraction (v0.1).** The gate reads hidden states through vLLM's KV-connector hidden-state extraction (`speculative_config.method = "extract_hidden_states"` with `ExampleHiddenStatesConnector`), pinned at vLLM 0.30.0, with prefix caching off and a fixed batch composition (prompt order and batch size, recorded in the snapshot). The evidence is in `docs/results/phase1/extraction_prototype.md`.
+- It extracts any layer and returns every prompt position, so both D2 positions come from one pass.
+- Batch composition moves the last-token hidden state by up to 0.0625 absolute (relative L2 about 1e-3), so it is fixed.
+- With prefix caching on, full 16-token blocks come back from stored hidden states and only the tail is recomputed, so values depend on which requests ran before, which a snapshot can't record. Caching on also changes values at position 0 before any cache hit, which is unexplained.
+- One batch of 6 prompts was bit-identical across fresh engines, but at scale captures are not (§10). A snapshot reproduces to within a noise floor, which `check` measures from a rerun.
+
+The connector needs chunked prefill off, unlike typical production servers, and writes one file per request. Neither matters offline, and for in-server scoring (D1) both are costs to measure. HF Transformers hooks were rejected because engine mismatch is itself a source of shift, and `vllm-lens` is not yet measured at 0.30.0. Revisit if the connector breaks or changes its output on a vLLM upgrade.
 
 ## 6. Statistical method for `hulder check`
 
@@ -161,29 +197,82 @@ Deliverable is a measured comparison (throughput, p50/p99 latency, GPU memory) a
 - **Noise floor first.** Run the baseline config twice (and across batch sizes) to measure run-to-run variation from numerical non-determinism. A shift only counts if it exceeds the floor. This also positions the work relative to arXiv 2609.31796.
 - **For a linear probe, the projection is sufficient.** The probe's output depends only on `w·h + b`, so the 1D projection onto `w` fully determines probe behaviour. A multivariate test (e.g. MMD on the layer-L activations) is reported as a general-shift diagnostic, not as the verdict.
 - **Performance with intervals.** AUROC with bootstrap CI; FPR and FNR at threshold with exact binomial (Clopper-Pearson) or Wilson intervals.
-- **Recalibration.** Choose the new threshold from benign calibration scores with a finite-sample guarantee. Decide between a conformal-style quantile (controls expected FPR) and a binomial-tail bound (controls FPR with high probability). written decision required.
+- **Recalibration.** Choose the new threshold from benign calibration scores with a finite-sample guarantee. Decide between a conformal-style quantile (controls expected FPR) and a binomial-tail bound (controls FPR with high probability). The choice is v0.2 work (§11).
 - **Decision flip rate (diagnostic).** The fraction of examples whose probe decision (score above or below the threshold) differs between reference and candidate on the same prompts. Reported alongside the verdict, never an input to it. arXiv 2609.31796 recommends it as the main per-example measure, because aggregate accuracy understated the number of changed decisions by a factor of two to nine.
 - **Multiple configs.** Holm correction when checking several candidates at once.
 - **Validation.** Every statistical routine is tested on synthetic data with known ground truth (injected shifts of known size, null cases) before real data. False-alarm and detection rates of the gate itself are reported.
 
+### The verdict rule
+
+`hulder check` tests whether a serving change moved the scorer's decisions on the same prompts. It doesn't test whether the threshold generalises to new data, so the threshold is assumed to be set on the reference snapshot itself. A "bound" below is a 95% confidence bound: Clopper-Pearson for FPR and FNR, and a stratified paired bootstrap (1,000 resamples) for ΔAUROC = candidate − reference. The verdicts are checked in this order.
+
+1. **SCORER DEGRADED** if the ΔAUROC upper bound is below −0.02.
+2. **THRESHOLD STALE** if the candidate FPR lower bound is above twice the target, or its upper bound is below half the target, or the candidate FNR lower bound is above the reference FNR + 0.05.
+3. **PASS** if the candidate FPR upper bound is at most twice the target, the candidate FNR upper bound at most the reference FNR + 0.05, and the ΔAUROC lower bound at least −0.02.
+4. Otherwise **INCONCLUSIVE**, with the number of extra benign examples that would settle the FPR condition if the observed rate held.
+
+The tolerances are fixed in v0.1, as constants in `hulder/gate/check.py` (`FPR_BAND_HIGH`, `FPR_BAND_LOW`, `FNR_TOLERANCE`, `AUROC_TOLERANCE`). Shift, the noise floor and the decision flip rate are diagnostics, never inputs to the verdict.
+
+- **One-sided bands.** At about 1,150 benign and a 1% target, an unchanged scorer's FPR interval is about [0.5%, 1.7%]. A symmetric band such as [target / 1.5, target × 1.5] would almost never PASS, because the interval alone is wider than the band. So each condition asks only whether a bound has crossed its tolerance in the harmful direction.
+- **Ties.** An example is flagged when its score is strictly above the threshold, here and in the decision flip rate. The threshold is fitted as the benign scores' 1 − target quantile (`method="higher"`), so with heavily tied scores no benign example may sit above it, and an unchanged scorer comes out THRESHOLD STALE with the calibration warning below.
+- **The noise floor.** The candidate's shift exceeds the floor when the lower bound of a 95% paired bootstrap interval of mean |candidate − reference| − |rerun − reference| is above 0. Shift is measured in score space, which works for any scorer, and when Hulder applies the probe it also reports mean |Δlogit|. Without a rerun the floor is "not measured". A rerun or a candidate bit-identical to the reference warns, since a zero floor, or the same file passed twice, would otherwise mislead.
+- **The rerun must be of the reference.** A rerun of the candidate would count the whole shift as noise. A reference rerun can understate a noisier candidate's own noise (§10).
+- **The threshold must come from the reference snapshot.** If the reference's own FPR interval excludes the target, `check` warns that the threshold wasn't calibrated on this snapshot. A threshold fitted elsewhere fails to PASS an unchanged scorer far more often, 21.9% of the time at 1,191 benign even at the true quantile, because the FPR condition alone then allows at most 14 false positives. Bringing that below 10% needs about 1,600 benign examples.
+- **The tolerance edge.** When an INCONCLUSIVE report would need more than 10 times its own benign count to settle, the CLI adds that the estimate sits at the tolerance edge and the number is unstable. This is presentation only.
+
+The gate's own calibration was measured on synthetic scores over 1,000 seeds at 1,191 benign and a 1% target, against bounds fixed before running (`docs/results/phase1/gate_calibration.md`). The null and fresh-engine noise PASS in every run. A fivefold FPR rise is THRESHOLD STALE in 99.9% of runs, a threefold one never PASSes, and between 1.5% and 2% the gate is mostly INCONCLUSIVE. A drop in AUROC of 0.05 or more is SCORER DEGRADED in every run. At exactly −0.02 the missed-attack case PASSes 6.7% of the time, more than a 95% bound implies, because each seed fits its own threshold and so has its own true ΔAUROC. Scored against that, the interval's coverage is nominal (`docs/results/phase1/delta_auroc_coverage.json`).
+
+### Metadata rules
+
+`check` compares the runs' metadata so that a verdict about one serving change doesn't quietly mix in another, such as a different system prompt or probe layer. The rules live in `hulder/gate/check.py` and `hulder/capture/base_model.py`, and tests cover each one.
+
+1. **Changes under test are listed, never warned about.** `model`, `revision`, `dtype`, `quantization`, `kv_cache_dtype`, `vllm_version` and `batch_size` may differ, as may any key declared with `changes_under_test=` (`--under-test KEY`). Each difference is reported as (key, reference value, candidate value).
+2. **Every other difference warns**, including keys `check` doesn't know and keys on one side only. The verdict is unchanged. `gpu` is deliberately not under test, so runs on two GPU models warn unless the check declares `--under-test gpu`. Nor is `enable_thinking`, recorded for hybrid-thinking models such as Qwen3, since the chat template and so the scored token depend on it.
+3. **`base_model` must match.** The AWQ checkpoint of a model and the model itself share one `base_model` while their `model` and `revision` differ. A run without it warns. It can't be declared under test (`ValueError`, or exit 2 from the CLI), because that would hide a model swap.
+4. **How capture sets `base_model`.** An unquantized capture uses the model itself. A quantized one uses an explicit override, or else the model card's `base_model` at the pinned revision, and with neither it warns rather than guessing. An Instruct model's own card names its pretrained parent, which is why an unquantized capture doesn't copy the field.
+5. **`prompt_ids_sha256` is pairing, not metadata.** Known hashes that differ raise `PairingError`.
+6. **Metadata on one side only** warns that it wasn't compared. With metadata on neither side, nothing is compared.
+7. **A rerun must match the reference on every key**, changes under test included, or `check_snapshots` warns.
+8. **The probe must match every snapshot it scores** on `layer`, `position` and `base_model`, or `check_snapshots` raises `PairingError`, because a probe of the right width applied to another layer scores nonsense without failing. A probe's `base_model` defaults to its `model`. Other keys both record, such as a system prompt, warn when they differ. The probe's own keys (threshold, training data) are never compared.
+9. **A probe file lacking a field.** A missing `layer`, `position` or `base_model` warns. A missing `weights` or `bias` array is a damaged file and exits 1. `threshold` and `target_fpr` are optional in the file, a flag overrides them, and with neither file nor flag it is a usage error. A recorded one that isn't a number is a damaged file, exit 1, even when a flag would override it.
+
+Warning on every undeclared difference fails loud, where an allow-list of keys that must match would let a new key, such as a chat template added later, pass silently. Raising instead would block every comparison between snapshots from older and newer capture code. So per-run provenance (commit, timestamps) stays in the capture manifest, not in snapshot metadata.
+
 ## 7. The experiment
 
 - **Models.** A small (~1 to 2B) open model for v0.1 and fast iteration, and Qwen3-4B in bf16 for the benchmarks page. Of the Qwen3 dense sizes (0.6B, 1.7B, 4B, 8B, 14B, 32B), it is the largest whose bf16 weights leave room for KV cache on the 12 GB lab GPUs (§8.1): 8.04 GB at revision `1cfa9a72`. Qwen publishes official AWQ int4 (`Qwen/Qwen3-4B-AWQ` at `74d4bd2b`) and block-quantized FP8 (`Qwen/Qwen3-4B-FP8` at `96b30dc1`) checkpoints of it, whose cards name it as `base_model`. All three cards declare Apache-2.0. An 8B model in bf16 fits none of the lab GPUs (Qwen3-8B is 16.38 GB of weights at `b968826d`). Sizes are the safetensors totals from the Hugging Face API at those revisions (§14). Its hybrid-thinking chat template is captured with `enable_thinking` pinned in `CaptureConfig`. Each must have an official AWQ checkpoint of the same base model from the same publisher, otherwise the AWQ comparison measures a different model rather than a serving config. Self-quantizing is the fallback. Each must also be fp16-stable, which rules out Gemma-3 (arXiv 2609.31796 §3.4 reports its fp16 residual activations overflow to NaN).
-- **Task.** Prompt attack (injection or jailbreak) detection, named so because the chosen datasets' attack classes mix both. Benign examples include hard negatives (benign text that looks like an instruction) so a 1% FPR target means something. Datasets and licences in the dataset decision: S-Labs for training, calibration and in-distribution test, 3nesdeniz boundary-pairs as a held-out hard-negative test set that also supplies the quickstart's sample activations.
+- **Task.** Prompt attack (injection or jailbreak) detection, named so because the chosen datasets' attack classes mix both. Benign examples include hard negatives (benign text that looks like an instruction) so a 1% FPR target means something. S-Labs for training, calibration and in-distribution test, 3nesdeniz boundary-pairs as a held-out hard-negative test set that also supplies the quickstart's sample activations (datasets below).
 - **Critical detail.** Train the probe on activations extracted from the serving engine itself (vLLM, bf16), not from HF Transformers. Engine mismatch is itself a source of shift, and training on HF would contaminate the baseline.
 - **Configs** (each vs the bf16 reference): FP8 weights, AWQ int4, FP8 KV cache, batch size 1 vs large, two vLLM versions, and bf16 rerun (noise floor). Add more only if cheap.
+- **vLLM versions.** The pin is `vllm==0.30.0`. The second version for the engine-version config is chosen by rule, not by hand: the most recent stable minor release before the pin, at its latest patch, that has the extraction path of §5 and supports both experiment models. Against the current pin that is v0.29.x, the one-step upgrade a team realistically faces. v0.18.x, the first release with the connector, is an optional large-jump config, labelled as confounded wherever it appears, because twelve minor releases sit between it and the pin.
 - **Layers.** Report for 2 to 3 layers; the effect of quantization may depend on depth.
 - **Output.** A table of AUROC, FPR/FNR at the original threshold, recalibrated threshold, and gate verdict per config, plus plots of score distributions.
-- **Quickstart demo probe (demo only).** The main S-Labs probe failed the dataset decision's rule on boundary-pairs (AUROC 0.839 < 0.85), so the quickstart ships a separate demo probe trained on 600 boundary-pairs examples with a 5% FPR target (`docs/results/phase1/probe_demo.md`). It shows how the gate works and is not a prompt-attack monitor. If its fp16 vs AWQ check comes out INCONCLUSIVE at this sample size, the quickstart shows that verdict as is.
-- **The gate's own calibration.** Its false-alarm rate on unchanged scorers and its THRESHOLD STALE detection rate against the candidate's true FPR, at the benchmark's calibration-set size. The v0.1 synthetic curve at 1,191 benign is in `docs/results/phase1/gate_calibration.md`.
+- **Quickstart demo probe (demo only).** The main S-Labs probe failed the quickstart rule on boundary-pairs (AUROC 0.839 < 0.85, datasets below), so the quickstart ships a separate demo probe trained on 600 boundary-pairs examples with a 5% FPR target (`docs/results/phase1/probe_demo.md`). It shows how the gate works and is not a prompt-attack monitor. If its fp16 vs AWQ check comes out INCONCLUSIVE at this sample size, the quickstart shows that verdict as is.
+- **The gate's own calibration.** Its false-alarm rate on unchanged scorers and its THRESHOLD STALE detection rate against the candidate's true FPR, at the benchmark's calibration-set size. The v0.1 synthetic curve at 1,191 benign is in `docs/results/phase1/gate_calibration.md` (§6).
 - **Finding to report: a probe that separates on surface features fails on hard negatives.** The S-Labs probe reaches test AUROC 0.994, and even layer 4 separates S-Labs validation at 0.996, which points to surface features of the text. At its 1% FPR threshold it flags 95% of benign boundary-pairs prompts, whose median score is 0.986 against 0.011 for S-Labs calibration benign. The benchmarks page reports this finding alongside the serving-config results, because it bounds what any in-distribution AUROC says about deployment (`docs/results/phase1/probe_main.md`).
+
+### Datasets
+
+| Role | Dataset | Revision |
+|---|---|---|
+| Training, calibration, in-distribution test | `S-Labs/prompt-injection-dataset`, MIT | `002a9dd1` |
+| Held-out hard-negative test set, never trained on | `3nesdeniz/agentic-prompt-injection-boundary-pairs`, CC-BY-4.0 | `a5682e75` |
+| Quickstart sample activations and the demo probe | boundary-pairs only | same |
+
+S-Labs is the only candidate with natural-looking hard negatives at enough size (8,358 benign and 6,774 attack after deduplication), but its card gives no provenance, so its MIT licence rests on the uploader's word. Boundary-pairs pairs each attack with a legitimate request from the same scenario, which tests whether a 1% FPR survives instruction-like benign text, but at 600 per class it is too small to train on alone. Shipping only boundary-pairs data keeps the package independent of S-Labs' provenance, and everything shipped from it carries the CC-BY-4.0 attribution (Deniz 2026, doi:10.5281/zenodo.21378693). "Never trained on" covers everything that fits the main probe or picks its settings, from weights and layer to regularisation and threshold.
+
+The quickstart rule was fixed in advance. If the S-Labs probe's AUROC on all 1,200 boundary-pairs examples fell below 0.85, the quickstart would get its own demo probe trained on boundary-pairs. It scored 0.839 [0.819, 0.860]. So the demo probe reuses the main probe's layer, position and C, splits boundary-pairs by scenario (train 600, calibration 360, and the dataset's own test split of 240) so each attack stays with its paired request, and targets 5% FPR, because 180 benign calibration examples can't support 1%.
+
+Rejected candidates were `neuralchemy/Prompt-injection-dataset`, because 933 of its 2,538 benign examples follow one template and its labels mix tasks; `deepset/prompt-injections` and `NotInject` as too small; `xTRam1/safe-guard-prompt-injection`, `jayavibhav/prompt-injection-safety` and `rogue-security/prompt-injections-benchmark` for their licences; and SPML, whose authors advise against training detectors on it.
+
+**Semantic cache (v0.2).** PAWS-Wiki (`google-research-datasets/paws`, config `labeled_final`, revision `161ece95`) is downloaded at runtime and never redistributed. Its licence allows any use, with acknowledgement of Google LLC as the source, and the example cites Zhang, Baldridge and He, NAACL 2019. Its negatives differ from their pair only in word order, close to the worst case for an embedding model, so absolute FPRs from it say nothing about a production cache, and its sentences are Wikipedia statements rather than user questions. Quora Question Pairs and `redis/langcache-sentencepairs-v1` were rejected for their licences (the latter bundles CC-BY-NC-SA SICK), Stack Exchange duplicates because only positives are marked, and AskUbuntu duplicates because no licence for the annotations was found.
 
 ## 8. Tech stack
 
 | Layer | Choice | Notes |
 |---|---|---|
 | Language | Python 3.12 | `uv` for envs, `ruff`, type hints, `pytest` |
-| Core library | numpy, scipy | The base install. No black-box stats libraries for the gate's core logic, and no torch or vLLM import |
+| Core library | numpy, scipy | The base install. No black-box stats libraries for the gate's core logic, and no torch or vLLM import (§4) |
 | Serving | vLLM, pinned version, in the `hulder[vllm]` extra | Upgrade deliberately; version change is one of the experiment configs |
 | ML | scikit-learn in the `hulder[train]` extra | Probe training is ~50 lines by design |
 | Embedding model (v0.2 example) | A small sentence embedding model, e.g. `BAAI/bge-small-en-v1.5` (MIT, 33M parameters), at fp32 and int8 on CPU | Model and int8 path chosen in v0.2 (§12). In an examples extra, not the base install |
@@ -225,7 +314,7 @@ Workspace rules:
 - Docker Engine and the NVIDIA Container Toolkit installed inside the distro, not Docker Desktop. Compose volumes as bind mounts under the project.
 - `.wslconfig` caps WSL memory and CPUs so Windows stays usable.
 
-**Remote (experiments and benchmarks).** The University of Leeds teaching-lab machines, used mainly in person. They have RTX 4070 and RTX 5070 cards (12 GB) and one RTX 5080 (16 GB), all with native bf16 and FP8. The 4070 is the canonical machine because it is Ada (sm_89), the architecture of NVIDIA's L4 and L40S datacenter GPUs. vLLM 0.30.0's docs list FP8 W8A8 on Ada, Hopper and Blackwell (compute capability 8.9 and up), so Ada is supported but not documented as better supported than the others. Which FP8 kernel vLLM selects for Qwen3-4B-FP8's 128×128 block-quantized weights on each lab card is unverified†, as is FP8 on the Blackwell 50-series (sm_120) under the pin (§12). Every comparison runs on one GPU model, since a different GPU is itself a serving change. Snapshots record `gpu`, and a difference warns. Same repo, `uv sync`, same lockfile. Sessions are bounded, so captures are resumable and results and run manifests are committed before leaving. Used for the benchmarks page, all bf16 / FP8 / KV-cache configs, Qwen3-4B, and every overhead or throughput benchmark. Consumer-card throughput doesn't represent datacenter GPUs, so overhead is reported relative to a no-probe baseline on the same card. The budget is £0 with no paid fallback. If lab access fails, the overhead table and the benchmarks page shrink to what the 2070 can show, which is fp16 and AWQ configs, the noise floor and engine versions, with no bf16 or FP8 results and no throughput claims.
+**Remote (experiments and benchmarks).** The University of Leeds teaching-lab machines, used mainly in person. They have RTX 4070 and RTX 5070 cards (12 GB) and one RTX 5080 (16 GB), all with native bf16 and FP8. The 4070 is the canonical machine because it is Ada (sm_89), the architecture of NVIDIA's L4 and L40S datacenter GPUs. vLLM 0.30.0's docs list FP8 W8A8 on Ada, Hopper and Blackwell (compute capability 8.9 and up), so Ada is supported but not documented as better supported than the others. Which FP8 kernel vLLM selects for Qwen3-4B-FP8's 128×128 block-quantized weights on each lab card is unverified†, as is FP8 on the Blackwell 50-series (sm_120) under the pin (§12). Every comparison runs on one GPU model, since a different GPU is itself a serving change. Snapshots record `gpu`, and a difference warns (§6, metadata rule 2). Same repo, `uv sync`, same lockfile. Sessions are bounded, so captures are resumable and results and run manifests are committed before leaving. Used for the benchmarks page, all bf16 / FP8 / KV-cache configs, Qwen3-4B, and every overhead or throughput benchmark. Consumer-card throughput doesn't represent datacenter GPUs, so overhead is reported relative to a no-probe baseline on the same card. The budget is £0 with no paid fallback. If lab access fails, the overhead table and the benchmarks page shrink to what the 2070 can show, which is fp16 and AWQ configs, the noise floor and engine versions, with no bf16 or FP8 results and no throughput claims.
 
 ## 9. Repository layout (target)
 
@@ -256,9 +345,9 @@ hulder/
 
 **Captures are not bit-identical across engine runs.** Three fresh-engine fp16 captures of 16,332 prompts at an identical config differed on 53 to 56% of prompts (mean |Δscore| about 8e-5, up to 2 decision flips; `docs/results/phase1/extraction_reruns.md`). Batch composition also moves activations slightly. The cause is unknown. So pass a rerun of the reference as `--noise-floor`, and expect the floor itself to vary: three runs of the live tutorial gave 0.000205 to 0.000286, up to about 40% apart (`docs/results/phase1/live_demo.md`). The verdict was the same in all three.
 
-**The rerun must be of the reference.** A noisier candidate's own noise is not measured. AWQ's run-to-run noise is about 4 times fp16's, so an fp16 rerun can understate it. The AWQ shift in the demo is still 180 to 250 times the floor.
+**The rerun must be of the reference.** A noisier candidate's own noise is not measured. AWQ's run-to-run noise is about 4 times fp16's, so an fp16 rerun can understate it (§6). The AWQ shift in the demo is still 180 to 250 times the floor.
 
-**Prefix caching changes activations even without cache hits.** The cause is unexplained (`docs/results/phase1/extraction_prototype.md`). `hulder.capture` requires it off.
+**Prefix caching changes activations even without cache hits.** The cause is unexplained (`docs/results/phase1/extraction_prototype.md`). `hulder.capture` requires it off (§5).
 
 **Fixed tolerance bands.** The candidate FPR must stay between 0.5 and 2 times the target, FNR within 0.05 of the reference, and ΔAUROC above -0.02. These are constants in `hulder/gate/check.py`, not options.
 
@@ -274,7 +363,7 @@ hulder/
 
 v0.1 is the gate on activation probes: `hulder check` and `hulder quickstart` on CPU, `hulder.capture` for vLLM, and the live tutorial on a local GPU. Next, in priority order:
 
-- **v0.2, gate complete.** A recalibrated threshold for THRESHOLD STALE, with a written decision choosing between a conformal quantile and a binomial-tail bound. Bring-your-own scores as JSONL of id, score and label per serving config. A GitHub Action wrapping the CLI. A second worked example, semantic-cache similarity at fp32 vs int8 on CPU.
+- **v0.2, gate complete.** A recalibrated threshold for THRESHOLD STALE, choosing between a conformal quantile and a binomial-tail bound on measured coverage. Bring-your-own scores as JSONL of id, score and label per serving config. A GitHub Action wrapping the CLI. A second worked example, semantic-cache similarity at fp32 vs int8 on CPU (§7).
 - **After v0.1, smaller items.** A `hulder snapshot` command around `hulder.capture`. A rerun of the candidate as the noise floor (`--rerun-of candidate`). Configurable tolerance bands, recorded in the report. The multivariate shift diagnostic of §6 (MMD on activations). Equality and hashing for `Snapshot` and `Report`.
 - **v0.3, runtime plugin.** In-server probe scoring with CUDA graphs on (D1, D3), metrics and drift alarms, with overhead measured against a no-probe baseline and `vllm-lens`.
 - **Benchmarks page.** Qwen3-4B in bf16 against FP8, AWQ and FP8 KV cache on one GPU model, with the noise floor, 2 to 3 layers and the token-position ablation (§5 D2, §7).
@@ -288,11 +377,11 @@ v0.1 is the gate on activation probes: `hulder check` and `hulder quickstart` on
 - Whether an out-of-tree model class can compute and export per-request probe scores with CUDA graphs enabled.
 - FP8 weights, FP8 KV cache and AWQ under the pinned vLLM on the lab GPUs. Expected on the Ada 4070, unverified on the Blackwell 5070 and 5080 (sm_120). Checked by a smoke capture on the lab GPUs. The local Turing GPU is ruled out for FP8 and bf16 configs (§8.1).
 - The FP8 kernel vLLM 0.30.0 selects for Qwen3-4B-FP8 on the 4070 and the 5070 (§8.1), from its `Selected <kernel> for <module>` startup line in that smoke capture. Its docs try DeepGEMM and CUTLASS before Marlin and Triton for block-quantized FP8, and the first two may need Hopper or newer, so Ada may run a less exercised kernel than datacenter Hopper.
-- The headroom Qwen3-4B bf16 leaves on a 12 GB card. The hardware decision's "about 2 GB for KV cache" is an estimate: 0.9 of 12 GiB less 7.49 GiB of weights is about 3.3 GiB before activations and CUDA graphs. Read the KV-cache size vLLM logs in that smoke capture.
+- The headroom Qwen3-4B bf16 leaves on a 12 GB card. The "about 2 GB for KV cache" planned for it is an estimate: 0.9 of 12 GiB less 7.49 GiB of weights is about 3.3 GiB before activations and CUDA graphs. Read the KV-cache size vLLM logs in that smoke capture.
 - Whether vLLM's `cpu_offload_gb` works with the hidden-state connector, so Qwen3-8B in bf16 can be captured on a 12 GB card (an offload test in the same session).
 - Current `vllm-lens` behaviour (still eager-only?) and whether anyone has shipped production-speed probes for vLLM since September 2026.
 - Dataset licences and label quality.
-- Semantic-cache example (v0.2): that int8 quantization of the chosen embedding model runs on CPU and actually changes the similarities. The dataset is settled by the semantic-cache dataset decision.
+- Semantic-cache example (v0.2): that int8 quantization of the chosen embedding model runs on CPU and actually changes the similarities. The dataset is settled (§7).
 
 ## 13. Success criteria
 
@@ -307,7 +396,7 @@ v0.1 is the gate on activation probes: `hulder check` and `hulder quickstart` on
 - Gate with measured false-alarm and detection rates on synthetic shifts.
 - Runtime plugin with measured overhead against a no-probe baseline and against eager-mode hooks, including honest cases where it loses.
 - Example deployment that stays responsive under judge failure and overload, with the behaviour documented and tested.
-- Design doc with written decisions covering every decision in §5.
+- A design doc covering every decision in §5, with the alternatives it rejected.
 - A public write-up a vLLM user could act on.
 
 ---
