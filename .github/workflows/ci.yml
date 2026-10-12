@@ -2,7 +2,11 @@
 # vLLM, and the slow calibration runs, are opt-in and run locally (README §9.1).
 name: CI
 
-on: [push, pull_request]
+# Pushes to main only, so a branch with an open PR runs once, on pull_request.
+on:
+  push:
+    branches: [main]
+  pull_request:
 
 permissions:
   contents: read
