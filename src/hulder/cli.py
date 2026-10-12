@@ -64,29 +64,29 @@ def run(argv: list[str] | None = None) -> int:
         probe = Probe.load(args.probe) if args.probe else None
         threshold = _setting(parser, args.threshold, probe, "threshold")
         target_fpr = _setting(parser, args.target_fpr, probe, "target_fpr")
-        report = check_files(
+        report = _check_files(
             args.reference, args.candidate, args.noise_floor, probe, threshold, target_fpr, args.seed, args.under_test
         )
     except UsageError as e:
         print(e.usage, end="", file=sys.stderr)
         return _fail(str(e), 2, as_json)
-    except TOOL_FAILURES as e:
-        return fail_tool(e, as_json)
+    except _TOOL_FAILURES as e:
+        return _fail_tool(e, as_json)
     except Exception as e:
         if as_json:  # a bug: the JSON still says so, and the traceback follows on stderr
             print(_error_json(f"internal error: {e!r}", 1))
         raise
-    inputs = report_inputs(args.reference, args.candidate, args.noise_floor, args.probe)
+    inputs = _report_inputs(args.reference, args.candidate, args.noise_floor, args.probe)
     print(to_json(report, inputs) if args.json else render(report, inputs))
     return report.verdict.exit_code
 
 
 # What a check on intact inputs never raises: a pairing error, a damaged or missing file.
-TOOL_FAILURES = (PairingError, ValueError, OSError)
+_TOOL_FAILURES = (PairingError, ValueError, OSError)
 
 
-def fail_tool(e: Exception, as_json: bool = False) -> int:
-    """Report one of TOOL_FAILURES as hulder does, exit 1."""
+def _fail_tool(e: Exception, as_json: bool = False) -> int:
+    """Report one of _TOOL_FAILURES as hulder does, exit 1."""
     if isinstance(e, PairingError):
         return _fail(f"pairing error: {e}", 1, as_json, prefix="")
     return _fail(str(e), 1, as_json)
@@ -175,7 +175,7 @@ def _setting(parser: _Parser, given: float | None, probe: Probe | None, key: str
     parser.error(f"--{key.replace('_', '-')} is required unless the probe records it")
 
 
-def check_files(reference, candidate, rerun, probe, threshold, target_fpr, seed=0, under_test=()) -> Report:
+def _check_files(reference, candidate, rerun, probe, threshold, target_fpr, seed=0, under_test=()) -> Report:
     """check_snapshots on snapshot files, as hulder check runs it."""
     return check_snapshots(
         Snapshot.load(reference),
@@ -189,7 +189,7 @@ def check_files(reference, candidate, rerun, probe, threshold, target_fpr, seed=
     )
 
 
-def report_inputs(reference, candidate, rerun, probe) -> dict:
+def _report_inputs(reference, candidate, rerun, probe) -> dict:
     """The input files by role, as render and to_json show them; None for a role not given."""
     return {"reference": reference, "candidate": candidate, "rerun": rerun, "probe": probe}
 
@@ -341,8 +341,8 @@ def _quickstart() -> int:
     for number, (title, candidate, rerun, expected) in enumerate(QUICKSTART, 1):
         candidate = Path(str(data / candidate))
         rerun = None if rerun is None else Path(str(data / rerun))
-        report = check_files(reference, candidate, rerun, probe, threshold, target_fpr)
-        inputs = report_inputs(reference.name, candidate.name, None if rerun is None else rerun.name, probe_path.name)
+        report = _check_files(reference, candidate, rerun, probe, threshold, target_fpr)
+        inputs = _report_inputs(reference.name, candidate.name, None if rerun is None else rerun.name, probe_path.name)
         print(f"=== Check {number}: {title} Expect {expected.value}.\n")
         print(render(report, inputs))
         print()
