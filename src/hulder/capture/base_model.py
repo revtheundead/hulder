@@ -7,12 +7,13 @@ import re
 from collections.abc import Callable
 from pathlib import Path
 
-import yaml
-from huggingface_hub import hf_hub_download
-
 
 def card_base_model(model: str, revision: str) -> str | None:
     """The base_model field of a model card's YAML front matter at a pinned revision."""
+    # Imported here so base_model_for, and its tests, run on the base install.
+    import yaml
+    from huggingface_hub import hf_hub_download
+
     text = Path(hf_hub_download(model, "README.md", revision=revision)).read_text()
     front = re.match(r"^---\n(.*?)\n---", text, re.DOTALL)
     value = yaml.safe_load(front.group(1)).get("base_model") if front else None
