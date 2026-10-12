@@ -33,3 +33,11 @@ def test_the_bundled_prompts_are_the_demo_snapshots_examples_in_order():
     assert [r["id"] for r in rows] == list(reference.ids)
     assert [r["label"] for r in rows] == reference.labels.tolist()
     assert all(r["text"].strip() for r in rows)
+
+
+def test_the_pypi_description_is_the_short_page_with_absolute_links():
+    # README.md is also the agent brief and its relative links break on PyPI.
+    description = metadata("hulder")["Description"]
+    assert description.startswith("# Hulder")
+    assert "https://github.com/revtheundead/hulder" in description
+    assert not re.search(r"\]\((?!https?://)", description)
