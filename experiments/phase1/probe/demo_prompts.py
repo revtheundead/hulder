@@ -4,7 +4,7 @@ snapshots, in their order, from the pinned dataset revision.
 Run from the repo root:
     source scripts/dev-env.sh && uv run python experiments/phase1/probe/demo_prompts.py
 
-Writes src/hulder/data/demo_prompts.jsonl, one {"id", "label", "text"} per line.
+Writes examples/live_demo/demo_prompts.jsonl, one {"id", "label", "text"} per line.
 """
 
 import json
@@ -15,7 +15,7 @@ from common import load_bpairs
 
 import hulder
 
-OUT = Path("src/hulder/data/demo_prompts.jsonl")
+OUT = Path("examples/live_demo/demo_prompts.jsonl")
 
 
 def main() -> None:

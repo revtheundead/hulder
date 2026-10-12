@@ -1,39 +1,46 @@
-"""Live tutorial: capture the bundled demo prompts with vLLM under fp16, an fp16 rerun and
-AWQ int4, then check them with the bundled demo probe (docs/tutorial-live.md).
+"""Live tutorial: capture the demo prompts with vLLM under fp16, an fp16 rerun and AWQ int4,
+then check them with hulder's bundled demo probe (README.md next to this file).
 
-    pip install "hulder[vllm]"
-    python -m hulder.capture.demo
+From a clone of the hulder repository, at its root:
+
+    source scripts/dev-env.sh && uv sync
+    uv run python examples/live_demo/live_demo.py
 
 Each capture runs in its own subprocess, since one process can't reliably free a vLLM
 engine's GPU memory for the next. The snapshots, the report and a manifest go to --out.
 A snapshot already there with its manifest is reused, so an interrupted run resumes, but
 only if it was captured with this run's config, vLLM, GPU and prompts; --force recaptures.
-The live verdict can differ from the bundled one (docs/tutorial-live.md says why), so any
-verdict exits 0. Exit 1 is a failed capture or check.
+The live verdict can differ from the bundled one (README.md says why), so any verdict
+exits 0. Exit 1 is a failed capture or check.
+
+Uses only hulder's public API: hulder.Snapshot, hulder.capture and the hulder check command.
 """
 
 import argparse
 import hashlib
 import json
+import os
 import platform
 import shutil
 import subprocess
 import sys
+import sysconfig
+import tempfile
 import time
 from dataclasses import asdict
 from importlib.metadata import version
-from importlib.resources import files
 from pathlib import Path
 
 import numpy as np
 
-from hulder import cli
-from hulder.capture.metadata import snapshot_metadata
-from hulder.gate.atomic import write_text_atomically
-from hulder.gate.probe import Probe
-from hulder.gate.snapshot import Snapshot
+import hulder
 
-DATA = files("hulder.data")
+HERE = Path(__file__).resolve().parent
+PROMPTS = HERE / "demo_prompts.jsonl"
+# The demo probe and snapshots that ship with hulder, read from this checkout's source tree.
+DATA = HERE.parents[1] / "src" / "hulder" / "data"
+PROBE = DATA / "probe_demo.npz"
+COMMAND = "python examples/live_demo/live_demo.py"
 # The configs of the bundled demo snapshots (experiments/phase1/probe/extract.py), extracting
 # only the probe's layer and position.
 FP16 = {
@@ -51,16 +58,18 @@ AWQ = {
 }
 # The rerun is the fp16 config again in a fresh engine, for the noise floor.
 RUNS = {"fp16": FP16, "fp16_rerun": FP16, "awq": AWQ}
-# The bundled demo snapshot each run reproduces, up to batch composition (docs/tutorial-live.md).
+# The bundled demo snapshot each run reproduces, up to batch composition (README.md).
 BUNDLED = {"fp16": "demo_fp16.npz", "fp16_rerun": "demo_fp16_run1.npz", "awq": "demo_awq.npz"}
 # What the parent writes to --out besides the snapshots.
 REPORTS = ("check.txt", "check.json", "manifest.json")
 # What a snapshot in --out must match to be reused, besides this_machine() and the prompts.
 RESUME_KEYS = ("model", "revision", "quantization")
+# hulder check's exit codes for a verdict, PASS to INCONCLUSIVE. Anything else failed.
+VERDICT_CODES = (0, 10, 11, 12)
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="python -m hulder.capture.demo", description=__doc__.split("\n\n")[0])
+    parser = argparse.ArgumentParser(prog=COMMAND, description=__doc__.split("\n\n")[0])
     parser.add_argument("--out", default="hulder-demo", help="directory for snapshots, report and manifest")
     parser.add_argument("--force", action="store_true", help="recapture snapshots already in --out")
     parser.add_argument("--capture", choices=RUNS, help=argparse.SUPPRESS)  # one subprocess's run
@@ -92,7 +101,7 @@ def main(argv: list[str] | None = None) -> int:
 
 def capture_subprocess(name: str, out: Path) -> int:
     """Run one capture in a fresh Python process, whose exit frees its engine's GPU memory."""
-    command = [sys.executable, "-m", "hulder.capture.demo", "--capture", name, "--out", str(out)]
+    command = [sys.executable, str(Path(__file__).resolve()), "--capture", name, "--out", str(out)]
     return subprocess.run(command, check=False).returncode
 
 
@@ -104,7 +113,7 @@ def reusable(out: Path, name: str) -> bool:
         return False
     try:
         recorded = {
-            **Snapshot.load(snapshot).metadata,
+            **hulder.Snapshot.load(snapshot).metadata,
             "prompts_sha256": json.loads(manifest.read_text()).get("prompts_sha256"),
         }
     except ValueError as e:
@@ -134,19 +143,18 @@ def this_machine() -> dict:
 
 
 def prompts() -> list[dict]:
-    return [json.loads(line) for line in (DATA / "demo_prompts.jsonl").read_text().splitlines()]
+    return [json.loads(line) for line in PROMPTS.read_text().splitlines()]
 
 
 def prompts_sha256() -> str:
-    return hashlib.sha256((DATA / "demo_prompts.jsonl").read_bytes()).hexdigest()
+    return hashlib.sha256(PROMPTS.read_bytes()).hexdigest()
 
 
 def capture_run(name: str, out: Path) -> None:
     """Capture one config and save it as a Snapshot plus a JSON manifest. Imports vLLM."""
     import torch
 
-    from hulder.capture.base_model import base_model_for
-    from hulder.capture.hidden_states import CaptureConfig, capture
+    from hulder.capture import CaptureConfig, base_model_for, capture, snapshot_metadata
 
     cfg = CaptureConfig(**RUNS[name])
     rows = prompts()
@@ -156,7 +164,7 @@ def capture_run(name: str, out: Path) -> None:
     base_model, warning = base_model_for(cfg.model, cfg.revision, cfg.quantization)
     if warning:
         raise SystemExit(warning)
-    Snapshot(
+    hulder.Snapshot(
         ids=np.array([r["id"] for r in rows]),
         labels=np.array([r["label"] for r in rows]),
         activations=captured.activations[:, 0, 0].astype(np.float16),  # the config's only layer and position
@@ -176,35 +184,33 @@ def capture_run(name: str, out: Path) -> None:
 
 
 def check(out: Path) -> int:
-    """hulder check on the captures with the bundled probe, through the same code as the CLI;
-    writes check.txt, check.json and manifest.json to out."""
-    probe_path = str(DATA / "probe_demo.npz")
-    files = {"reference": out / "fp16.npz", "candidate": out / "awq.npz", "rerun": out / "fp16_rerun.npz"}
-    check_args = ["check", "--probe", probe_path, "--reference", str(files["reference"])]
-    check_args += ["--candidate", str(files["candidate"]), "--noise-floor", str(files["rerun"])]
-    try:
-        probe = Probe.load(probe_path)
-        threshold, target_fpr = probe.metadata["threshold"], probe.metadata["target_fpr"]
-        report = cli._check_files(files["reference"], files["candidate"], files["rerun"], probe, threshold, target_fpr)
-    except cli._TOOL_FAILURES as e:
-        cli._fail_tool(e)
-        print("If a snapshot in --out is damaged, rerun with --force to recapture it.", file=sys.stderr)
-        record(out, status="check failed", error=str(e), check_args=check_args)
-        return 1
-    inputs = cli._report_inputs(*(str(path) for path in files.values()), probe_path)
-    text = cli.render(report, inputs) + "\n"
-    write_text_atomically(out / "check.txt", text)
-    write_text_atomically(out / "check.json", cli.to_json(report, inputs) + "\n")
-    print(text, end="")
-    record(
-        out,
-        status="done",
-        check_args=check_args,
-        exit_code=report.verdict.exit_code,
-        verdict=report.verdict.value,
-    )
-    print(f"\nThe live verdict is {report.verdict.value}. Snapshots, report and manifest are in {out}.")
+    """hulder check on the captures with the bundled demo probe, run twice: as printed, for
+    check.txt, and with --json, for check.json. Writes manifest.json too."""
+    check_args = ["check", "--probe", str(PROBE), "--reference", str(out / "fp16.npz")]
+    check_args += ["--candidate", str(out / "awq.npz"), "--noise-floor", str(out / "fp16_rerun.npz")]
+    runs = []
+    for extra in ([], ["--json"]):
+        run = hulder_cli([*check_args, *extra])
+        if run.returncode not in VERDICT_CODES:
+            print(run.stderr, end="", file=sys.stderr)
+            print("If a snapshot in --out is damaged, rerun with --force to recapture it.", file=sys.stderr)
+            record(out, status="check failed", error=run.stderr.strip(), check_args=check_args)
+            return 1
+        runs.append(run)
+    text, as_json = runs
+    write_text_atomically(out / "check.txt", text.stdout)
+    write_text_atomically(out / "check.json", as_json.stdout)
+    print(text.stdout, end="")
+    verdict = json.loads(as_json.stdout)["verdict"]
+    record(out, status="done", check_args=check_args, exit_code=as_json.returncode, verdict=verdict)
+    print(f"\nThe live verdict is {verdict}. Snapshots, report and manifest are in {out}.")
     return 0
+
+
+def hulder_cli(args: list[str]) -> subprocess.CompletedProcess:
+    """The hulder command installed with this interpreter's hulder, so both are the same version."""
+    executable = Path(sysconfig.get_path("scripts")) / "hulder"
+    return subprocess.run([str(executable), *args], capture_output=True, text=True, check=False)
 
 
 def failed(out: Path, status: str, error: str) -> int:
@@ -216,7 +222,7 @@ def failed(out: Path, status: str, error: str) -> int:
 def record(out: Path, status: str, **fields) -> None:
     """manifest.json: how this run ended ("done" or what failed) and each capture's manifest."""
     manifest = {
-        "command": "python -m hulder.capture.demo",
+        "command": COMMAND,
         "status": status,
         **fields,
         **source_commit(),
@@ -227,20 +233,36 @@ def record(out: Path, status: str, **fields) -> None:
     write_text_atomically(out / "manifest.json", json.dumps(manifest, indent=2) + "\n")
 
 
-def source_commit(package: Path = Path(__file__).parent) -> dict:
-    """The git commit of the hulder source this runs from, and whether tracked files differ
-    from it. None for both unless hulder runs from its own checkout (src/hulder/ in it), so
-    an install inside another project's repo doesn't record that repo's commit."""
+def source_commit(here: Path = HERE) -> dict:
+    """The git commit of the hulder checkout this example runs from, and whether tracked files
+    differ from it. None for both unless here is examples/live_demo/ of a checkout that also
+    holds src/hulder/, so a copy inside another project's repo doesn't record that repo's commit."""
 
     def git(*args: str) -> str:
-        return subprocess.check_output(["git", "-C", str(package), *args], text=True, stderr=subprocess.DEVNULL).strip()
+        return subprocess.check_output(["git", "-C", str(here), *args], text=True, stderr=subprocess.DEVNULL).strip()
 
     try:
-        if Path(git("rev-parse", "--show-toplevel")) / "src" / "hulder" != package.parent:
+        top = Path(git("rev-parse", "--show-toplevel"))
+        if top / "examples" / "live_demo" != here or not (top / "src" / "hulder").is_dir():
             raise ValueError("not hulder's own checkout")
         return {"git_commit": git("rev-parse", "HEAD"), "git_dirty": bool(git("status", "--porcelain", "-uno"))}
     except (OSError, subprocess.CalledProcessError, ValueError):
         return {"git_commit": None, "git_dirty": None}
+
+
+def write_text_atomically(path: Path, text: str) -> None:
+    """Write text to path whole or not at all: to a temporary file in path's directory, then
+    renamed over path, so an interrupted run never leaves half a file."""
+    fd, temporary = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w") as f:
+            f.write(text)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(temporary, path)
+    except BaseException:
+        Path(temporary).unlink(missing_ok=True)
+        raise
 
 
 if __name__ == "__main__":
