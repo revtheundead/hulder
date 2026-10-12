@@ -95,7 +95,7 @@ Exit code 12 (INCONCLUSIVE)
 
 ## Check your own serving change
 
-Capture activations for a labelled calibration set under each serving config: the reference twice, so the gate can measure the noise floor, and the candidate once. v0.1 has no capture command. `hulder.capture`, in the `vllm` extra, runs vLLM offline with the settings of the offline extraction decision, or any other capture works. Save each run as a `Snapshot`:
+Capture activations for a labelled calibration set under each serving config: the reference twice, so the gate can measure the noise floor, and the candidate once. v0.1 has no capture command. `hulder.capture`, in the `vllm` extra, runs vLLM offline with the settings in docs/design.md §5, or any other capture works. Save each run as a `Snapshot`:
 
 ```python
 import numpy as np
@@ -126,7 +126,7 @@ $ hulder check --probe src/hulder/data/probe_demo.npz \
     --candidate src/hulder/data/demo_awq.npz
 ```
 
-It prints the report above with full paths and exits 12. `--json` prints the whole `Report` instead. `--noise-floor` takes a rerun of the reference, not of the candidate. From Python, `hulder.check_snapshots` does the same on loaded snapshots and `hulder.check` takes plain arrays. The library-first decision lists the public API, and `hulder check --help` lists the options. The live tutorial (`docs/tutorial-live.md`) captures the demo prompts with vLLM on a GPU.
+It prints the report above with full paths and exits 12. `--json` prints the whole `Report` instead. `--noise-floor` takes a rerun of the reference, not of the candidate. From Python, `hulder.check_snapshots` does the same on loaded snapshots and `hulder.check` takes plain arrays. docs/design.md §4 lists the public API, and `hulder check --help` lists the options. The live tutorial (`docs/tutorial-live.md`) captures the demo prompts with vLLM on a GPU.
 
 ## Limits
 
@@ -140,8 +140,7 @@ The full list is in [docs/design.md §10](docs/design.md#10-known-limits).
 
 ## More
 
-- [Design](docs/design.md): the problem and prior art, architecture, statistical method, experiment, known limits and roadmap
-- [Decisions](docs/design.md): a written decision per design decision, with rejected alternatives
+- [Design](docs/design.md): the problem and prior art, architecture and public API, every design decision with the alternatives it rejected, the verdict rule, the experiment, known limits and roadmap
 - [Results](docs/results/phase1/): every measurement behind v0.1, with the command that reproduces it, including where the gate loses
 - [Live tutorial](docs/tutorial-live.md): the demo captured with vLLM on a GPU
 - [Contributing](CONTRIBUTING.md)

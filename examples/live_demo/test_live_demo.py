@@ -320,7 +320,7 @@ def test_the_prompts_are_the_bundled_demo_snapshots_examples_in_order():
 
 
 def test_the_example_imports_only_hulders_public_api():
-    # The library-first decision: hulder.__all__ and hulder.capture.__all__, and the hulder command.
+    # The public API (docs/design.md §4): hulder.__all__ and hulder.capture.__all__, and the hulder command.
     source = Path(demo.__file__).read_text()
     imports = [line.strip() for line in source.splitlines() if "hulder" in line and "import" in line]
     assert imports == [

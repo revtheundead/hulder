@@ -1,6 +1,6 @@
 # Extraction prototype (Phase 1, step 4)
 
-Evidence for the offline extraction decision. vLLM 0.30.0, Qwen2.5-1.5B-Instruct @ `989aa798`, fp16, RTX 2070, Triton attention, piecewise CUDA graphs, chunked prefill off. Layers 8, 16, 24. Six chat prompts sharing a 61-token system prompt.
+Evidence for the offline extraction path (docs/design.md §5). vLLM 0.30.0, Qwen2.5-1.5B-Instruct @ `989aa798`, fp16, RTX 2070, Triton attention, piecewise CUDA graphs, chunked prefill off. Layers 8, 16, 24. Six chat prompts sharing a 61-token system prompt.
 
 Reproduce: the four commands in the docstring of `experiments/phase1/extract_scenario.py`.
 
@@ -29,8 +29,8 @@ Relative L2 at the last token for batched vs single is about 1.2e-3. Last-token 
 
 On a cache hit, every full 16-token block is served from the stored hidden-state cache, bit-identical to whatever request first computed it. Only the trailing partial block is recomputed. In this run, positions 0 to 63 were reused and 64 onward recomputed. The recomputed tokens, including the last token, differ from a cold prefill because attention reads the prefix from the KV cache. So with caching on, a request's hidden states depend on the request history.
 
-Unexplained: with caching on, the first pass already differs from caching off at position 0, before any hit could occur. Still unexplained. Capture runs with caching off, so it doesn't affect the gate.
+Unexplained: with caching on, the first pass already differs from caching off at position 0, before any hit could occur. Still unexplained. Capture runs with caching off (docs/design.md §5), so it doesn't affect the gate.
 
 ## Decision
 
-The offline extraction decision (accepted): connector path, prefix caching off, fixed batch composition. The docs/design.md §5 D1 note covers the chunked-prefill requirement.
+Decision (docs/design.md §5): connector path, prefix caching off, fixed batch composition. The docs/design.md §5 D1 note covers the chunked-prefill requirement.

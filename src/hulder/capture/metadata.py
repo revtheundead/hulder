@@ -14,7 +14,7 @@ def snapshot_metadata(
     layer: int | None = None,
     position: int | None = None,
 ) -> dict:
-    """The metadata a Snapshot of one layer and position of a capture records: the
+    """The metadata a Snapshot of one layer and position of a capture records (docs/design.md §6, metadata rules): the
     serving config, the layer and position, the GPU, and enable_thinking when it was pinned.
     Only keys comparable across runs. layer and position default to the config's only ones."""
     layer = _one(cfg.layers, layer, "layer")

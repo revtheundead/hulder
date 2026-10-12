@@ -1,4 +1,4 @@
-"""Linear probes and the probe-application helper. Numpy and scipy only."""
+"""Linear probes and the probe-application helper (docs/design.md §4). Numpy and scipy only."""
 
 import json
 from dataclasses import dataclass, field

@@ -156,7 +156,7 @@ def test_a_snapshot_whose_recorded_ids_hash_contradicts_its_ids_raises_a_pairing
 
 
 def test_a_candidate_captured_on_another_gpu_warns():
-    # Another GPU is another serving config, so it mixes into the change under test.
+    # Another GPU is another serving config, so it mixes into the change under test (metadata rule 2).
     data, reference, candidate, _ = _snapshots()
     on_4070 = hulder.Snapshot(
         ids=reference.ids,

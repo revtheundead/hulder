@@ -1,4 +1,4 @@
-"""Train the quickstart's demo probe on boundary-pairs (the dataset decision rule triggered, probe_main.md).
+"""Train the quickstart's demo probe on boundary-pairs (the quickstart rule triggered, probe_main.md).
 
 DEMO ONLY. Small data and a 5% FPR target; never use it as a real prompt-attack monitor.
 
@@ -34,7 +34,7 @@ OUT_REPORT = Path("docs/results/phase1/probe_demo.json")
 TARGET_FPR = 0.05
 N_TRAIN_SCENARIOS = 25
 SEED = 0
-# Copied from the main probe, so the demo needs no validation split (the dataset decision Outcome).
+# Copied from the main probe, so the demo needs no validation split (docs/design.md §7).
 INHERITED = ("model", "revision", "layer", "position", "system_prompt", "dtype", "C")
 
 

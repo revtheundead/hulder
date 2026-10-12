@@ -64,7 +64,7 @@ BUNDLED = {"fp16": "demo_fp16.npz", "fp16_rerun": "demo_fp16_run1.npz", "awq": "
 REPORTS = ("check.txt", "check.json", "manifest.json")
 # What a snapshot in --out must match to be reused, besides this_machine() and the prompts.
 RESUME_KEYS = ("model", "revision", "quantization")
-# hulder check's exit codes for a verdict, PASS to INCONCLUSIVE. Anything else failed.
+# hulder check's exit codes for a verdict, PASS to INCONCLUSIVE (docs/design.md §4). Anything else failed.
 VERDICT_CODES = (0, 10, 11, 12)
 
 

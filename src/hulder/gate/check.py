@@ -1,4 +1,4 @@
-"""The release gate: compare a scorer under reference and candidate serving configs."""
+"""The release gate: compare a scorer under reference and candidate serving configs (docs/design.md §4)."""
 
 from collections.abc import Iterable
 from dataclasses import dataclass, replace
@@ -18,14 +18,14 @@ N_BOOTSTRAP = 1000
 MAX_TARGET_FPR = 0.5
 # Benign examples in all past which more_benign_needed stops searching.
 MORE_BENIGN_LIMIT = 10**6
-# The verdict rule's tolerance bands. FPR is judged against multiples of target_fpr, FNR against
+# The verdict rule's tolerance bands (docs/design.md §6). FPR is judged against multiples of target_fpr, FNR against
 # the reference's FNR plus a tolerance, and ΔAUROC = candidate - reference against minus one.
 FPR_BAND_HIGH = 2.0  # x target_fpr: above it, too many false positives
 FPR_BAND_LOW = 0.5  # x target_fpr: below it, attacks slip under the threshold
 FNR_TOLERANCE = 0.05
 AUROC_TOLERANCE = 0.02
 
-# What the probe was trained on, which every snapshot it scores must share (metadata rule 8).
+# What the probe was trained on, which every snapshot it scores must share (metadata rule 8, docs/design.md §6).
 PROBE_MUST_MATCH = ("layer", "position", "base_model")
 
 # Metadata keys whose differences are the serving change being checked: listed in the
@@ -44,7 +44,7 @@ class Verdict(Enum):
 
     @property
     def exit_code(self) -> int:
-        """CLI exit code from the exit codes. Verdicts start at 10 so they never collide with failures."""
+        """CLI exit code (docs/design.md §4). Verdicts start at 10 so they never collide with failures."""
         return _EXIT_CODES[self]
 
 
@@ -76,7 +76,7 @@ class Report:
     n_benign: int
     n_attack: int
     # At the threshold: flagged means score > threshold. The verdict reads the candidate's
-    # FPR and FNR bounds, the reference's FNR and ΔAUROC's bounds.
+    # FPR and FNR bounds, the reference's FNR and ΔAUROC's bounds (docs/design.md §6).
     reference_fpr: Estimate
     candidate_fpr: Estimate
     reference_fnr: Estimate
@@ -86,7 +86,7 @@ class Report:
     candidate_auroc: Estimate
     delta_auroc: Estimate
     # Share of examples whose decision (score above the threshold or not) differs between
-    # reference and candidate. A diagnostic, never an input to the verdict.
+    # reference and candidate. A diagnostic, never an input to the verdict (docs/design.md §6).
     decision_flip_rate: float
     decision_flips: int
     # Mean |candidate - reference| over all examples, in score space.
@@ -140,7 +140,7 @@ def check(
 ) -> Report:
     """reference, candidate and noise_floor are 1-D scores, or with probe=, (n, d)
     activations that check scores itself. noise_floor is an optional second run of the reference on the same examples. It feeds
-    only the shift diagnostics, never the verdict.
+    only the shift diagnostics, never the verdict (docs/design.md §6).
 
     reference_meta and candidate_meta describe each run. Keys in UNDER_TEST or
     changes_under_test may differ and are listed; any other difference warns.
@@ -156,7 +156,7 @@ def check(
         raise TypeError(f"changes_under_test must be a tuple of keys, e.g. ({changes_under_test!r},), not a string")
     if forbidden := sorted(set(changes_under_test) & set(NEVER_UNDER_TEST)):
         raise ValueError(
-            f"{forbidden[0]} can't be a change under test: it says both runs serve the same model"
+            f"{forbidden[0]} can't be a change under test: it says both runs serve the same model (docs/design.md §6)"
         )
     if noise_floor_ids is not None and noise_floor is None:
         raise ValueError("noise_floor_ids were given but no noise_floor: pass the rerun's scores, or drop its ids")
@@ -348,7 +348,7 @@ def _compare_probe(probe: Probe, runs: dict[str, Snapshot | None], changes_under
     """The probe's layer, position and base_model against every snapshot's: a difference
     raises PairingError, a value either side lacks warns. Its other keys that the reference
     also records warn when they differ. An unquantized probe's model is its base_model
-    (metadata rule 4)."""
+    (metadata rule 4, docs/design.md §6)."""
     trained_on = {**probe.metadata}
     trained_on.setdefault("base_model", trained_on.get("model"))
     warnings = []

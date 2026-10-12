@@ -1,6 +1,6 @@
 """The hulder command: parse, call check_snapshots, print the Report, exit with its code.
 
-No statistics live here. Exit codes follow the exit codes: the verdict's code, 1 for
+No statistics live here (docs/design.md §4). Exit codes follow docs/design.md §4: the verdict's code, 1 for
 a tool failure such as a PairingError or a damaged file, 2 for a usage error.
 """
 
@@ -20,7 +20,7 @@ from hulder.gate.pairing import PairingError
 from hulder.gate.probe import Probe
 from hulder.gate.snapshot import Snapshot
 
-# The verdict rule presentation rule: past this many times the calibration set's benign count,
+# The tolerance-edge presentation rule (docs/design.md §6): past this many times the calibration set's benign count,
 # more_benign_needed is printed with a caveat that it is unstable.
 EDGE_FACTOR = 10
 COLUMN = 26  # width of the reference and candidate columns
@@ -32,7 +32,7 @@ JSON_SCHEMA_VERSION = 1
 
 
 class UsageError(Exception):
-    """A usage error, exit 2. argparse's own exit is replaced so --json can report it."""
+    """A usage error, exit 2 (docs/design.md §4). argparse's own exit is replaced so --json can report it."""
 
     def __init__(self, message: str, usage: str):
         super().__init__(message)
