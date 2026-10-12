@@ -1,0 +1,132 @@
+{
+  "command": "python -m hulder.capture.demo",
+  "status": "done",
+  "check_args": [
+    "check",
+    "--probe",
+    "/home/rev/hulder/src/hulder/data/probe_demo.npz",
+    "--reference",
+    ".cache/live_demo/fp16.npz",
+    "--candidate",
+    ".cache/live_demo/awq.npz",
+    "--noise-floor",
+    ".cache/live_demo/fp16_rerun.npz"
+  ],
+  "exit_code": 12,
+  "verdict": "INCONCLUSIVE",
+  "git_commit": "5f8880255c59a50c7d3d142f7cd2f950b2e63147",
+  "git_dirty": false,
+  "runs": {
+    "fp16": {
+      "capture_config": {
+        "model": "Qwen/Qwen2.5-1.5B-Instruct",
+        "revision": "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
+        "layers": [
+          20
+        ],
+        "positions": [
+          -1
+        ],
+        "system_prompt": "You are a helpful assistant.",
+        "quantization": null,
+        "dtype": "float16",
+        "batch_size": 8,
+        "gpu_memory_utilization": 0.7,
+        "max_model_len": 1024,
+        "max_num_batched_tokens": 1024,
+        "seed": 0,
+        "enable_thinking": null,
+        "enable_prefix_caching": false,
+        "enable_chunked_prefill": false
+      },
+      "gpu": "NVIDIA GeForce RTX 2070",
+      "seconds": 49.6,
+      "last_tokens": [
+        "\u010a"
+      ],
+      "packages": {
+        "hulder": "0.1.0",
+        "vllm": "0.30.0",
+        "torch": "2.13.0",
+        "numpy": "2.3.5"
+      },
+      "cuda": "13.0",
+      "python": "3.12.14",
+      "prompts_sha256": "e52f70ee61e6d7c6ec0d2a82cf17f3a1c84fd44adb061facc2170b613ba4d0c6"
+    },
+    "fp16_rerun": {
+      "capture_config": {
+        "model": "Qwen/Qwen2.5-1.5B-Instruct",
+        "revision": "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
+        "layers": [
+          20
+        ],
+        "positions": [
+          -1
+        ],
+        "system_prompt": "You are a helpful assistant.",
+        "quantization": null,
+        "dtype": "float16",
+        "batch_size": 8,
+        "gpu_memory_utilization": 0.7,
+        "max_model_len": 1024,
+        "max_num_batched_tokens": 1024,
+        "seed": 0,
+        "enable_thinking": null,
+        "enable_prefix_caching": false,
+        "enable_chunked_prefill": false
+      },
+      "gpu": "NVIDIA GeForce RTX 2070",
+      "seconds": 40.2,
+      "last_tokens": [
+        "\u010a"
+      ],
+      "packages": {
+        "hulder": "0.1.0",
+        "vllm": "0.30.0",
+        "torch": "2.13.0",
+        "numpy": "2.3.5"
+      },
+      "cuda": "13.0",
+      "python": "3.12.14",
+      "prompts_sha256": "e52f70ee61e6d7c6ec0d2a82cf17f3a1c84fd44adb061facc2170b613ba4d0c6"
+    },
+    "awq": {
+      "capture_config": {
+        "model": "Qwen/Qwen2.5-1.5B-Instruct-AWQ",
+        "revision": "3ecffa0ceb27851800f45519bab9c457a04405e1",
+        "layers": [
+          20
+        ],
+        "positions": [
+          -1
+        ],
+        "system_prompt": "You are a helpful assistant.",
+        "quantization": "awq",
+        "dtype": "float16",
+        "batch_size": 8,
+        "gpu_memory_utilization": 0.7,
+        "max_model_len": 1024,
+        "max_num_batched_tokens": 1024,
+        "seed": 0,
+        "enable_thinking": null,
+        "enable_prefix_caching": false,
+        "enable_chunked_prefill": false
+      },
+      "gpu": "NVIDIA GeForce RTX 2070",
+      "seconds": 49.3,
+      "last_tokens": [
+        "\u010a"
+      ],
+      "packages": {
+        "hulder": "0.1.0",
+        "vllm": "0.30.0",
+        "torch": "2.13.0",
+        "numpy": "2.3.5"
+      },
+      "cuda": "13.0",
+      "python": "3.12.14",
+      "prompts_sha256": "e52f70ee61e6d7c6ec0d2a82cf17f3a1c84fd44adb061facc2170b613ba4d0c6"
+    }
+  }
+}

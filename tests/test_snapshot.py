@@ -146,3 +146,26 @@ def test_a_file_without_a_format_version_is_not_a_snapshot(tmp_path):
     _rewrite_consistently(tmp_path / "s.npz", arrays)
     with pytest.raises(ValueError, match="format_version"):
         hulder.Snapshot.load(tmp_path / "s.npz")
+
+
+def test_a_save_that_fails_midway_leaves_the_previous_file_whole(tmp_path, monkeypatch):
+    # A killed capture must not leave a truncated snapshot for a resumed run to trip over.
+    path = tmp_path / "s.npz"
+    _snapshot().save(path)
+    before = path.read_bytes()
+
+    def interrupted(file, **arrays):
+        file.write(b"PK\x03\x04 half a zip")
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(np, "savez", interrupted)
+    with pytest.raises(KeyboardInterrupt):
+        _snapshot(labels=np.array([1, 1, 0])).save(path)
+    assert path.read_bytes() == before
+    assert [p.name for p in tmp_path.iterdir()] == ["s.npz"]
+
+
+def test_save_adds_the_npz_suffix_as_numpy_does(tmp_path):
+    _snapshot().save(tmp_path / "s")
+    assert [p.name for p in tmp_path.iterdir()] == ["s.npz"]
+    hulder.Snapshot.load(tmp_path / "s.npz")

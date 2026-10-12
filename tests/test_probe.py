@@ -94,3 +94,23 @@ def test_a_probe_file_whose_setting_is_not_a_number_raises_a_value_error_naming_
     hulder.Probe(probe.weights, probe.bias, probe.mean, probe.std, {key: value}).save(path)
     with pytest.raises(ValueError, match=f"^{path}: its {key} is .*, not a number$"):
         hulder.Probe.load(path)
+
+
+def test_a_probe_save_interrupted_before_the_rename_leaves_the_previous_file_whole(tmp_path, monkeypatch):
+    path = tmp_path / "probe.npz"
+    tiny_probe().save(path)
+    before = path.read_bytes()
+
+    def crash(src, dst):
+        raise OSError("interrupted before the rename")
+
+    monkeypatch.setattr("hulder.gate.atomic.os.replace", crash)
+    with pytest.raises(OSError, match="interrupted"):
+        hulder.Probe(weights=np.array([3.0, 4.0]), bias=0.0, mean=np.zeros(2), std=np.ones(2)).save(path)
+    assert path.read_bytes() == before
+    assert [p.name for p in tmp_path.iterdir()] == ["probe.npz"]
+
+
+def test_probe_save_adds_the_npz_suffix_as_numpy_does(tmp_path):
+    tiny_probe().save(tmp_path / "probe")
+    assert [p.name for p in tmp_path.iterdir()] == ["probe.npz"]

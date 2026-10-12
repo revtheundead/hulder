@@ -7,6 +7,7 @@ from pathlib import Path
 import numpy as np
 from scipy.special import expit
 
+from hulder.gate.atomic import savez_atomically
 from hulder.gate.npz import read_npz
 
 
@@ -23,8 +24,9 @@ class Probe:
     FORMAT_VERSION = 1
 
     def save(self, path: str | Path) -> None:
-        """Write an .npz of plain arrays plus JSON metadata. Never pickled, so safe to share."""
-        np.savez(
+        """Write an .npz of plain arrays plus JSON metadata. Never pickled, so safe to share.
+        Written atomically, so an interrupted save leaves any previous file whole."""
+        savez_atomically(
             path,
             weights=np.asarray(self.weights, dtype=np.float64),
             bias=np.float64(self.bias),

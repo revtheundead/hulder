@@ -1,0 +1,55 @@
+{
+  "manifest": {
+    "command": "source scripts/dev-env.sh && uv run python experiments/phase1/probe/compare_live.py",
+    "git_commit": "5f8880255c59a50c7d3d142f7cd2f950b2e63147",
+    "git_dirty": false,
+    "python": "3.12.14",
+    "packages": {
+      "numpy": "2.3.5",
+      "scipy": "1.18.1",
+      "scikit-learn": "1.9.1",
+      "pandas": "3.0.6",
+      "huggingface-hub": "1.33.0",
+      "vllm": "0.30.0",
+      "torch": "2.13.0"
+    },
+    "seed": null,
+    "inputs_sha256": {
+      ".cache/live_demo/fp16.npz": "2a3efb5a9cedf3ec69c8893c1f5ebdce580f1696ec26de5b98dfa983c037ec82",
+      ".cache/live_demo/fp16_rerun.npz": "4d723bb1160c767e2c1779853d7837e11a8fe17c389d07852b389e709522e870",
+      ".cache/live_demo/awq.npz": "4d2dbda4b6651ae0f360f980358b928b380f0681382c52c2137c10efbba418b9"
+    }
+  },
+  "comparison": {
+    "fp16": {
+      "bundled": "demo_fp16.npz",
+      "bit_identical": false,
+      "relative_l2_median": 0.001151797128841281,
+      "relative_l2_max": 0.002120338613167405,
+      "mean_abs_score_difference": 0.00026742261252366006,
+      "decisions_differing": 0,
+      "benign_flagged_live": 8,
+      "benign_flagged_bundled": 8
+    },
+    "fp16_rerun": {
+      "bundled": "demo_fp16_run1.npz",
+      "bit_identical": false,
+      "relative_l2_median": 0.0011817037593573332,
+      "relative_l2_max": 0.0020866079721599817,
+      "mean_abs_score_difference": 0.00032407656544819474,
+      "decisions_differing": 0,
+      "benign_flagged_live": 8,
+      "benign_flagged_bundled": 8
+    },
+    "awq": {
+      "bundled": "demo_awq.npz",
+      "bit_identical": false,
+      "relative_l2_median": 0.0046364665031433105,
+      "relative_l2_max": 0.008468816988170147,
+      "mean_abs_score_difference": 0.0011663598706945777,
+      "decisions_differing": 0,
+      "benign_flagged_live": 13,
+      "benign_flagged_bundled": 13
+    }
+  }
+}

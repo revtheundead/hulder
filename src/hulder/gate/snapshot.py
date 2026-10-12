@@ -7,6 +7,7 @@ from pathlib import Path
 
 import numpy as np
 
+from hulder.gate.atomic import savez_atomically
 from hulder.gate.npz import read_npz
 from hulder.gate.pairing import PROMPT_IDS_KEY, PairingError, prompt_ids_sha256
 from hulder.gate.validate import example_ids, require_binary_labels
@@ -49,7 +50,9 @@ class Snapshot:
 
     def save(self, path: str | Path) -> None:
         """Write an .npz of plain arrays plus JSON metadata, with the ids' hash for pairing
-        and a content hash that load verifies. Never pickled, so safe to share."""
+        and a content hash that load verifies. Never pickled, so safe to share. Written
+        atomically, so an interrupted save leaves any previous file whole. Like np.savez,
+        it adds .npz to a path without it."""
         require_binary_labels(self.labels)  # before the int8 cast, which would turn 0.7 into 0
         arrays = {
             "ids": np.asarray(self.ids, dtype=str),
@@ -58,7 +61,7 @@ class Snapshot:
         }
         metadata = {"format_version": self.FORMAT_VERSION, **self.metadata, PROMPT_IDS_KEY: prompt_ids_sha256(self.ids)}
         text = json.dumps(metadata)
-        np.savez(
+        savez_atomically(
             path,
             metadata=np.array(text),
             content_sha256=np.array(_content_sha256(arrays, json.loads(text))),
