@@ -21,7 +21,7 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Topic :: Software Development :: Quality Assurance",
 ]
-# Base install: the gate library and CLI, numpy and scipy only.
+# Base install: the gate library and CLI, numpy and scipy only (docs/design.md §4).
 dependencies = [
     "numpy>=2.3",
     "scipy>=1.16",

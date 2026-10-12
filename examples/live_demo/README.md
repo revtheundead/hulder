@@ -20,7 +20,7 @@ uv run python examples/live_demo/live_demo.py
 
 | File | What it is |
 |---|---|
-| `live_demo.py` | The script. It uses only hulder's public API: `hulder.Snapshot`, the experimental `hulder.capture`, and the `hulder check` command. |
+| `live_demo.py` | The script. It uses only hulder's public API (docs/design.md §4): `hulder.Snapshot`, the experimental `hulder.capture`, and the `hulder check` command. |
 | `demo_prompts.jsonl` | The 360 calibration prompts, with their ids and labels, in the order of the bundled demo snapshots. Written by `experiments/phase1/probe/demo_prompts.py`. |
 | `test_live_demo.py` | Its tests, with a fake capture in place of vLLM. They run in the repository's fast suite, `uv run pytest`. |
 

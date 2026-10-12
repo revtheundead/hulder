@@ -1,4 +1,4 @@
-"""Coverage of the gate's ΔAUROC confidence interval on the missed-attack cases.
+"""Coverage of the gate's ΔAUROC confidence interval on the missed-attack cases (docs/design.md §6).
 
 For each seed the true ΔAUROC is the population integral at that seed's fitted threshold
 (tests/synthetic.py), so the threshold's scatter across seeds is not counted as a miss.

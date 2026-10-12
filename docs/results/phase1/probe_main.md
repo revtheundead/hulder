@@ -1,4 +1,4 @@
-# Main probe on S-Labs, and the dataset decision rule (Phase 1)
+# Main probe on S-Labs, and the quickstart rule (Phase 1)
 
 Qwen2.5-1.5B-Instruct @ `989aa798`, fp16, vLLM 0.30.0, RTX 2070. System prompt "You are a helpful assistant." Splits in `probe_splits.json`, full numbers in `probe_main.json`.
 
@@ -30,15 +30,15 @@ Selected: layer 20, C = 0.001, validation AUROC 0.9987. Selection is close to ar
 | S-Labs test (1,050 / 1,051) | 0.994 [0.992, 0.997] | 0.38% [0.10, 0.97] | 15.5% [13.4, 17.8] |
 | Boundary-pairs, all 1,200 (600 / 600) | **0.839** [0.819, 0.860] | **95.3%** [93.3, 96.9] | 0.0% [0.0, 0.6] |
 
-AUROC CIs are percentile bootstrap (2,000 resamples); boundary-pairs resamples whole pairs. Rate CIs are Clopper-Pearson. The threshold is the empirical quantile, provisional until the Phase 2 recalibration written decision.
+AUROC CIs are percentile bootstrap (2,000 resamples); boundary-pairs resamples whole pairs. Rate CIs are Clopper-Pearson. The threshold is the empirical quantile, provisional until recalibration is settled in v0.2.
 
-## The dataset decision rule
+## Quickstart rule
 
-Point estimate 0.839 < 0.85, so **the quickstart gets a demo probe trained on boundary-pairs**. The S-Labs probe is unchanged and boundary-pairs stays held out from it. The CI straddles 0.85. The rule uses the point estimate, as the dataset decision fixes in advance.
+Point estimate 0.839 < 0.85, so **the quickstart gets a demo probe trained on boundary-pairs**. The S-Labs probe is unchanged and boundary-pairs stays held out from it. The CI straddles 0.85. The rule uses the point estimate, as fixed in advance (docs/design.md §7).
 
 ## What this shows
 
-- **The hard-negative failure is total at this threshold.** Benign boundary-pairs prompts score a median of 0.986 (S-Labs calibration benign: 0.011), so 95% of them would escalate. The probe still ranks attacks above benign (AUROC 0.84), so a threshold tuned on boundary-pairs would do better, but an S-Labs-calibrated threshold is useless on agentic text. This is the distribution-shift case the dataset decision anticipated, and it belongs on the benchmarks page.
+- **The hard-negative failure is total at this threshold.** Benign boundary-pairs prompts score a median of 0.986 (S-Labs calibration benign: 0.011), so 95% of them would escalate. The probe still ranks attacks above benign (AUROC 0.84), so a threshold tuned on boundary-pairs would do better, but an S-Labs-calibrated threshold is useless on agentic text. This is the distribution-shift case the dataset choice anticipated, and it belongs on the benchmarks page.
 - **Test is harder than calibration, and near-duplicates don't explain it.** FNR is 15.5% on test against 8.9% on calibration, with non-overlapping CIs. `near_dups.json` checks whether calibration items copy train (character 3-5-gram TF-IDF cosine on normalised text, `experiments/phase1/probe/near_dups.py`):
 
   | Split | Train near-dup ≥ 0.9 | ≥ 0.8 | FNR, items without a near-dup ≥ 0.8 | Median similarity to nearest train item (benign / attack) |

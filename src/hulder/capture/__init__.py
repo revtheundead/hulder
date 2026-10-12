@@ -1,5 +1,5 @@
-"""Activation capture from vLLM, the hulder[vllm] extra. Public but experimental
-in v0.1: these names may change in any 0.x release.
+"""Activation capture from vLLM, the hulder[vllm] extra (docs/design.md §5). Public but experimental
+in v0.1: these names may change in any 0.x release (docs/design.md §4).
 
 capture, CaptureConfig and Capture import vLLM and torch, so they load on first use. The
 other names, and importing this package, need neither.

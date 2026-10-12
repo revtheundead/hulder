@@ -1,4 +1,4 @@
-"""Train the v0.1 example probe and apply the dataset decision's boundary-pairs rule.
+"""Train the v0.1 example probe and apply the quickstart's boundary-pairs rule (docs/design.md §7).
 
 Split roles (docs/design.md §7):
   train        fits weights and the standardisation mean/std
@@ -8,7 +8,7 @@ Split roles (docs/design.md §7):
   bpairs_*     held out; scored only, for the AUROC >= 0.85 rule
 
 The threshold is the empirical (1 - 0.01) quantile of benign calibration scores, rounded
-up. This is provisional: conformal vs binomial-tail is the Phase 2 written decision (docs/design.md §6).
+up. This is provisional: conformal vs binomial-tail is settled in v0.2 (docs/design.md §6).
 
 Run from the repo root, after extract.py --config fp16:
     source scripts/dev-env.sh && uv run python experiments/phase1/probe/train.py
@@ -33,7 +33,7 @@ OUT_PROBE = Path(".cache/probe/probe_main.npz")
 OUT_REPORT = Path("docs/results/phase1/probe_main.json")
 TARGET_FPR = 0.01
 C_GRID = (1e-3, 1e-2, 1e-1, 1.0)
-AUROC_RULE = 0.85  # The dataset decision
+AUROC_RULE = 0.85  # the quickstart rule, docs/design.md §7
 N_BOOT = 2000
 SEED = 0
 

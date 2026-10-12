@@ -1,4 +1,4 @@
-"""The base install must not import vLLM, torch, scikit-learn or the capture extra's dependencies."""
+"""The base install must not import vLLM, torch, scikit-learn or the capture extra's dependencies (docs/design.md §4)."""
 
 import subprocess
 import sys

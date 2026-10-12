@@ -289,7 +289,7 @@ def test_a_probe_for_another_layer_exits_1_with_a_pairing_error(tmp_path, capsys
 
 
 def test_quickstart_exits_1_when_a_bundled_check_gives_an_unexpected_verdict(capsys, monkeypatch):
-    # The bundled data is fixed, so another verdict means a broken install.
+    # The bundled data is fixed, so another verdict means a broken install (docs/design.md §4).
     title, candidate, rerun, _ = cli.QUICKSTART[0]
     monkeypatch.setattr(cli, "QUICKSTART", ((title, candidate, rerun, hulder.Verdict.THRESHOLD_STALE),))
     assert cli.run(["quickstart"]) == 1

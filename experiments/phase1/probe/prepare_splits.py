@@ -1,4 +1,4 @@
-"""Build the probe's four S-Labs splits plus the held-out boundary-pairs set.
+"""Build the probe's four S-Labs splits plus the held-out boundary-pairs set (docs/design.md §7).
 
 Steps, in order:
   1. Normalise text (strip, collapse whitespace) to a dedup key.

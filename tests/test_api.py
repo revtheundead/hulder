@@ -1,5 +1,5 @@
 """v0.1's public API is hulder.__all__, hulder.capture.__all__ (experimental) and the CLI
-commands. Changing either list means amending the written decision."""
+commands (docs/design.md §4). Changing either list means amending that section."""
 
 import subprocess
 import sys

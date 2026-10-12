@@ -1,7 +1,7 @@
 """The gate's own false-alarm and detection rates on synthetic data (docs/design.md §6).
 
 Bounds are fixed before running. Measured rates go in docs/results/phase1/gate_calibration.md,
-from experiments/phase1/gate/calibration.py, and in the verdict rule.
+from experiments/phase1/gate/calibration.py, and in docs/design.md §6.
 """
 
 from functools import partial

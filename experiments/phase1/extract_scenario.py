@@ -1,4 +1,4 @@
-"""Extraction-path prototype for the offline extraction decision: positions, prefix caching, determinism.
+"""Extraction-path prototype for the offline extraction decision (docs/design.md §5): positions, prefix caching, determinism.
 
 One engine per run. Inside it, three passes over the same chat prompts:
   batch         all prompts in one generate call

@@ -27,6 +27,6 @@ source scripts/dev-env.sh && uv run ruff check && uv run ruff format --check && 
 ## Conventions
 
 - Statistical code is tested on synthetic data with known ground truth before it touches real data (`tests/synthetic.py`).
-- A design decision gets a written decision in docs/design.md with the alternatives it rejected. Terms follow `CONTEXT.md`.
+- A design decision is written up in `docs/design.md`, with the alternatives it rejected. Terms follow `CONTEXT.md`.
 - A result in `docs/results/` states the one command that reproduces it, with pinned versions and seeds.
 - Tests that import vLLM are marked `vllm`, so CI on the base install skips them.

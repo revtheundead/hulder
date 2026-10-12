@@ -1,4 +1,4 @@
-"""Activation capture from vLLM, the hulder[vllm] extra.
+"""Activation capture from vLLM, the hulder[vllm] extra (docs/design.md §4 and §5).
 
 Offline extraction through vLLM's hidden-state connector, prefix caching off, chunked
 prefill off, fixed prompt order and batch size. Never imported by the base package.
@@ -36,13 +36,13 @@ class CaptureConfig:
     # Passed to the chat template when set. Pinned for hybrid-thinking models such as Qwen3,
     # whose templated prompt, and so its last token, depends on it. None leaves the template's default.
     enable_thinking: bool | None = None
-    # The offline extraction decision: required off for reproducible snapshots. Fields so the manifest records them.
+    # Required off for reproducible snapshots. Fields so the manifest records them.
     enable_prefix_caching: bool = False
     enable_chunked_prefill: bool = False
 
     def __post_init__(self) -> None:
         if self.enable_prefix_caching or self.enable_chunked_prefill:
-            raise ValueError("the offline extraction decision: capture needs prefix caching and chunked prefill off")
+            raise ValueError("capture needs prefix caching and chunked prefill off (docs/design.md §5)")
 
 
 @dataclass(frozen=True)
@@ -51,7 +51,7 @@ class Capture:
     position_tokens: list[list[str]]  # token string at each requested position, per prompt
     # torch.cuda.get_device_name() of the current device, the first visible one. Under tensor
     # parallelism the other GPUs aren't recorded, a known limit. Another GPU is another serving
-    # config.
+    # config (docs/design.md §6, metadata rules).
     gpu: str
     enable_thinking: bool | None  # as passed to the chat template, None for its default
 

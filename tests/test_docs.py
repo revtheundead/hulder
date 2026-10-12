@@ -1,4 +1,4 @@
-"""The live tutorial is an example in the repository, not part of the package, so
+"""The live tutorial is an example in the repository, not part of the package (docs/design.md §4), so
 no shipped file or prose doc may point at its old in-package module or data path. Recorded
 run output is a historical record and is left as written."""
 

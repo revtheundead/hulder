@@ -9,9 +9,9 @@ The live tutorial (`docs/tutorial-live.md`) run on the local GPU, recorded for t
 | 2026-10-11 | `5f88802`, clean tree | `live_demo/` | the tutorial's old in-package module |
 | 2026-10-12 | `82ae95e`, clean tree | `live_demo/2026-10-12/` | `python examples/live_demo/live_demo.py` |
 
-Each folder holds the run's `check.txt`, `check.json` and `manifest.json`. The snapshots are not committed. The first run's stay in `.cache/live_demo/` for `compare_live.py`, and the second's were deleted after recording. Both runs used vLLM 0.30.0, torch 2.13.0 (CUDA 13.0) and an NVIDIA GeForce RTX 2070, with the models already in `HF_HOME`.
+Each folder holds the run's `check.txt`, `check.json` and `manifest.json`. The snapshots are not committed. The first run's stay in `.cache/live_demo/` for `compare_live.py`, and the second's were deleted after recording. Both runs used vLLM 0.30.0, torch 2.13.0 (CUDA 13.0) and an NVIDIA GeForce RTX 2070, with the models already in `HF_HOME`. Both `check.txt` files show the report's tolerance line with the label the CLI prints now, `Bands:`.
 
-The 2026-10-11 run, and the earlier one at `f97124e`, predate the probe-metadata check of metadata rule 9, which rejects a probe file whose recorded threshold or target FPR isn't a number. It doesn't affect capture or the verdict.
+The 2026-10-11 run, and the earlier one at `f97124e`, predate metadata rule 9's probe-file check (docs/design.md §6), which rejects a probe file whose recorded threshold or target FPR isn't a number. It doesn't affect capture or the verdict.
 
 **The move.** Between the two runs the tutorial moved out of the package into `examples/live_demo/`. It now calls the `hulder check` command rather than the CLI's internals. The configs, prompts and check are unchanged. So the first run's manifest names the old command, and its files are left as they were written. To repeat a run today, from the repo root:
 
@@ -46,7 +46,7 @@ Not bit-identical, as expected. These 360 prompts were captured on their own, wh
 | fp16_rerun | demo_fp16_run1 | 1.2e-3 | 2.1e-3 | 3.2e-4 | 0 |
 | awq | demo_awq | 4.6e-3 | 8.5e-3 | 1.2e-3 | 0 |
 
-The batch-composition effect is about the size the earlier rerun study found at layer 20 (around 3e-3), and about four times larger under AWQ, matching AWQ's run-to-run noise, about four times fp16's.
+The batch-composition effect is about the size the earlier rerun study found at layer 20 (around 3e-3), and about four times larger under AWQ, matching AWQ's run-to-run noise, about four times fp16's (docs/design.md §10).
 
 ## Where this loses
 

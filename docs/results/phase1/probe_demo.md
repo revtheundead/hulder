@@ -1,6 +1,6 @@
 # Demo probe on boundary-pairs (Phase 1)
 
-**Demo only.** The quickstart's probe, trained because the main probe failed the dataset decision's AUROC rule on boundary-pairs (`probe_main.md`). It is not a prompt-attack monitor. Full numbers in `probe_demo.json`; design in the dataset decision's Outcome section.
+**Demo only.** The quickstart's probe, trained because the main probe failed the quickstart's AUROC rule on boundary-pairs (`probe_main.md`). It is not a prompt-attack monitor. Full numbers in `probe_demo.json`; design in docs/design.md §7, Datasets.
 
 Reproduce from the repo root, after the three steps in `probe_main.md`:
 
