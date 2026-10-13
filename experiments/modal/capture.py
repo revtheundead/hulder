@@ -22,6 +22,7 @@ must be clean, so the manifest's commit is what ran.
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -34,8 +35,36 @@ import smoke_lib as lib
 LOCAL = modal.is_local()
 ROOT = Path(__file__).resolve().parents[2] if LOCAL else Path("/")
 HERE = Path(__file__).resolve().parent
-CACHE, RUNS = "/cache", "/runs"
+CACHE, RUNS = "/vol/hf", "/vol/runs"
+# Set at runtime, never in the image: Modal refuses to mount a Volume on a non-empty path, and
+# with these in the image's environment the mount path was already populated at /cache and /vol/hf.
+CACHE_ENV = {
+    "HF_HOME": f"{CACHE}/hf",
+    "VLLM_CACHE_ROOT": f"{CACHE}/vllm",
+    "TRITON_CACHE_DIR": f"{CACHE}/triton",
+    "XDG_CACHE_HOME": f"{CACHE}/xdg",
+    "FLASHINFER_WORKSPACE_BASE": CACHE,
+}
+# Engine settings for every capture, recorded in each manifest. On Ada, vLLM 0.30.0's warmup samples
+# through FlashInfer's top-k/top-p kernel, which JIT-compiles with nvcc, absent from this image. Sampling
+# happens after the prefill the activations come from, so it can't change them. Turing (the local
+# RTX 2070) falls back from that sampler anyway.
+ENGINE_ENV = {"VLLM_USE_FLASHINFER_SAMPLER": "0"}
 UV_VERSION = "0.12.21"  # the uv that locked uv.lock
+
+
+def build_wheel() -> Path:
+    """hulder as a wheel built from this checkout, so the image has its package metadata too
+    (hulder.__version__ reads it). The tree is clean when main runs, so it is the recorded commit."""
+    dist = ROOT / ".cache" / "modal" / "dist"
+    shutil.rmtree(dist, ignore_errors=True)
+    subprocess.run(["uv", "build", "--wheel", "--out-dir", str(dist)], cwd=ROOT, check=True, capture_output=True)
+    [wheel] = dist.glob("hulder-*.whl")
+    return wheel
+
+
+# Inside a container the image is already built, so the wheel is never read there.
+WHEEL = build_wheel() if LOCAL else Path("/root/hulder.whl")
 
 image = (
     modal.Image.debian_slim(python_version="3.12.14")  # .python-version
@@ -47,16 +76,8 @@ image = (
         extra_options="--no-default-groups --python-preference=system",
         uv_version=UV_VERSION,
     )
-    .env(
-        {
-            "HF_HOME": f"{CACHE}/hf",
-            "VLLM_CACHE_ROOT": f"{CACHE}/vllm",
-            "TRITON_CACHE_DIR": f"{CACHE}/triton",
-            "XDG_CACHE_HOME": f"{CACHE}/xdg",
-            "FLASHINFER_WORKSPACE_BASE": CACHE,
-        }
-    )
-    .add_local_python_source("hulder")
+    .add_local_file(str(WHEEL), f"/wheels/{WHEEL.name}", copy=True)
+    .run_commands(f"/.uv/uv pip install --python /.uv/.venv/bin/python --no-deps /wheels/{WHEEL.name}")
     .add_local_file(str(HERE / "smoke_lib.py"), "/root/smoke_lib.py")
     .add_local_file(str(HERE / "worker.py"), "/root/worker.py")
 )
@@ -75,6 +96,7 @@ runs = modal.Volume.from_name("hulder-runs", create_if_missing=True)
 )
 def download(models: list[tuple[str, str]]) -> dict:
     """Fetch each model at its pinned revision into the Volume's HF cache, on CPU."""
+    os.environ.update(CACHE_ENV)  # before huggingface_hub reads HF_HOME
     from huggingface_hub import snapshot_download
 
     start = time.time()
@@ -108,7 +130,7 @@ def capture_config(name: str, spec: dict, run_id: str) -> dict:
             [sys.executable, "/root/worker.py", str(out / "spec.json"), str(out)],
             stdout=log,
             stderr=subprocess.STDOUT,
-            env={**os.environ, "HF_HUB_OFFLINE": "1"},
+            env={**os.environ, **CACHE_ENV, **ENGINE_ENV, "HF_HUB_OFFLINE": "1"},
             check=False,
         )
     text = (out / "capture.log").read_text(errors="replace")
@@ -116,6 +138,7 @@ def capture_config(name: str, spec: dict, run_id: str) -> dict:
         "config": name,
         "returncode": worker.returncode,
         "nvidia_smi": gpu.strip(),
+        "engine_env": ENGINE_ENV,
         "function_seconds": round(time.time() - start, 1),
         "log": lib.log_facts(text),
     }
