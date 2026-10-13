@@ -343,7 +343,7 @@ def test_a_probe_file_without_a_setting_runs_when_the_flag_supplies_it(tmp_path,
         "--threshold": str(hulder.Probe.load(Path(str(files("hulder.data") / "probe_demo.npz"))).metadata["threshold"]),
         "--target-fpr": "0.05",
     }[flag]
-    assert _probe_check(_probe_lacking(tmp_path, field), [flag, value]) == 12  # the README walkthrough's INCONCLUSIVE
+    assert _probe_check(_probe_lacking(tmp_path, field), [flag, value]) == 12  # reading-a-report.md's INCONCLUSIVE
 
 
 def test_a_probe_file_whose_threshold_is_null_exits_1_naming_it(tmp_path, capsys):

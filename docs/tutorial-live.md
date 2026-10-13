@@ -41,6 +41,34 @@ Your captures will not be bit-identical to the bundled snapshots, and on another
 
 What should hold everywhere is the shape of the result. The rerun's shift is tiny, the AWQ shift is far beyond it, and the report says so.
 
-## Next
+## Your own serving change
 
-Your own probe and serving configs follow the same steps. Capture each config with `hulder.capture.capture` (experimental in v0.1, docs/design.md §4), save a `Snapshot` per run (README, "Check your own serving change"), and run `hulder check`. `examples/live_demo/live_demo.py` is a short worked example of all three, using only hulder's public API.
+Your own probe and serving configs follow the same steps. Capture activations for a labelled calibration set under each serving config: the reference twice, so the gate can measure the noise floor, and the candidate once. `hulder.capture.capture` (experimental in v0.1, docs/design.md §4) runs vLLM offline with the settings in docs/design.md §5, or any other capture works. Save each run as a `Snapshot`:
+
+```python
+import numpy as np
+
+import hulder
+
+hulder.Snapshot(
+    ids=ids,  # one string id per example, in the same order in every run
+    labels=labels,  # 0 benign, 1 attack
+    activations=acts.astype(np.float16),  # (n, d) at the probe's layer and position
+    metadata={
+        "base_model": "org/model-9b-instruct",
+        "model": "org/model-9b-instruct",
+        "dtype": "bfloat16",
+        "layer": 20,
+        "position": -1,
+        "system_prompt": "You are a helpful assistant.",
+    },
+).save("snaps/bf16.npz")
+```
+
+Save the rerun the same way as `snaps/bf16_rerun.npz`, and the candidate as `snaps/fp8.npz` with `"quantization": "fp8"` and `"kv_cache_dtype": "fp8"` added. Then check:
+
+```
+hulder check --probe probe.npz --reference snaps/bf16.npz --noise-floor snaps/bf16_rerun.npz --candidate snaps/fp8.npz
+```
+
+`--noise-floor` takes a rerun of the reference, not of the candidate. From Python, `hulder.check_snapshots` does the same on loaded snapshots and `hulder.check` takes plain arrays. docs/design.md §4 lists the public API, and [Reading a report](reading-a-report.md) explains the output. `examples/live_demo/live_demo.py` is a short worked example of capture, snapshot and check, using only hulder's public API.

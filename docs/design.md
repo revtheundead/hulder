@@ -63,7 +63,7 @@ Details and the cases where it loses are in `docs/results/phase1/gate_calibratio
 
 A team serves a ~9B open model on vLLM in bf16, with a prompt-attack probe on layer 20, thresholded at 0.730 for a 1% false-positive rate. They want to switch to FP8 weights and FP8 KV cache to halve memory.
 
-They capture layer-20 activations for a labelled calibration set under each serving config: the reference twice, so the gate can measure the noise floor, and the candidate once. v0.1 has no capture command. The `vllm` extra's `hulder.capture` runs vLLM offline with the extraction settings of §5, or any other capture works. Its `capture`, `CaptureConfig` and `snapshot_metadata` are public but experimental in v0.1 and may change in 0.x (§4). Each run is saved as a `Snapshot`, and `hulder check` compares the candidate with the reference on CPU. The README's "Check your own serving change" shows the code, and its "How to read a report" walks through real output on the bundled fp16 vs AWQ int4 demo. In this FP8 scenario the verdict would read THRESHOLD STALE and the exit code 10.
+They capture layer-20 activations for a labelled calibration set under each serving config: the reference twice, so the gate can measure the noise floor, and the candidate once. v0.1 has no capture command. The `vllm` extra's `hulder.capture` runs vLLM offline with the extraction settings of §5, or any other capture works. Its `capture`, `CaptureConfig` and `snapshot_metadata` are public but experimental in v0.1 and may change in 0.x (§4). Each run is saved as a `Snapshot`, and `hulder check` compares the candidate with the reference on CPU. The live tutorial's "Your own serving change" (`docs/tutorial-live.md`) shows the code, and `docs/reading-a-report.md` walks through real output on the bundled fp16 vs AWQ int4 demo. In this FP8 scenario the verdict would read THRESHOLD STALE and the exit code 10.
 
 A THRESHOLD STALE verdict means the scorer still separates the classes but the threshold no longer gives the target FPR, so it needs recalibrating on the candidate. v0.1 reports the verdict only. A recalibrated threshold for the same target FPR is planned for v0.2 (§11). From Python, `hulder.check_snapshots(reference, candidate, rerun, threshold=..., target_fpr=..., probe=probe)` does what the CLI does on loaded `Snapshot`s and returns the `Report`. `hulder.check` takes plain arrays. Scores from any other scorer go in as JSONL instead of snapshots (v0.2, §11).
 
@@ -320,10 +320,12 @@ Workspace rules:
 
 ```
 hulder/
-  README.md            user guide: install, quickstart, how to read a report
+  README.md            user guide: install, quickstart, one example
   CONTEXT.md           domain glossary, kept current
   docs/
     design.md          this file
+    reading-a-report.md  the quickstart's report, line by line
+    tutorial-live.md   the demo captured with vLLM, and your own snapshots
     results/           experiment tables, plots, run manifests
   src/hulder/
     gate/              check, apply_probe, Report, recalibrate, stats (base install, numpy only)

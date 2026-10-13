@@ -32,7 +32,7 @@ The 2026-10-12 run used `--out .cache/live_demo_2026-10-12`. Its captures took 6
 | Verdict, reported whatever it is | **INCONCLUSIVE** (exit 12) | **INCONCLUSIVE** (exit 12) |
 | Candidate FPR against a 10% band | 7.2% [3.9%, 12.0%] | 7.2% [3.9%, 12.0%] |
 
-In both runs the verdict, flip counts and FPR interval match the bundled quickstart (the README's "How to read a report").
+In both runs the verdict, flip counts and FPR interval match the bundled quickstart (`docs/reading-a-report.md`).
 
 **The noise floor varies between runs.** An earlier run at `f97124e`, before the resume and manifest changes and with no files kept, gave the same verdict, flips and FPR. Across the three runs the rerun's mean \|Δscore\| was 0.000223, 0.000286 and 0.000205. Every capture is a fresh engine on the same 360 prompts, so the noise floor of two fp16 reruns on one GPU varies by up to about 40%, because captures are not bit-identical across engine runs (docs/design.md §10). The AWQ shift is 180 to 250 times the noise floor across the three runs.
 
