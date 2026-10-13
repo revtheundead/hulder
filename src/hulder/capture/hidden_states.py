@@ -15,6 +15,8 @@ from vllm import LLM, SamplingParams
 from vllm.config.kv_transfer import KVTransferConfig
 from vllm.distributed.kv_transfer.kv_connector.v1 import example_hidden_states_connector
 
+from hulder.capture.precision import as_float32, to_float16
+
 
 @dataclass(frozen=True)
 class CaptureConfig:
@@ -93,7 +95,8 @@ def capture(prompts: list[str], cfg: CaptureConfig) -> Capture:
                 obj = example_hidden_states_connector.load_hidden_states(path)
                 assert obj["token_ids"].tolist() == list(out.prompt_token_ids)
                 # hidden_states is [tokens, layers, d]; keep only the requested positions.
-                acts.append(obj["hidden_states"][pos].transpose(0, 1).to("cpu").numpy().astype(np.float16))
+                hidden = as_float32(obj["hidden_states"][pos].transpose(0, 1))  # numpy has no bfloat16
+                acts.append(to_float16(hidden[None], cfg.layers, cfg.positions, first_prompt=len(acts))[0])
                 tokens.append(tok.convert_ids_to_tokens(obj["token_ids"][pos].tolist()))
                 os.remove(path)
             if start // cfg.batch_size % 100 == 0:
