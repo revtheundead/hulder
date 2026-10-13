@@ -34,8 +34,16 @@ import smoke_lib as lib
 LOCAL = modal.is_local()
 ROOT = Path(__file__).resolve().parents[2] if LOCAL else Path("/")
 HERE = Path(__file__).resolve().parent
-# Fresh paths: Modal refuses to mount a Volume on a non-empty one, and the image already has /cache.
 CACHE, RUNS = "/vol/hf", "/vol/runs"
+# Set at runtime, never in the image: Modal refuses to mount a Volume on a non-empty path, and
+# with these in the image's environment the mount path was already populated at /cache and /vol/hf.
+CACHE_ENV = {
+    "HF_HOME": f"{CACHE}/hf",
+    "VLLM_CACHE_ROOT": f"{CACHE}/vllm",
+    "TRITON_CACHE_DIR": f"{CACHE}/triton",
+    "XDG_CACHE_HOME": f"{CACHE}/xdg",
+    "FLASHINFER_WORKSPACE_BASE": CACHE,
+}
 UV_VERSION = "0.12.21"  # the uv that locked uv.lock
 
 image = (
@@ -47,15 +55,6 @@ image = (
         # The project pins a uv-managed interpreter for local work; here the image's Python serves.
         extra_options="--no-default-groups --python-preference=system",
         uv_version=UV_VERSION,
-    )
-    .env(
-        {
-            "HF_HOME": f"{CACHE}/hf",
-            "VLLM_CACHE_ROOT": f"{CACHE}/vllm",
-            "TRITON_CACHE_DIR": f"{CACHE}/triton",
-            "XDG_CACHE_HOME": f"{CACHE}/xdg",
-            "FLASHINFER_WORKSPACE_BASE": CACHE,
-        }
     )
     .add_local_python_source("hulder")
     .add_local_file(str(HERE / "smoke_lib.py"), "/root/smoke_lib.py")
@@ -76,6 +75,7 @@ runs = modal.Volume.from_name("hulder-runs", create_if_missing=True)
 )
 def download(models: list[tuple[str, str]]) -> dict:
     """Fetch each model at its pinned revision into the Volume's HF cache, on CPU."""
+    os.environ.update(CACHE_ENV)  # before huggingface_hub reads HF_HOME
     from huggingface_hub import snapshot_download
 
     start = time.time()
@@ -109,7 +109,7 @@ def capture_config(name: str, spec: dict, run_id: str) -> dict:
             [sys.executable, "/root/worker.py", str(out / "spec.json"), str(out)],
             stdout=log,
             stderr=subprocess.STDOUT,
-            env={**os.environ, "HF_HUB_OFFLINE": "1"},
+            env={**os.environ, **CACHE_ENV, "HF_HUB_OFFLINE": "1"},
             check=False,
         )
     text = (out / "capture.log").read_text(errors="replace")
