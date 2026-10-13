@@ -1,0 +1,53 @@
+{
+  "run_id": "20261013T141533Z",
+  "commit": "dfd9be3bfc28dcdbd4e34fa15ce75d4b079c2751",
+  "command": "uv run --with modal==1.6.1 modal run experiments/modal/capture.py --configs qwen3_4b_bf16,qwen3_4b_bf16_rerun,qwen3_4b_fp8,qwen3_8b_bf16_load",
+  "modal": "1.6.1",
+  "rates_usd_per_s": {
+    "L4": 0.000222,
+    "cpu_core": 1.31e-05,
+    "memory_gib": 2.22e-06
+  },
+  "configs": {
+    "qwen3_4b_bf16": {
+      "wall_seconds": 572.1,
+      "estimated_usd": 0.1976,
+      "returncode": 0
+    },
+    "qwen3_4b_bf16_rerun": {
+      "wall_seconds": 60.6,
+      "estimated_usd": 0.0209,
+      "returncode": 0
+    },
+    "qwen3_4b_fp8": {
+      "wall_seconds": 128.2,
+      "estimated_usd": 0.0443,
+      "returncode": 0
+    },
+    "qwen3_8b_bf16_load": {
+      "wall_seconds": 128.8,
+      "estimated_usd": 0.0445,
+      "returncode": 0
+    }
+  },
+  "download": {
+    "models": [
+      [
+        "Qwen/Qwen3-4B",
+        "1cfa9a7208912126459214e8b04321603b3df60c"
+      ],
+      [
+        "Qwen/Qwen3-4B-FP8",
+        "96b30dc13593a244a5e59e84687309f53c375cfa"
+      ],
+      [
+        "Qwen/Qwen3-8B",
+        "b968826d9c46dd6066d109eabc6255188de91218"
+      ]
+    ],
+    "seconds": 0.1,
+    "wall_seconds": 5.5,
+    "estimated_usd": 0.0002
+  },
+  "estimated_usd": 0.3073
+}

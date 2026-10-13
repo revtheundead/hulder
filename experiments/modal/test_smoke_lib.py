@@ -28,16 +28,77 @@ def test_smoke_prompts_refuse_more_than_the_file_holds(tmp_path):
         lib.smoke_prompts(4, path)
 
 
-def test_the_bf16_rerun_is_the_bf16_config_and_fp8_changes_only_the_checkpoint():
-    bf16, rerun, fp8 = (lib.SMOKE[k][0] for k in ("qwen3_4b_bf16", "qwen3_4b_bf16_rerun", "qwen3_4b_fp8"))
-    assert bf16 == rerun
-    assert {k for k in bf16.keys() | fp8.keys() if bf16.get(k) != fp8.get(k)} == {"model", "revision", "quantization"}
+def test_online_fp8_differs_from_bf16_only_in_quantization():
+    bf16, online = lib.CONFIGS["qwen3_4b_bf16"][0], lib.CONFIGS["qwen3_4b_fp8_online"][0]
+    assert {k for k in bf16.keys() | online.keys() if bf16.get(k) != online.get(k)} == {"quantization"}
+    assert lib.CONFIGS["qwen3_4b_fp8_online"][2] == "Qwen/Qwen3-4B"  # itself, not its card's parent
 
 
-def test_every_smoke_config_pins_a_full_revision_and_thinking_off():
-    for cfg, _ in lib.SMOKE.values():
+def test_every_config_pins_a_full_revision_and_thinking_off():
+    for cfg, _, _ in lib.CONFIGS.values():
         assert len(cfg["revision"]) == 40
         assert cfg["enable_thinking"] is False
+
+
+def test_every_experiment_names_known_configs_with_unique_labels_and_fits_the_budget():
+    for containers, _, timeout_s in lib.EXPERIMENTS.values():
+        labels = [e[0] for group in containers for e in group]
+        assert len(labels) == len(set(labels))
+        assert all(e[1] in lib.CONFIGS for group in containers for e in group)
+        assert max(map(len, containers)) <= lib.MAX_CONFIGS_PER_CONTAINER
+        worst = sum(lib.worst_case_cost(len(group), timeout_s) for group in containers)
+        assert worst < lib.BUDGET_USD
+
+
+def test_a_comparison_runs_in_one_container_and_the_cross_container_run_in_two():
+    containers, single_use, _ = lib.EXPERIMENTS["fp8_online"]
+    assert len(containers) == 1 and not single_use
+    containers, single_use, _ = lib.EXPERIMENTS["cross_container"]
+    assert single_use and [[e[1] for e in group] for group in containers] == [["qwen3_4b_bf16"]] * 2
+
+
+def test_the_batch_invariant_experiment_logs_cublas_on_default_runs_only_and_fits_today():
+    [group], single_use, timeout_s = lib.EXPERIMENTS["batch_invariant"]
+    assert not single_use and timeout_s == 600
+    assert [e[2] for e in group] == [{lib.CUBLAS_LOG: "1"}] * 3 + [lib.BATCH_INVARIANT] * 3
+    assert 0.86 + lib.worst_case_cost(len(group), timeout_s) <= lib.BUDGET_USD  # spent today, estimated
+
+
+def test_cublas_fingerprint_keeps_shapes_and_algorithms_and_drops_pointers_times_and_pids():
+    line = (
+        "[2026-10-13 15:11:50][cublasLt][{pid}][Trace][cublasLtTSTMatmul] A=0X2B3FD{ptr} "
+        "Adesc=[type=R_16BF rows=2560 cols=6144 ld=2560] workSpace=0X0 algo=[algoId={algo} tile=MATMUL_TILE_128x128] "
+        "stream=0X0\n"
+    )
+    run_a = line.format(pid=1234, ptr="0000000", algo=5) * 2 + "I! cuBLAS (v13.1.1) cublasSetStream_v2 called:\n"
+    run_b = line.format(pid=5678, ptr="27A3000", algo=5) * 2
+    switched = line.format(pid=5678, ptr="27A3000", algo=21) * 2
+    assert lib.cublas_fingerprint(run_a) == lib.cublas_fingerprint(run_b)
+    [entry] = lib.cublas_fingerprint(run_a)
+    assert entry.split()[0] == "2" and "0X" not in entry and "algoId=5" in entry
+    assert lib.cublas_fingerprint(run_b) != lib.cublas_fingerprint(switched)
+
+
+def test_downloads_cover_each_model_once():
+    assert lib.downloads("fp8_online") == [("Qwen/Qwen3-4B", lib.QWEN3_4B["revision"])]
+
+
+def test_gpu_metadata_reads_nvidia_smi():
+    line = "NVIDIA L4, GPU-aa966112-71db-0357-ec9c-cd62942e54c2, 580.95.05, 23034 MiB\n"
+    assert lib.gpu_metadata(line) == {"gpu_uuid": "GPU-aa966112-71db-0357-ec9c-cd62942e54c2", "gpu_driver": "580.95.05"}
+
+
+@pytest.mark.parametrize("key", ["gpu_uuid", "gpu_driver"])
+def test_runs_on_another_gpu_or_driver_warn_when_checked(key):
+    import hulder
+
+    ids, labels = np.array([f"p{i}" for i in range(40)]), np.r_[np.zeros(20, int), np.ones(20, int)]
+    scores = np.linspace(0.01, 0.99, 40)
+    meta = {"base_model": "m", "model": "m", "gpu": "NVIDIA L4", "gpu_uuid": "GPU-a", "gpu_driver": "580.95.05"}
+    reference = hulder.Snapshot(ids=ids, labels=labels, scores=scores, metadata=meta)
+    candidate = hulder.Snapshot(ids=ids, labels=labels, scores=scores, metadata={**meta, key: "other"})
+    report = hulder.check_snapshots(reference, candidate, threshold=0.5, target_fpr=0.05)
+    assert any(key in warning for warning in report.warnings)
 
 
 def test_log_facts_keeps_each_kind_of_line_once():
@@ -64,17 +125,13 @@ def test_an_hour_of_l4_costs_the_published_rate():
     assert with_extras == pytest.approx(1.24, abs=0.01)
 
 
-def test_the_stop_rules_leave_room_for_every_smoke_config():
-    assert len(lib.SMOKE) * lib.worst_case_config_cost() < lib.RUN_BUDGET_USD
-
-
 def test_relative_l2_is_zero_for_equal_and_scale_free():
     a = np.random.default_rng(0).normal(size=(3, 2, 8)).astype(np.float16)
     assert np.all(lib.relative_l2(a, a) == 0)
     assert lib.relative_l2(a, 1.01 * a.astype(np.float64)) == pytest.approx(0.01)
 
 
-def test_compare_measures_each_run_against_bf16_per_layer(tmp_path):
+def test_compare_measures_each_run_against_the_first_per_layer(tmp_path):
     import compare
 
     import hulder
@@ -82,17 +139,54 @@ def test_compare_measures_each_run_against_bf16_per_layer(tmp_path):
     rng = np.random.default_rng(0)
     ids, labels = np.array([f"p{i}" for i in range(4)]), np.array([0, 0, 1, 1])
     acts = {layer: rng.normal(size=(4, 8)).astype(np.float16) for layer in lib.LAYERS}
-    moved = {"qwen3_4b_bf16": 0.0, "qwen3_4b_bf16_rerun": 0.0, "qwen3_4b_fp8": 0.5}
-    for name, step in moved.items():
+    moved = {"bf16_a": (0.0, "GPU-1"), "bf16_b": (0.0, "GPU-2"), "fp8": (0.5, "GPU-1")}
+    for name, (step, uuid) in moved.items():
         (tmp_path / name).mkdir()
-        (tmp_path / name / "manifest.json").write_text(json.dumps({"nvidia_smi": "NVIDIA L4, GPU-1", "log": {}}))
+        log = {"timings": ["Loading weights took 194.81 seconds", "init engine took 11.85 s"]}
+        (tmp_path / name / "manifest.json").write_text(json.dumps({"nvidia_smi": f"NVIDIA L4, {uuid}", "log": log}))
         for layer, a in acts.items():
-            hulder.Snapshot(ids=ids, labels=labels, activations=a + np.float16(step)).save(tmp_path / name / f"{layer}")
-    run = {"run_id": "r", "commit": "c", "configs": {name: {"wall_seconds": 1.0} for name in moved}}
+            snapshot = hulder.Snapshot(
+                ids=ids, labels=labels, activations=a + np.float16(step), metadata={"gpu_uuid": uuid}
+            )
+            snapshot.save(tmp_path / name / f"{layer}")
+    run = {"run_id": "r", "commit": "c", "configs": {name: {"container": 0} for name in moved}}
     (tmp_path / "manifest.json").write_text(json.dumps(run))
     summary = compare.summarise(tmp_path)
+    assert summary["reference"] == "bf16_a"
     assert len(summary["shifts"]) == 2 * len(lib.LAYERS)
-    rerun = summary["shifts"][f"qwen3_4b_bf16_rerun vs qwen3_4b_bf16, layer {lib.LAYERS[0]}"]
-    assert rerun["bit_identical"] == "4/4"
-    assert summary["shifts"][f"qwen3_4b_fp8 vs qwen3_4b_bf16, layer {lib.LAYERS[0]}"]["relative_l2_mean"] > 0
-    assert summary["configs"]["qwen3_4b_fp8"]["nvidia_smi"] == "NVIDIA L4, GPU-1"
+    rerun = summary["shifts"][f"bf16_b vs bf16_a, layer {lib.LAYERS[0]}"]
+    assert rerun["bit_identical"] == "4/4" and rerun["metadata_differs"] == ["gpu_uuid"]
+    fp8 = summary["shifts"][f"fp8 vs bf16_a, layer {lib.LAYERS[0]}"]
+    assert fp8["relative_l2_mean"] > 0 and fp8["metadata_differs"] == []
+    assert summary["runs"]["fp8"]["timings"] == ["init engine took 11.85 s"]
+
+
+def test_clusters_group_bit_exact_captures_per_config_and_engine_env(tmp_path):
+    import clusters
+
+    import hulder
+
+    rng = np.random.default_rng(1)
+    ids, labels = np.array([f"p{i}" for i in range(4)]), np.array([0, 0, 1, 1])
+    path_one = {layer: rng.normal(size=(4, 8)).astype(np.float16) for layer in lib.LAYERS}
+    path_two = {layer: (a * np.float16(1.01)) for layer, a in path_one.items()}
+    config = {"model": "m", "layers": list(lib.LAYERS)}
+    runs = {  # label -> (activations, engine_env, uuid)
+        "a": (path_one, {}, "GPU-1"),
+        "b": (path_two, {}, "GPU-1"),
+        "c": (path_one, {"CUBLASLT_LOG_LEVEL": "2"}, "GPU-2"),  # logging doesn't change the identity
+        "inv": (path_one, lib.BATCH_INVARIANT, "GPU-1"),
+    }
+    for label, (acts, env, uuid) in runs.items():
+        (tmp_path / label).mkdir()
+        worker = {"capture_config": config, "snapshots": ["x"]}
+        manifest = {"nvidia_smi": f"NVIDIA L4, {uuid}, 580.95.05, 23034 MiB", "engine_env": env, "worker": worker}
+        (tmp_path / label / "manifest.json").write_text(json.dumps(manifest))
+        for layer, a in acts.items():
+            hulder.Snapshot(ids=ids, labels=labels, activations=a).save(tmp_path / label / f"{layer}")
+    (tmp_path / "manifest.json").write_text(json.dumps({"run_id": "r", "configs": {k: {} for k in runs}}))
+    by_env = {json.dumps(r["identity"][1]): r for r in clusters.clusters(clusters.members([tmp_path]))}
+    default = by_env["{}"]
+    assert [[m["name"] for m in c] for c in default["clusters"]] == [["r/a", "r/c"], ["r/b"]]
+    assert default["between_clusters_relative_l2_mean"]["0 vs 1"][f"layer {lib.LAYERS[0]}"] > 0
+    assert [[m["name"] for m in c] for c in by_env[json.dumps(lib.BATCH_INVARIANT)]["clusters"]] == [["r/inv"]]

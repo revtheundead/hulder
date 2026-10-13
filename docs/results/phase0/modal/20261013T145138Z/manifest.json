@@ -1,0 +1,48 @@
+{
+  "run_id": "20261013T145138Z",
+  "experiment": "cross_container",
+  "single_use": true,
+  "commit": "581d867ec99fd6a7bb3f1b5b78c2dfac0e644766",
+  "command": "uv run --with modal==1.6.1 modal run experiments/modal/capture.py --experiment cross_container",
+  "modal": "1.6.1",
+  "rates_usd_per_s": {
+    "L4": 0.000222,
+    "cpu_core": 1.31e-05,
+    "memory_gib": 2.22e-06
+  },
+  "spent_before_usd": 0.73,
+  "containers": [
+    {
+      "labels": [
+        "bf16_a"
+      ],
+      "wall_seconds": 155.6,
+      "estimated_usd": 0.0537
+    },
+    {
+      "labels": [
+        "bf16_b"
+      ],
+      "wall_seconds": 213.7,
+      "estimated_usd": 0.0738
+    }
+  ],
+  "configs": {
+    "bf16_a": {
+      "container": 0,
+      "config": "qwen3_4b_bf16",
+      "returncode": 0
+    },
+    "bf16_b": {
+      "container": 1,
+      "config": "qwen3_4b_bf16",
+      "returncode": 0
+    }
+  },
+  "download": {
+    "seconds": 0.1,
+    "wall_seconds": 11.2,
+    "estimated_usd": 0.0004
+  },
+  "estimated_usd": 0.1279
+}

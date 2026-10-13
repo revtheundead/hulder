@@ -1,0 +1,71 @@
+{
+  "label": "qwen3_4b_fp8_online",
+  "returncode": 0,
+  "nvidia_smi": "NVIDIA L4, GPU-d5a4ac0d-80bf-a5fd-8c70-27f911614dcc, 610.57.04, 23034 MiB",
+  "engine_env": {
+    "VLLM_USE_FLASHINFER_SAMPLER": "0"
+  },
+  "seconds": 181.3,
+  "log": {
+    "kv_cache": [
+      "(EngineCore pid=177) INFO 10-13 14:51:03 [gpu_worker.py:640] Available KV cache memory: 14.5 GiB",
+      "(EngineCore pid=177) INFO 10-13 14:51:03 [kv_cache_utils.py:2395] GPU KV cache size: 98,752 tokens, Maximum concurrency for 1,024 tokens per request: 96.44x"
+    ],
+    "kernels": [
+      "(EngineCore pid=177) INFO 10-13 14:48:51 [__init__.py:758] Selected CutlassFP8ScaledMMLinearKernel for Fp8PerTensorOnlineLinearMethod",
+      "(EngineCore pid=177) INFO 10-13 14:48:52 [cuda.py:538] Using FLASH_ATTN attention backend out of potential backends: ['FLASH_ATTN', 'FLASHINFER', 'TRITON_ATTN', 'FLEX_ATTENTION'].",
+      "(EngineCore pid=177) INFO 10-13 14:48:54 [topk_topp_sampler.py:62] FlashInfer top-p/top-k sampling disabled via VLLM_USE_FLASHINFER_SAMPLER=0."
+    ],
+    "timings": [
+      "(EngineCore pid=177) INFO 10-13 14:48:54 [default_loader.py:430] Loading weights took 1.54 seconds",
+      "(EngineCore pid=177) INFO 10-13 14:48:54 [default_loader.py:430] Loading weights took 149.06 seconds",
+      "(EngineCore pid=177) INFO 10-13 14:48:54 [model_runner.py:428] Model loading took 4.38 GiB memory and 3.377794 seconds",
+      "(EngineCore pid=177) INFO 10-13 14:51:02 [model_runner.py:1066] Graph capturing finished in 2 secs, took 0.06 GiB",
+      "(EngineCore pid=177) INFO 10-13 14:51:06 [model_runner.py:1066] Graph capturing finished in 2 secs, took 0.03 GiB",
+      "(EngineCore pid=177) INFO 10-13 14:51:08 [core.py:372] init engine (profile, create kv cache, warmup model) took 133.55 s (compilation: 122.22 s)"
+    ]
+  },
+  "worker": {
+    "capture_config": {
+      "model": "Qwen/Qwen3-4B",
+      "revision": "1cfa9a7208912126459214e8b04321603b3df60c",
+      "layers": [
+        18,
+        27
+      ],
+      "positions": [
+        -1
+      ],
+      "system_prompt": "You are a helpful assistant.",
+      "quantization": "fp8",
+      "dtype": "bfloat16",
+      "batch_size": 8,
+      "gpu_memory_utilization": 0.9,
+      "max_model_len": 1024,
+      "max_num_batched_tokens": 1024,
+      "seed": 0,
+      "enable_thinking": false,
+      "enable_prefix_caching": false,
+      "enable_chunked_prefill": false
+    },
+    "base_model": "Qwen/Qwen3-4B",
+    "n_prompts": 64,
+    "gpu": "NVIDIA L4",
+    "capture_seconds": 149.1,
+    "last_tokens": [
+      "\u010a\u010a"
+    ],
+    "snapshots": [
+      "18.npz",
+      "27.npz"
+    ],
+    "packages": {
+      "hulder": "0.1.0",
+      "vllm": "0.30.0",
+      "torch": "2.13.0",
+      "numpy": "2.3.5"
+    },
+    "cuda": "13.0",
+    "python": "3.12.14"
+  }
+}

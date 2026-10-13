@@ -3,8 +3,9 @@ including the vLLM engine-core process's, lands in one file. Imports vLLM.
 
     python worker.py SPEC.json OUT_DIR
 
-SPEC holds the CaptureConfig fields, the prompts, an optional base_model override and whether to
-save snapshots. Writes one Snapshot per captured layer (<layer>.npz) and worker.json to OUT_DIR.
+SPEC holds the CaptureConfig fields, the prompts, an optional base_model override, metadata to add
+to every snapshot and whether to save snapshots. Writes one Snapshot per captured layer
+(<layer>.npz) and worker.json to OUT_DIR.
 """
 
 import json
@@ -42,7 +43,10 @@ def main(spec_path: str, out_dir: str) -> None:
                 ids=np.array([r["id"] for r in rows]),
                 labels=np.array([r["label"] for r in rows]),
                 activations=captured.activations[:, i, 0].astype(np.float16),  # the config's only position
-                metadata=snapshot_metadata(cfg, captured, base_model, version("vllm"), layer=layer),
+                metadata={
+                    **snapshot_metadata(cfg, captured, base_model, version("vllm"), layer=layer),
+                    **spec.get("extra_metadata", {}),  # the GPU's UUID and driver, so another GPU warns
+                },
             ).save(out / f"{layer}.npz")
             saved.append(f"{layer}.npz")
     worker = {

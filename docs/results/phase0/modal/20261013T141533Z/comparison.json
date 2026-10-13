@@ -1,0 +1,141 @@
+{
+  "run_id": "20261013T141533Z",
+  "experiment": null,
+  "commit": "dfd9be3bfc28dcdbd4e34fa15ce75d4b079c2751",
+  "estimated_usd": 0.3073,
+  "stopped": null,
+  "reference": "qwen3_4b_bf16",
+  "runs": {
+    "qwen3_4b_bf16": {
+      "wall_seconds": 572.1,
+      "estimated_usd": 0.1976,
+      "returncode": 0,
+      "nvidia_smi": "NVIDIA L4, GPU-aa966112-71db-0357-ec9c-cd62942e54c2, 580.95.05, 23034 MiB",
+      "capture_seconds": 116.0,
+      "last_tokens": [
+        "ĊĊ"
+      ],
+      "kv_cache": [
+        "(EngineCore pid=30) INFO 10-13 14:23:37 [gpu_worker.py:640] Available KV cache memory: 11.99 GiB",
+        "(EngineCore pid=30) INFO 10-13 14:23:37 [kv_cache_utils.py:2395] GPU KV cache size: 81,648 tokens, Maximum concurrency for 1,024 tokens per request: 79.73x"
+      ],
+      "kernels": [
+        "(EngineCore pid=30) INFO 10-13 14:23:21 [cuda.py:538] Using FLASH_ATTN attention backend out of potential backends: ['FLASH_ATTN', 'FLASHINFER', 'TRITON_ATTN', 'FLEX_ATTENTION'].",
+        "(EngineCore pid=30) INFO 10-13 14:23:27 [topk_topp_sampler.py:62] FlashInfer top-p/top-k sampling disabled via VLLM_USE_FLASHINFER_SAMPLER=0."
+      ],
+      "timings": [
+        "(EngineCore pid=30) INFO 10-13 14:23:27 [model_runner.py:428] Model loading took 7.56 GiB memory and 6.979500 seconds",
+        "(EngineCore pid=30) INFO 10-13 14:23:37 [model_runner.py:1066] Graph capturing finished in 1 secs, took 0.08 GiB",
+        "(EngineCore pid=30) INFO 10-13 14:25:01 [model_runner.py:1066] Graph capturing finished in 1 secs, took 0.04 GiB",
+        "(EngineCore pid=30) INFO 10-13 14:25:03 [core.py:372] init engine (profile, create kv cache, warmup model) took 96.36 s (compilation: 4.57 s)"
+      ]
+    },
+    "qwen3_4b_bf16_rerun": {
+      "wall_seconds": 60.6,
+      "estimated_usd": 0.0209,
+      "returncode": 0,
+      "nvidia_smi": "NVIDIA L4, GPU-aa966112-71db-0357-ec9c-cd62942e54c2, 580.95.05, 23034 MiB",
+      "capture_seconds": 28.7,
+      "last_tokens": [
+        "ĊĊ"
+      ],
+      "kv_cache": [
+        "(EngineCore pid=167) INFO 10-13 14:25:59 [gpu_worker.py:640] Available KV cache memory: 11.99 GiB",
+        "(EngineCore pid=167) INFO 10-13 14:25:59 [kv_cache_utils.py:2395] GPU KV cache size: 81,648 tokens, Maximum concurrency for 1,024 tokens per request: 79.73x"
+      ],
+      "kernels": [
+        "(EngineCore pid=167) INFO 10-13 14:25:49 [cuda.py:538] Using FLASH_ATTN attention backend out of potential backends: ['FLASH_ATTN', 'FLASHINFER', 'TRITON_ATTN', 'FLEX_ATTENTION'].",
+        "(EngineCore pid=167) INFO 10-13 14:25:52 [topk_topp_sampler.py:62] FlashInfer top-p/top-k sampling disabled via VLLM_USE_FLASHINFER_SAMPLER=0."
+      ],
+      "timings": [
+        "(EngineCore pid=167) INFO 10-13 14:25:52 [model_runner.py:428] Model loading took 7.56 GiB memory and 4.285807 seconds",
+        "(EngineCore pid=167) INFO 10-13 14:25:58 [model_runner.py:1066] Graph capturing finished in 1 secs, took 0.08 GiB",
+        "(EngineCore pid=167) INFO 10-13 14:26:02 [model_runner.py:1066] Graph capturing finished in 1 secs, took 0.04 GiB",
+        "(EngineCore pid=167) INFO 10-13 14:26:04 [core.py:372] init engine (profile, create kv cache, warmup model) took 11.85 s (compilation: 0.53 s)"
+      ]
+    },
+    "qwen3_4b_fp8": {
+      "wall_seconds": 128.2,
+      "estimated_usd": 0.0443,
+      "returncode": 0,
+      "nvidia_smi": "NVIDIA L4, GPU-aa966112-71db-0357-ec9c-cd62942e54c2, 580.95.05, 23034 MiB",
+      "capture_seconds": 95.4,
+      "last_tokens": [
+        "ĊĊ"
+      ],
+      "kv_cache": [
+        "(EngineCore pid=316) INFO 10-13 14:28:09 [gpu_worker.py:640] Available KV cache memory: 14.69 GiB",
+        "(EngineCore pid=316) INFO 10-13 14:28:09 [kv_cache_utils.py:2395] GPU KV cache size: 100,032 tokens, Maximum concurrency for 1,024 tokens per request: 97.69x"
+      ],
+      "kernels": [
+        "(EngineCore pid=316) INFO 10-13 14:26:54 [__init__.py:726] Selected MarlinFP8ScaledMMLinearKernel for Fp8LinearMethod",
+        "(EngineCore pid=316) INFO 10-13 14:26:54 [cuda.py:538] Using FLASH_ATTN attention backend out of potential backends: ['FLASH_ATTN', 'FLASHINFER', 'TRITON_ATTN', 'FLEX_ATTENTION'].",
+        "(EngineCore pid=316) INFO 10-13 14:27:00 [topk_topp_sampler.py:62] FlashInfer top-p/top-k sampling disabled via VLLM_USE_FLASHINFER_SAMPLER=0."
+      ],
+      "timings": [
+        "(EngineCore pid=316) INFO 10-13 14:27:00 [model_runner.py:428] Model loading took 4.23 GiB memory and 6.356620 seconds",
+        "(EngineCore pid=316) INFO 10-13 14:28:08 [model_runner.py:1066] Graph capturing finished in 2 secs, took 0.06 GiB",
+        "(EngineCore pid=316) INFO 10-13 14:28:12 [model_runner.py:1066] Graph capturing finished in 2 secs, took 0.03 GiB",
+        "(EngineCore pid=316) INFO 10-13 14:28:14 [core.py:372] init engine (profile, create kv cache, warmup model) took 74.37 s (compilation: 62.15 s)"
+      ]
+    },
+    "qwen3_8b_bf16_load": {
+      "wall_seconds": 128.8,
+      "estimated_usd": 0.0445,
+      "returncode": 0,
+      "nvidia_smi": "NVIDIA L4, GPU-aa966112-71db-0357-ec9c-cd62942e54c2, 580.95.05, 23034 MiB",
+      "capture_seconds": 93.6,
+      "last_tokens": [
+        "ĊĊ"
+      ],
+      "kv_cache": [
+        "(EngineCore pid=440) INFO 10-13 14:30:19 [gpu_worker.py:640] Available KV cache memory: 2.05 GiB",
+        "(EngineCore pid=440) INFO 10-13 14:30:19 [kv_cache_utils.py:2395] GPU KV cache size: 13,440 tokens, Maximum concurrency for 1,024 tokens per request: 13.12x"
+      ],
+      "kernels": [
+        "(EngineCore pid=440) INFO 10-13 14:29:06 [cuda.py:538] Using FLASH_ATTN attention backend out of potential backends: ['FLASH_ATTN', 'FLASHINFER', 'TRITON_ATTN', 'FLEX_ATTENTION'].",
+        "(EngineCore pid=440) INFO 10-13 14:29:21 [topk_topp_sampler.py:62] FlashInfer top-p/top-k sampling disabled via VLLM_USE_FLASHINFER_SAMPLER=0."
+      ],
+      "timings": [
+        "(EngineCore pid=440) INFO 10-13 14:29:21 [model_runner.py:428] Model loading took 15.27 GiB memory and 15.360570 seconds",
+        "(EngineCore pid=440) INFO 10-13 14:30:19 [model_runner.py:1066] Graph capturing finished in 2 secs, took 0.08 GiB",
+        "(EngineCore pid=440) INFO 10-13 14:30:24 [model_runner.py:1066] Graph capturing finished in 2 secs, took 0.04 GiB",
+        "(EngineCore pid=440) INFO 10-13 14:30:26 [core.py:372] init engine (profile, create kv cache, warmup model) took 65.22 s (compilation: 50.47 s)"
+      ]
+    }
+  },
+  "shifts": {
+    "qwen3_4b_bf16_rerun vs qwen3_4b_bf16, layer 18": {
+      "relative_l2_mean": 0.013292793145953222,
+      "relative_l2_max": 0.01728730560366017,
+      "bit_identical": "0/64",
+      "metadata_differs": []
+    },
+    "qwen3_4b_bf16_rerun vs qwen3_4b_bf16, layer 27": {
+      "relative_l2_mean": 0.011713256349797073,
+      "relative_l2_max": 0.019205573773130397,
+      "bit_identical": "0/64",
+      "metadata_differs": []
+    },
+    "qwen3_4b_fp8 vs qwen3_4b_bf16, layer 18": {
+      "relative_l2_mean": 0.0649336481691173,
+      "relative_l2_max": 0.08156483491185938,
+      "bit_identical": "0/64",
+      "metadata_differs": [
+        "model",
+        "quantization",
+        "revision"
+      ]
+    },
+    "qwen3_4b_fp8 vs qwen3_4b_bf16, layer 27": {
+      "relative_l2_mean": 0.059052098097358716,
+      "relative_l2_max": 0.11957802284471253,
+      "bit_identical": "0/64",
+      "metadata_differs": [
+        "model",
+        "quantization",
+        "revision"
+      ]
+    }
+  }
+}
