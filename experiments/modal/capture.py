@@ -22,6 +22,7 @@ must be clean, so the manifest's commit is what ran.
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -46,6 +47,20 @@ CACHE_ENV = {
 }
 UV_VERSION = "0.12.21"  # the uv that locked uv.lock
 
+
+def build_wheel() -> Path:
+    """hulder as a wheel built from this checkout, so the image has its package metadata too
+    (hulder.__version__ reads it). The tree is clean when main runs, so it is the recorded commit."""
+    dist = ROOT / ".cache" / "modal" / "dist"
+    shutil.rmtree(dist, ignore_errors=True)
+    subprocess.run(["uv", "build", "--wheel", "--out-dir", str(dist)], cwd=ROOT, check=True, capture_output=True)
+    [wheel] = dist.glob("hulder-*.whl")
+    return wheel
+
+
+# Inside a container the image is already built, so the wheel is never read there.
+WHEEL = build_wheel() if LOCAL else Path("/root/hulder.whl")
+
 image = (
     modal.Image.debian_slim(python_version="3.12.14")  # .python-version
     .apt_install("gcc")  # Triton compiles a C launcher at runtime
@@ -56,7 +71,8 @@ image = (
         extra_options="--no-default-groups --python-preference=system",
         uv_version=UV_VERSION,
     )
-    .add_local_python_source("hulder")
+    .add_local_file(str(WHEEL), f"/wheels/{WHEEL.name}", copy=True)
+    .run_commands(f"/.uv/uv pip install --python /.uv/.venv/bin/python --no-deps /wheels/{WHEEL.name}")
     .add_local_file(str(HERE / "smoke_lib.py"), "/root/smoke_lib.py")
     .add_local_file(str(HERE / "worker.py"), "/root/worker.py")
 )
