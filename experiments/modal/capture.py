@@ -149,9 +149,9 @@ def run_group(group: list[tuple[str, dict]], run_id: str) -> dict:
                 returncode, error = worker.wait(), f"timed out after {timeout_s} s"
         text = (out / "capture.log").read_text(errors="replace")
         if log_cublas:
-            raw = "".join(p.read_text(errors="replace") for p in sorted(out.glob("cublas*.log")))
-            (out / "cublas_summary.txt").write_text("\n".join(lib.cublas_summary(raw)) + "\n")
-            for p in out.glob("cublas*.log"):
+            raw = "".join(p.read_text(errors="replace") for p in sorted(out.glob("cublaslt*.log")))
+            (out / "cublas_fingerprint.txt").write_text("\n".join(lib.cublas_fingerprint(raw)) + "\n")
+            for p in out.glob("cublaslt*.log"):
                 p.unlink()
         manifest = {
             "label": label,
@@ -167,7 +167,7 @@ def run_group(group: list[tuple[str, dict]], run_id: str) -> dict:
         (out / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
         runs.commit()
         hf.commit()  # compile caches, for the next engine
-        names = ("capture.log", "manifest.json", "cublas_summary.txt")
+        names = ("capture.log", "manifest.json", "cublas_fingerprint.txt")
         keep = [p for p in out.iterdir() if p.suffix == ".npz" or p.name in names]
         results[label] = {"manifest": manifest, "files": {p.name: p.read_bytes() for p in keep}}
         if returncode != 0:

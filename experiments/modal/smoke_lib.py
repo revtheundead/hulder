@@ -72,7 +72,7 @@ CONFIGS = {
 # mm/addmm/matmul/linear for Triton persistent kernels, sets FlashAttention to one split and turns
 # off AOT compile loading (vLLM 0.30.0, model_executor/determinism/batch_invariant.py).
 BATCH_INVARIANT = {"VLLM_BATCH_INVARIANT": "1"}
-# cuBLAS and cuBLASLt API logging, so a kernel switch between runs shows in a diff (cublas_summary).
+# cuBLASLt tracing, so a GEMM algorithm switch between runs shows in a diff (cublas_fingerprint).
 CUBLAS_LOG = "cublas"
 
 # name -> (containers, single_use, per-config timeout in s). Each container is one Modal call that
@@ -166,28 +166,25 @@ def worst_case_cost(n_configs: int, timeout_s: float = CONFIG_TIMEOUT_S) -> floa
 
 
 def cublas_log_env(out_dir: str) -> dict:
-    """Environment that logs cuBLAS and cuBLASLt calls to files in out_dir (%i is the process id)."""
-    return {
-        "CUBLAS_LOGINFO_DBG": "1",
-        "CUBLAS_LOGDEST_DBG": f"{out_dir}/cublas.%i.log",
-        "CUBLASLT_LOG_LEVEL": "2",  # trace: calls that launch kernels, with their parameters
-        "CUBLASLT_LOG_FILE": f"{out_dir}/cublaslt.%i.log",
-    }
+    """Environment that traces cuBLASLt calls to files in out_dir (%i is the process id). The trace
+    records each matmul's shapes and chosen algorithm. The legacy cuBLAS log adds only pointers."""
+    return {"CUBLASLT_LOG_LEVEL": "2", "CUBLASLT_LOG_FILE": f"{out_dir}/cublaslt.%i.log"}
 
 
-def cublas_summary(log: str) -> list[str]:
-    """Each distinct cuBLAS or cuBLASLt log line, with timestamps, process and thread ids and
-    pointers taken out, prefixed by how often it occurred. Two runs that chose different kernels
-    differ in this list."""
+def cublas_fingerprint(log: str) -> list[str]:
+    """Each distinct cuBLASLt matmul call (operand shapes, compute type and chosen algorithm) with
+    pointers and process ids taken out, prefixed by how often it occurred. Two runs that chose
+    different GEMM algorithms differ in this list. CUDA-graph replays make no calls, so it covers
+    the eager GEMMs only."""
     counts: dict[str, int] = {}
     for line in log.splitlines():
+        if "Matmul]" not in line:
+            continue
         line = re.sub(r"^\[[^]]*\]", "", line)  # timestamp
-        line = re.sub(r"\[\d+\]", "[N]", line)  # cuBLASLt's process id
-        line = re.sub(r"0x[0-9a-fA-F]+", "0x", line)
-        line = re.sub(r"\b(pid|tid|thread|process)[=: ]*\d+", r"\1=N", line, flags=re.IGNORECASE)
-        line = line.strip()
-        if line:
-            counts[line] = counts.get(line, 0) + 1
+        line = re.sub(r"\[\d+\]", "[N]", line)  # process id
+        line = re.sub(r"\b([A-D]|workSpace|stream)=0x[0-9a-f]+\s*", "", line, flags=re.IGNORECASE)
+        line = re.sub(r"\s+", " ", line).strip()
+        counts[line] = counts.get(line, 0) + 1
     return [f"{n:6d} {line}" for line, n in sorted(counts.items())]
 
 

@@ -64,15 +64,19 @@ def test_the_batch_invariant_experiment_logs_cublas_on_default_runs_only_and_fit
     assert 0.86 + lib.worst_case_cost(len(group), timeout_s) <= lib.BUDGET_USD  # spent today, estimated
 
 
-def test_cublas_summary_ignores_timestamps_ids_and_pointers():
-    log_a = "[2026-10-13 15:01:02][cublasLt][1234][Trace][cublasLtMatmul] A=0x7f00aa m=1024 algo=21\n" * 2
-    log_b = "[2026-10-13 16:11:12][cublasLt][5678][Trace][cublasLtMatmul] A=0x7f00bb m=1024 algo=21\n"
-    other = "[2026-10-13 16:11:12][cublasLt][1234][Trace][cublasLtMatmul] A=0x7f00bb m=1024 algo=23\n"
-    assert [line.split(maxsplit=1)[1] for line in lib.cublas_summary(log_a)] == [
-        line.split(maxsplit=1)[1] for line in lib.cublas_summary(log_b)
-    ]
-    assert lib.cublas_summary(log_a)[0].split()[0] == "2"
-    assert lib.cublas_summary(log_b) != lib.cublas_summary(other)
+def test_cublas_fingerprint_keeps_shapes_and_algorithms_and_drops_pointers_times_and_pids():
+    line = (
+        "[2026-10-13 15:11:50][cublasLt][{pid}][Trace][cublasLtTSTMatmul] A=0X2B3FD{ptr} "
+        "Adesc=[type=R_16BF rows=2560 cols=6144 ld=2560] workSpace=0X0 algo=[algoId={algo} tile=MATMUL_TILE_128x128] "
+        "stream=0X0\n"
+    )
+    run_a = line.format(pid=1234, ptr="0000000", algo=5) * 2 + "I! cuBLAS (v13.1.1) cublasSetStream_v2 called:\n"
+    run_b = line.format(pid=5678, ptr="27A3000", algo=5) * 2
+    switched = line.format(pid=5678, ptr="27A3000", algo=21) * 2
+    assert lib.cublas_fingerprint(run_a) == lib.cublas_fingerprint(run_b)
+    [entry] = lib.cublas_fingerprint(run_a)
+    assert entry.split()[0] == "2" and "0X" not in entry and "algoId=5" in entry
+    assert lib.cublas_fingerprint(run_b) != lib.cublas_fingerprint(switched)
 
 
 def test_downloads_cover_each_model_once():
@@ -155,3 +159,34 @@ def test_compare_measures_each_run_against_the_first_per_layer(tmp_path):
     fp8 = summary["shifts"][f"fp8 vs bf16_a, layer {lib.LAYERS[0]}"]
     assert fp8["relative_l2_mean"] > 0 and fp8["metadata_differs"] == []
     assert summary["runs"]["fp8"]["timings"] == ["init engine took 11.85 s"]
+
+
+def test_clusters_group_bit_exact_captures_per_config_and_engine_env(tmp_path):
+    import clusters
+
+    import hulder
+
+    rng = np.random.default_rng(1)
+    ids, labels = np.array([f"p{i}" for i in range(4)]), np.array([0, 0, 1, 1])
+    path_one = {layer: rng.normal(size=(4, 8)).astype(np.float16) for layer in lib.LAYERS}
+    path_two = {layer: (a * np.float16(1.01)) for layer, a in path_one.items()}
+    config = {"model": "m", "layers": list(lib.LAYERS)}
+    runs = {  # label -> (activations, engine_env, uuid)
+        "a": (path_one, {}, "GPU-1"),
+        "b": (path_two, {}, "GPU-1"),
+        "c": (path_one, {"CUBLASLT_LOG_LEVEL": "2"}, "GPU-2"),  # logging doesn't change the identity
+        "inv": (path_one, lib.BATCH_INVARIANT, "GPU-1"),
+    }
+    for label, (acts, env, uuid) in runs.items():
+        (tmp_path / label).mkdir()
+        worker = {"capture_config": config, "snapshots": ["x"]}
+        manifest = {"nvidia_smi": f"NVIDIA L4, {uuid}, 580.95.05, 23034 MiB", "engine_env": env, "worker": worker}
+        (tmp_path / label / "manifest.json").write_text(json.dumps(manifest))
+        for layer, a in acts.items():
+            hulder.Snapshot(ids=ids, labels=labels, activations=a).save(tmp_path / label / f"{layer}")
+    (tmp_path / "manifest.json").write_text(json.dumps({"run_id": "r", "configs": {k: {} for k in runs}}))
+    by_env = {json.dumps(r["identity"][1]): r for r in clusters.clusters(clusters.members([tmp_path]))}
+    default = by_env["{}"]
+    assert [[m["name"] for m in c] for c in default["clusters"]] == [["r/a", "r/c"], ["r/b"]]
+    assert default["between_clusters_relative_l2_mean"]["0 vs 1"][f"layer {lib.LAYERS[0]}"] > 0
+    assert [[m["name"] for m in c] for c in by_env[json.dumps(lib.BATCH_INVARIANT)]["clusters"]] == [["r/inv"]]
