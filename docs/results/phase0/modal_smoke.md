@@ -66,7 +66,7 @@ So the earlier reading of the smoke rerun, a bf16 noise floor about ten times fp
 
 - **Cold start dominates the first run.** On a freshly built image the first config took 572 s of wall time, of which the worker ran 116 s. Later configs in a warm image took 60 to 130 s of wall time.
 - **Engine start.** A warm bf16 engine initialises in 12 to 47 s. Compiling online FP8 from cold took 122 s, and batch-invariant mode 201 s on first compile and about 33 s after. cuBLASLt tracing added about 50 to 80 s to engine start in the batch_invariant run, so its default runs are not timed fairly against the others.
-- **Cost.** The runs above add up to an estimated $0.90, at Modal's list rates for the full CPU and memory requested and container time measured locally. Earlier failed attempts add about $0.29 more. When the estimate for the day stood at about $0.60, Modal's usage page showed $0.36, so the estimates run high.
+- **Cost.** Modal's usage page shows $0.90 for the day, failed attempts included. The runner estimated $1.19, the runs above $0.90 and earlier failed attempts about $0.29, by charging list rates for the full CPU and memory requested over container time measured locally. So the estimates run about 30% high, which errs on the safe side for a stop rule.
 - **Unreliable timer.** vLLM's second "Loading weights took" line reported up to 404 s, more than whole worker runs, and is left out of the comparisons.
 
 ## What it took to get here
