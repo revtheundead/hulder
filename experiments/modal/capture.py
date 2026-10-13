@@ -34,7 +34,8 @@ import smoke_lib as lib
 LOCAL = modal.is_local()
 ROOT = Path(__file__).resolve().parents[2] if LOCAL else Path("/")
 HERE = Path(__file__).resolve().parent
-CACHE, RUNS = "/cache", "/runs"
+# Fresh paths: Modal refuses to mount a Volume on a non-empty one, and the image already has /cache.
+CACHE, RUNS = "/vol/hf", "/vol/runs"
 UV_VERSION = "0.12.21"  # the uv that locked uv.lock
 
 image = (
