@@ -45,6 +45,11 @@ CACHE_ENV = {
     "XDG_CACHE_HOME": f"{CACHE}/xdg",
     "FLASHINFER_WORKSPACE_BASE": CACHE,
 }
+# Engine settings for every capture, recorded in each manifest. On Ada, vLLM 0.30.0's warmup samples
+# through FlashInfer's top-k/top-p kernel, which JIT-compiles with nvcc, absent from this image. Sampling
+# happens after the prefill the activations come from, so it can't change them. Turing (the local
+# RTX 2070) falls back from that sampler anyway.
+ENGINE_ENV = {"VLLM_USE_FLASHINFER_SAMPLER": "0"}
 UV_VERSION = "0.12.21"  # the uv that locked uv.lock
 
 
@@ -125,7 +130,7 @@ def capture_config(name: str, spec: dict, run_id: str) -> dict:
             [sys.executable, "/root/worker.py", str(out / "spec.json"), str(out)],
             stdout=log,
             stderr=subprocess.STDOUT,
-            env={**os.environ, **CACHE_ENV, "HF_HUB_OFFLINE": "1"},
+            env={**os.environ, **CACHE_ENV, **ENGINE_ENV, "HF_HUB_OFFLINE": "1"},
             check=False,
         )
     text = (out / "capture.log").read_text(errors="replace")
@@ -133,6 +138,7 @@ def capture_config(name: str, spec: dict, run_id: str) -> dict:
         "config": name,
         "returncode": worker.returncode,
         "nvidia_smi": gpu.strip(),
+        "engine_env": ENGINE_ENV,
         "function_seconds": round(time.time() - start, 1),
         "log": lib.log_facts(text),
     }

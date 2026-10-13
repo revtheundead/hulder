@@ -68,7 +68,7 @@ DOWNLOADS = sorted({(cfg["model"], cfg["revision"]) for cfg, _ in SMOKE.values()
 # vLLM 0.30.0 log lines worth keeping in a manifest, matched as substrings of each line.
 LOG_FACTS = {
     "kv_cache": ("Available KV cache memory", "KV cache size:", "Maximum concurrency for"),
-    "kernels": ("Selected ", "backend."),
+    "kernels": ("Selected ", "attention backend", "FlashInfer"),
     "timings": ("Loading weights took", "Model loading took", "Graph capturing finished", "init engine (profile"),
 }
 
