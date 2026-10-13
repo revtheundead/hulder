@@ -1,0 +1,66 @@
+{
+  "run_id": "20261013T150939Z",
+  "experiment": "batch_invariant",
+  "single_use": false,
+  "commit": "a20a7c04d5f362ef43779ad7ca18ad77a133fda3",
+  "command": "uv run --with modal==1.6.1 modal run experiments/modal/capture.py --experiment batch_invariant",
+  "modal": "1.6.1",
+  "rates_usd_per_s": {
+    "L4": 0.000222,
+    "cpu_core": 1.31e-05,
+    "memory_gib": 2.22e-06
+  },
+  "spent_before_usd": 0.86,
+  "containers": [
+    {
+      "labels": [
+        "default_1",
+        "default_2",
+        "default_3",
+        "invariant_1",
+        "invariant_2",
+        "invariant_3"
+      ],
+      "wall_seconds": 1030.4,
+      "estimated_usd": 0.3559
+    }
+  ],
+  "configs": {
+    "default_1": {
+      "container": 0,
+      "config": "qwen3_4b_bf16",
+      "returncode": 0
+    },
+    "default_2": {
+      "container": 0,
+      "config": "qwen3_4b_bf16",
+      "returncode": 0
+    },
+    "default_3": {
+      "container": 0,
+      "config": "qwen3_4b_bf16",
+      "returncode": 0
+    },
+    "invariant_1": {
+      "container": 0,
+      "config": "qwen3_4b_bf16",
+      "returncode": 0
+    },
+    "invariant_2": {
+      "container": 0,
+      "config": "qwen3_4b_bf16",
+      "returncode": 0
+    },
+    "invariant_3": {
+      "container": 0,
+      "config": "qwen3_4b_bf16",
+      "returncode": 0
+    }
+  },
+  "download": {
+    "seconds": 0.0,
+    "wall_seconds": 6.4,
+    "estimated_usd": 0.0002
+  },
+  "estimated_usd": 0.3561
+}

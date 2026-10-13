@@ -1,0 +1,237 @@
+[
+  {
+    "identity": [
+      {
+        "batch_size": 8,
+        "dtype": "bfloat16",
+        "enable_chunked_prefill": false,
+        "enable_prefix_caching": false,
+        "enable_thinking": false,
+        "gpu_memory_utilization": 0.9,
+        "layers": [
+          18,
+          27
+        ],
+        "max_model_len": 1024,
+        "max_num_batched_tokens": 1024,
+        "model": "Qwen/Qwen3-4B",
+        "positions": [
+          -1
+        ],
+        "quantization": "fp8",
+        "revision": "1cfa9a7208912126459214e8b04321603b3df60c",
+        "seed": 0,
+        "system_prompt": "You are a helpful assistant."
+      },
+      {
+        "VLLM_USE_FLASHINFER_SAMPLER": "0"
+      }
+    ],
+    "clusters": [
+      [
+        {
+          "name": "20261013T144543Z/qwen3_4b_fp8_online",
+          "gpu_uuid": "GPU-d5a4ac0d-80bf-a5fd-8c70-27f911614dcc",
+          "gpu_driver": "610.57.04",
+          "container": "20261013T144543Z#0",
+          "position_in_container": 2
+        }
+      ]
+    ],
+    "between_clusters_relative_l2_mean": {}
+  },
+  {
+    "identity": [
+      {
+        "batch_size": 8,
+        "dtype": "bfloat16",
+        "enable_chunked_prefill": false,
+        "enable_prefix_caching": false,
+        "enable_thinking": false,
+        "gpu_memory_utilization": 0.9,
+        "layers": [
+          18,
+          27
+        ],
+        "max_model_len": 1024,
+        "max_num_batched_tokens": 1024,
+        "model": "Qwen/Qwen3-4B",
+        "positions": [
+          -1
+        ],
+        "quantization": null,
+        "revision": "1cfa9a7208912126459214e8b04321603b3df60c",
+        "seed": 0,
+        "system_prompt": "You are a helpful assistant."
+      },
+      {
+        "VLLM_BATCH_INVARIANT": "1",
+        "VLLM_USE_FLASHINFER_SAMPLER": "0"
+      }
+    ],
+    "clusters": [
+      [
+        {
+          "name": "20261013T150939Z/invariant_1",
+          "gpu_uuid": "GPU-6a63dbb1-d403-f692-9bf7-7224615574d4",
+          "gpu_driver": "610.57.04",
+          "container": "20261013T150939Z#0",
+          "position_in_container": 4
+        },
+        {
+          "name": "20261013T150939Z/invariant_2",
+          "gpu_uuid": "GPU-6a63dbb1-d403-f692-9bf7-7224615574d4",
+          "gpu_driver": "610.57.04",
+          "container": "20261013T150939Z#0",
+          "position_in_container": 5
+        },
+        {
+          "name": "20261013T150939Z/invariant_3",
+          "gpu_uuid": "GPU-6a63dbb1-d403-f692-9bf7-7224615574d4",
+          "gpu_driver": "610.57.04",
+          "container": "20261013T150939Z#0",
+          "position_in_container": 6
+        }
+      ]
+    ],
+    "between_clusters_relative_l2_mean": {}
+  },
+  {
+    "identity": [
+      {
+        "batch_size": 8,
+        "dtype": "bfloat16",
+        "enable_chunked_prefill": false,
+        "enable_prefix_caching": false,
+        "enable_thinking": false,
+        "gpu_memory_utilization": 0.9,
+        "layers": [
+          18,
+          27
+        ],
+        "max_model_len": 1024,
+        "max_num_batched_tokens": 1024,
+        "model": "Qwen/Qwen3-4B",
+        "positions": [
+          -1
+        ],
+        "quantization": null,
+        "revision": "1cfa9a7208912126459214e8b04321603b3df60c",
+        "seed": 0,
+        "system_prompt": "You are a helpful assistant."
+      },
+      {
+        "VLLM_USE_FLASHINFER_SAMPLER": "0"
+      }
+    ],
+    "clusters": [
+      [
+        {
+          "name": "20261013T141533Z/qwen3_4b_bf16",
+          "gpu_uuid": "GPU-aa966112-71db-0357-ec9c-cd62942e54c2",
+          "gpu_driver": "580.95.05",
+          "container": "20261013T141533Z#0",
+          "position_in_container": 1
+        },
+        {
+          "name": "20261013T145138Z/bf16_a",
+          "gpu_uuid": "GPU-5549e044-42d9-0a16-1458-d285b3bb5b4b",
+          "gpu_driver": "610.57.04",
+          "container": "20261013T145138Z#0",
+          "position_in_container": 1
+        },
+        {
+          "name": "20261013T145138Z/bf16_b",
+          "gpu_uuid": "GPU-d330ee4b-0b28-0827-388e-74559f22b8c1",
+          "gpu_driver": "580.95.05",
+          "container": "20261013T145138Z#1",
+          "position_in_container": 1
+        },
+        {
+          "name": "20261013T150939Z/default_1",
+          "gpu_uuid": "GPU-6a63dbb1-d403-f692-9bf7-7224615574d4",
+          "gpu_driver": "610.57.04",
+          "container": "20261013T150939Z#0",
+          "position_in_container": 1
+        },
+        {
+          "name": "20261013T150939Z/default_2",
+          "gpu_uuid": "GPU-6a63dbb1-d403-f692-9bf7-7224615574d4",
+          "gpu_driver": "610.57.04",
+          "container": "20261013T150939Z#0",
+          "position_in_container": 2
+        },
+        {
+          "name": "20261013T150939Z/default_3",
+          "gpu_uuid": "GPU-6a63dbb1-d403-f692-9bf7-7224615574d4",
+          "gpu_driver": "610.57.04",
+          "container": "20261013T150939Z#0",
+          "position_in_container": 3
+        }
+      ],
+      [
+        {
+          "name": "20261013T141533Z/qwen3_4b_bf16_rerun",
+          "gpu_uuid": "GPU-aa966112-71db-0357-ec9c-cd62942e54c2",
+          "gpu_driver": "580.95.05",
+          "container": "20261013T141533Z#0",
+          "position_in_container": 2
+        },
+        {
+          "name": "20261013T144543Z/qwen3_4b_bf16",
+          "gpu_uuid": "GPU-d5a4ac0d-80bf-a5fd-8c70-27f911614dcc",
+          "gpu_driver": "610.57.04",
+          "container": "20261013T144543Z#0",
+          "position_in_container": 1
+        }
+      ]
+    ],
+    "between_clusters_relative_l2_mean": {
+      "0 vs 1": {
+        "layer 18": 0.013292793145953222,
+        "layer 27": 0.011713256349797073
+      }
+    }
+  },
+  {
+    "identity": [
+      {
+        "batch_size": 8,
+        "dtype": "bfloat16",
+        "enable_chunked_prefill": false,
+        "enable_prefix_caching": false,
+        "enable_thinking": false,
+        "gpu_memory_utilization": 0.9,
+        "layers": [
+          18,
+          27
+        ],
+        "max_model_len": 1024,
+        "max_num_batched_tokens": 1024,
+        "model": "Qwen/Qwen3-4B-FP8",
+        "positions": [
+          -1
+        ],
+        "quantization": "fp8",
+        "revision": "96b30dc13593a244a5e59e84687309f53c375cfa",
+        "seed": 0,
+        "system_prompt": "You are a helpful assistant."
+      },
+      {
+        "VLLM_USE_FLASHINFER_SAMPLER": "0"
+      }
+    ],
+    "clusters": [
+      [
+        {
+          "name": "20261013T141533Z/qwen3_4b_fp8",
+          "gpu_uuid": "GPU-aa966112-71db-0357-ec9c-cd62942e54c2",
+          "gpu_driver": "580.95.05",
+          "container": "20261013T141533Z#0",
+          "position_in_container": 3
+        }
+      ]
+    ],
+    "between_clusters_relative_l2_mean": {}
+  }
+]
