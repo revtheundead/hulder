@@ -11,3 +11,4 @@ export XDG_CACHE_HOME="$HULDER_ROOT/.cache/xdg"           # vLLM compile cache, 
 export VLLM_CACHE_ROOT="$HULDER_ROOT/.cache/vllm"
 export TRITON_CACHE_DIR="$HULDER_ROOT/.cache/triton"
 export FLASHINFER_WORKSPACE_BASE="$HULDER_ROOT/.cache"     # -> .cache/.cache/flashinfer
+export MODAL_CONFIG_PATH="$HULDER_ROOT/.cache/modal.toml"   # `modal token new` writes here
