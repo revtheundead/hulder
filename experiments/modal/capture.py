@@ -127,6 +127,11 @@ def run_group(group: list[tuple[str, dict]], run_id: str) -> dict:
         out.mkdir(parents=True, exist_ok=True)
         spec = {**spec, "extra_metadata": lib.gpu_metadata(gpu)}
         (out / "spec.json").write_text(json.dumps(spec, indent=2) + "\n")
+        env = dict(spec.get("env", {}))
+        log_cublas = env.pop(lib.CUBLAS_LOG, None)
+        if log_cublas:
+            env.update(lib.cublas_log_env(str(out)))
+        timeout_s = spec.get("timeout_s", lib.CONFIG_TIMEOUT_S)
         error = None
         with open(out / "capture.log", "w") as log:
             # Its own session, so a timeout kills the engine-core process too and frees the GPU.
@@ -134,21 +139,26 @@ def run_group(group: list[tuple[str, dict]], run_id: str) -> dict:
                 [sys.executable, "/root/worker.py", str(out / "spec.json"), str(out)],
                 stdout=log,
                 stderr=subprocess.STDOUT,
-                env={**os.environ, **CACHE_ENV, **ENGINE_ENV, "HF_HUB_OFFLINE": "1"},
+                env={**os.environ, **CACHE_ENV, **ENGINE_ENV, **env, "HF_HUB_OFFLINE": "1"},
                 start_new_session=True,
             )
             try:
-                returncode = worker.wait(timeout=lib.CONFIG_TIMEOUT_S)
+                returncode = worker.wait(timeout=timeout_s)
             except subprocess.TimeoutExpired:
                 os.killpg(worker.pid, signal.SIGKILL)
-                returncode, error = worker.wait(), f"timed out after {lib.CONFIG_TIMEOUT_S} s"
+                returncode, error = worker.wait(), f"timed out after {timeout_s} s"
         text = (out / "capture.log").read_text(errors="replace")
+        if log_cublas:
+            raw = "".join(p.read_text(errors="replace") for p in sorted(out.glob("cublas*.log")))
+            (out / "cublas_summary.txt").write_text("\n".join(lib.cublas_summary(raw)) + "\n")
+            for p in out.glob("cublas*.log"):
+                p.unlink()
         manifest = {
             "label": label,
             "returncode": returncode,
             **({"error": error} if error else {}),
             "nvidia_smi": gpu,
-            "engine_env": ENGINE_ENV,
+            "engine_env": {**ENGINE_ENV, **env},
             "seconds": round(time.time() - start, 1),
             "log": lib.log_facts(text),
         }
@@ -157,7 +167,8 @@ def run_group(group: list[tuple[str, dict]], run_id: str) -> dict:
         (out / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
         runs.commit()
         hf.commit()  # compile caches, for the next engine
-        keep = [p for p in out.iterdir() if p.suffix == ".npz" or p.name in ("capture.log", "manifest.json")]
+        names = ("capture.log", "manifest.json", "cublas_summary.txt")
+        keep = [p for p in out.iterdir() if p.suffix == ".npz" or p.name in names]
         results[label] = {"manifest": manifest, "files": {p.name: p.read_bytes() for p in keep}}
         if returncode != 0:
             break
@@ -189,9 +200,18 @@ def git(*args: str) -> str:
     return subprocess.run(["git", *args], cwd=ROOT, capture_output=True, text=True, check=True).stdout.strip()
 
 
-def spec_for(config: str) -> dict:
-    fields, n, base_model = lib.CONFIGS[config]
-    return {"config": fields, "prompts": lib.smoke_prompts(n), "save": n > 1, "base_model": base_model}
+def spec_for(entry: tuple, timeout_s: int) -> dict:
+    """The worker spec for one (label, config[, env]) entry of an experiment."""
+    fields, n, base_model = lib.CONFIGS[entry[1]]
+    env = entry[2] if len(entry) > 2 else {}
+    return {
+        "config": fields,
+        "prompts": lib.smoke_prompts(n),
+        "save": n > 1,
+        "base_model": base_model,
+        "env": env,
+        "timeout_s": timeout_s,
+    }
 
 
 @app.local_entrypoint()
@@ -200,7 +220,7 @@ def main(experiment: str, spent_usd: float = 0.0, out: str = ".cache/modal-runs"
         raise SystemExit(f"unknown experiment {experiment!r}; known: {list(lib.EXPERIMENTS)}")
     if git("status", "--porcelain", "--untracked-files=no"):
         raise SystemExit("the tracked tree has changes; commit them so the manifest's commit is what ran")
-    containers, single_use = lib.EXPERIMENTS[experiment]
+    containers, single_use, timeout_s = lib.EXPERIMENTS[experiment]
     if max(map(len, containers)) > lib.MAX_CONFIGS_PER_CONTAINER:
         raise SystemExit(f"a container runs at most {lib.MAX_CONFIGS_PER_CONTAINER} configs")
     run_id = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
@@ -226,7 +246,8 @@ def main(experiment: str, spent_usd: float = 0.0, out: str = ".cache/modal-runs"
         (run_dir / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
 
     def affordable(n_configs: int) -> bool:
-        return spent_usd + manifest.get("estimated_usd", 0) + lib.worst_case_cost(n_configs) <= lib.BUDGET_USD
+        worst = lib.worst_case_cost(n_configs, timeout_s)
+        return spent_usd + manifest.get("estimated_usd", 0) + worst <= lib.BUDGET_USD
 
     start = time.time()
     fetched = download.remote(lib.downloads(experiment))
@@ -238,10 +259,10 @@ def main(experiment: str, spent_usd: float = 0.0, out: str = ".cache/modal-runs"
     def collect(i: int, group: list, results: dict, wall: float) -> bool:
         cost = lib.estimate_cost(wall, gpu=True, cpu=lib.GPU_CPU, memory_gib=lib.GPU_MEMORY_GIB)
         manifest["containers"].append(
-            {"labels": [label for label, _ in group], "wall_seconds": round(wall, 1), "estimated_usd": round(cost, 4)}
+            {"labels": [e[0] for e in group], "wall_seconds": round(wall, 1), "estimated_usd": round(cost, 4)}
         )
         ok = len(results) == len(group)
-        for label, config in group:
+        for label, config, *_ in group:
             if label not in results:
                 continue
             (run_dir / label).mkdir()
@@ -253,7 +274,7 @@ def main(experiment: str, spent_usd: float = 0.0, out: str = ".cache/modal-runs"
         record()
         return ok
 
-    groups = [[(label, spec_for(config)) for label, config in group] for group in containers]
+    groups = [[(e[0], spec_for(e, timeout_s)) for e in group] for group in containers]
     if single_use:
         # All at once, so each container holds its own GPU; the budget covers all of them up front.
         if not affordable(sum(map(len, containers))):
@@ -270,7 +291,7 @@ def main(experiment: str, spent_usd: float = 0.0, out: str = ".cache/modal-runs"
             if not affordable(len(group)):
                 manifest["stopped"] = f"before container {i}: its worst case would pass the day's budget"
                 break
-            print(f"container {i}: {', '.join(label for label, _ in group)} on an L4", flush=True)
+            print(f"container {i}: {', '.join(e[0] for e in group)} on an L4", flush=True)
             start = time.time()
             results = capture_group.remote(specs, run_id)
             if not collect(i, group, results, time.time() - start):

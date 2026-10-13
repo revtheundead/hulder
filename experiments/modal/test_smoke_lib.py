@@ -41,20 +41,38 @@ def test_every_config_pins_a_full_revision_and_thinking_off():
 
 
 def test_every_experiment_names_known_configs_with_unique_labels_and_fits_the_budget():
-    for containers, single_use in lib.EXPERIMENTS.values():
-        labels = [label for group in containers for label, _ in group]
+    for containers, _, timeout_s in lib.EXPERIMENTS.values():
+        labels = [e[0] for group in containers for e in group]
         assert len(labels) == len(set(labels))
-        assert all(config in lib.CONFIGS for group in containers for _, config in group)
+        assert all(e[1] in lib.CONFIGS for group in containers for e in group)
         assert max(map(len, containers)) <= lib.MAX_CONFIGS_PER_CONTAINER
-        worst = sum(lib.worst_case_cost(len(group)) for group in containers)
+        worst = sum(lib.worst_case_cost(len(group), timeout_s) for group in containers)
         assert worst < lib.BUDGET_USD
 
 
 def test_a_comparison_runs_in_one_container_and_the_cross_container_run_in_two():
-    containers, single_use = lib.EXPERIMENTS["fp8_online"]
+    containers, single_use, _ = lib.EXPERIMENTS["fp8_online"]
     assert len(containers) == 1 and not single_use
-    containers, single_use = lib.EXPERIMENTS["cross_container"]
-    assert single_use and [[config for _, config in group] for group in containers] == [["qwen3_4b_bf16"]] * 2
+    containers, single_use, _ = lib.EXPERIMENTS["cross_container"]
+    assert single_use and [[e[1] for e in group] for group in containers] == [["qwen3_4b_bf16"]] * 2
+
+
+def test_the_batch_invariant_experiment_logs_cublas_on_default_runs_only_and_fits_today():
+    [group], single_use, timeout_s = lib.EXPERIMENTS["batch_invariant"]
+    assert not single_use and timeout_s == 600
+    assert [e[2] for e in group] == [{lib.CUBLAS_LOG: "1"}] * 3 + [lib.BATCH_INVARIANT] * 3
+    assert 0.86 + lib.worst_case_cost(len(group), timeout_s) <= lib.BUDGET_USD  # spent today, estimated
+
+
+def test_cublas_summary_ignores_timestamps_ids_and_pointers():
+    log_a = "[2026-10-13 15:01:02][cublasLt][1234][Trace][cublasLtMatmul] A=0x7f00aa m=1024 algo=21\n" * 2
+    log_b = "[2026-10-13 16:11:12][cublasLt][5678][Trace][cublasLtMatmul] A=0x7f00bb m=1024 algo=21\n"
+    other = "[2026-10-13 16:11:12][cublasLt][1234][Trace][cublasLtMatmul] A=0x7f00bb m=1024 algo=23\n"
+    assert [line.split(maxsplit=1)[1] for line in lib.cublas_summary(log_a)] == [
+        line.split(maxsplit=1)[1] for line in lib.cublas_summary(log_b)
+    ]
+    assert lib.cublas_summary(log_a)[0].split()[0] == "2"
+    assert lib.cublas_summary(log_b) != lib.cublas_summary(other)
 
 
 def test_downloads_cover_each_model_once():

@@ -2,6 +2,7 @@
 the configs and experiments, log facts, cost estimates and activation comparison. Tested in CI."""
 
 import json
+import re
 from pathlib import Path
 
 import numpy as np
@@ -24,7 +25,7 @@ DOWNLOAD_CPU, DOWNLOAD_MEMORY_GIB = 2.0, 4
 # what was spent before the run (--spent-usd).
 CONFIG_TIMEOUT_S = 20 * 60
 BUDGET_USD = 3.0
-MAX_CONFIGS_PER_CONTAINER = 4
+MAX_CONFIGS_PER_CONTAINER = 6
 
 SYSTEM_PROMPT = "You are a helpful assistant."
 # Qwen3 has 36 decoder layers at both sizes. Two depths, half and three quarters.
@@ -67,10 +68,17 @@ CONFIGS = {
     "qwen3_4b_fp8_online": ({**COMMON, **QWEN3_4B, "quantization": "fp8"}, 64, "Qwen/Qwen3-4B"),
     "qwen3_8b_bf16_load": ({**COMMON, **QWEN3_8B}, 1, None),
 }
-# name -> (containers, single_use). Each container is one Modal call that runs its (label, config)
-# pairs in order, each in a fresh engine process, so a comparison's runs share a GPU and driver.
-# single_use experiments run their containers at once in containers that serve one call each, so
-# each lands on its own GPU.
+# Per-run environment for the batch-invariance experiment. Batch-invariant mode on sm_8x swaps
+# mm/addmm/matmul/linear for Triton persistent kernels, sets FlashAttention to one split and turns
+# off AOT compile loading (vLLM 0.30.0, model_executor/determinism/batch_invariant.py).
+BATCH_INVARIANT = {"VLLM_BATCH_INVARIANT": "1"}
+# cuBLAS and cuBLASLt API logging, so a kernel switch between runs shows in a diff (cublas_summary).
+CUBLAS_LOG = "cublas"
+
+# name -> (containers, single_use, per-config timeout in s). Each container is one Modal call that
+# runs its (label, config[, env]) entries in order, each in a fresh engine process, so a comparison's
+# runs share a GPU and driver. single_use experiments run their containers at once in containers
+# that serve one call each, so each lands on its own GPU.
 EXPERIMENTS = {
     # As the 2026-10-13 smoke run actually ran: four calls that Modal served from one warm container.
     "smoke": (
@@ -83,16 +91,33 @@ EXPERIMENTS = {
             ]
         ],
         False,
+        CONFIG_TIMEOUT_S,
     ),
-    "fp8_online": ([[("qwen3_4b_bf16", "qwen3_4b_bf16"), ("qwen3_4b_fp8_online", "qwen3_4b_fp8_online")]], False),
-    "cross_container": ([[("bf16_a", "qwen3_4b_bf16")], [("bf16_b", "qwen3_4b_bf16")]], True),
+    "fp8_online": (
+        [[("qwen3_4b_bf16", "qwen3_4b_bf16"), ("qwen3_4b_fp8_online", "qwen3_4b_fp8_online")]],
+        False,
+        CONFIG_TIMEOUT_S,
+    ),
+    "cross_container": ([[("bf16_a", "qwen3_4b_bf16")], [("bf16_b", "qwen3_4b_bf16")]], True, CONFIG_TIMEOUT_S),
+    # Three default engines with cuBLAS logging, then three batch-invariant ones, in one container.
+    # 10 minutes per config keeps six within the day's budget.
+    "batch_invariant": (
+        [
+            [
+                *((f"default_{i}", "qwen3_4b_bf16", {CUBLAS_LOG: "1"}) for i in (1, 2, 3)),
+                *((f"invariant_{i}", "qwen3_4b_bf16", BATCH_INVARIANT) for i in (1, 2, 3)),
+            ]
+        ],
+        False,
+        10 * 60,
+    ),
 }
 
 
 def downloads(experiment: str) -> list[tuple[str, str]]:
     """Every model revision an experiment needs."""
-    containers, _ = EXPERIMENTS[experiment]
-    return sorted({(CONFIGS[c][0]["model"], CONFIGS[c][0]["revision"]) for group in containers for _, c in group})
+    containers = EXPERIMENTS[experiment][0]
+    return sorted({(CONFIGS[e[1]][0]["model"], CONFIGS[e[1]][0]["revision"]) for group in containers for e in group})
 
 
 # vLLM 0.30.0 log lines worth keeping in a manifest, matched as substrings of each line.
@@ -100,6 +125,8 @@ LOG_FACTS = {
     "kv_cache": ("Available KV cache memory", "KV cache size:", "Maximum concurrency for"),
     "kernels": ("Selected ", "attention backend", "FlashInfer"),
     "timings": ("Loading weights took", "Model loading took", "Graph capturing finished", "init engine (profile"),
+    # Batch-invariant mode turns AOT loading off, so this line's absence shows the mode took effect.
+    "compile": ("Directly load AOT compilation", "torch.compile took"),
 }
 
 
@@ -133,9 +160,35 @@ def estimate_cost(seconds: float, *, gpu: bool, cpu: float, memory_gib: float) -
     return seconds * per_s
 
 
-def worst_case_cost(n_configs: int) -> float:
+def worst_case_cost(n_configs: int, timeout_s: float = CONFIG_TIMEOUT_S) -> float:
     """What a capture container running n_configs can cost before their timeouts stop it."""
-    return estimate_cost(n_configs * CONFIG_TIMEOUT_S, gpu=True, cpu=GPU_CPU, memory_gib=GPU_MEMORY_GIB)
+    return estimate_cost(n_configs * timeout_s, gpu=True, cpu=GPU_CPU, memory_gib=GPU_MEMORY_GIB)
+
+
+def cublas_log_env(out_dir: str) -> dict:
+    """Environment that logs cuBLAS and cuBLASLt calls to files in out_dir (%i is the process id)."""
+    return {
+        "CUBLAS_LOGINFO_DBG": "1",
+        "CUBLAS_LOGDEST_DBG": f"{out_dir}/cublas.%i.log",
+        "CUBLASLT_LOG_LEVEL": "2",  # trace: calls that launch kernels, with their parameters
+        "CUBLASLT_LOG_FILE": f"{out_dir}/cublaslt.%i.log",
+    }
+
+
+def cublas_summary(log: str) -> list[str]:
+    """Each distinct cuBLAS or cuBLASLt log line, with timestamps, process and thread ids and
+    pointers taken out, prefixed by how often it occurred. Two runs that chose different kernels
+    differ in this list."""
+    counts: dict[str, int] = {}
+    for line in log.splitlines():
+        line = re.sub(r"^\[[^]]*\]", "", line)  # timestamp
+        line = re.sub(r"\[\d+\]", "[N]", line)  # cuBLASLt's process id
+        line = re.sub(r"0x[0-9a-fA-F]+", "0x", line)
+        line = re.sub(r"\b(pid|tid|thread|process)[=: ]*\d+", r"\1=N", line, flags=re.IGNORECASE)
+        line = line.strip()
+        if line:
+            counts[line] = counts.get(line, 0) + 1
+    return [f"{n:6d} {line}" for line, n in sorted(counts.items())]
 
 
 def gpu_metadata(nvidia_smi: str) -> dict:
