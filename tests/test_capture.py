@@ -78,3 +78,27 @@ def test_capture_records_the_gpu_and_the_requested_position(hidden_states):
     assert result.activations.shape == (2, 1, 1, 4)
     assert np.all(result.activations == 2)  # position -1 of hidden states 0, 1, 2
     assert result.position_tokens == [["t9"], ["t9"]]
+
+
+def _bf16_load(value: float):
+    def load(path):
+        import torch
+
+        hidden = torch.full((3, 1, 4), 1.5, dtype=torch.bfloat16)
+        hidden[-1, 0, 0] = value
+        return {"token_ids": torch.tensor([7, 8, 9]), "hidden_states": hidden}
+
+    return load
+
+
+def test_a_bf16_engines_hidden_states_are_captured_as_float16(hidden_states, monkeypatch):
+    monkeypatch.setattr(hidden_states.example_hidden_states_connector, "load_hidden_states", _bf16_load(-3.140625))
+    result = hidden_states.capture(["hi"], hidden_states.CaptureConfig(**CONFIG, dtype="bfloat16"))
+    assert result.activations.dtype == np.float16
+    assert result.activations[0, 0, 0].tolist() == [-3.140625, 1.5, 1.5, 1.5]
+
+
+def test_a_bf16_value_beyond_float16s_range_stops_the_capture(hidden_states, monkeypatch):
+    monkeypatch.setattr(hidden_states.example_hidden_states_connector, "load_hidden_states", _bf16_load(1e6))
+    with pytest.raises(OverflowError, match="layer 2, position -1"):
+        hidden_states.capture(["hi"], hidden_states.CaptureConfig(**CONFIG, dtype="bfloat16"))
