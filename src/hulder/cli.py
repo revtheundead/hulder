@@ -16,6 +16,7 @@ from typing import NoReturn
 
 import hulder.gate.check as gate_check
 from hulder.gate.check import Report, Verdict, check_snapshots
+from hulder.gate.jsonl import load_scores_jsonl
 from hulder.gate.pairing import PairingError
 from hulder.gate.probe import Probe
 from hulder.gate.snapshot import Snapshot
@@ -26,6 +27,9 @@ EDGE_FACTOR = 10
 COLUMN = 26  # width of the reference and candidate columns
 EDGE_CAVEAT = "the FPR estimate sits at the tolerance edge; this number is unstable and more data may not settle it"
 
+
+# Input formats by file extension: snapshots, or bring-your-own scores (docs/design.md §4).
+FORMATS = {".npz": "npz", ".jsonl": "jsonl"}
 
 # Version of --json's layout. Bump it when a key is renamed or removed, not when one is added.
 JSON_SCHEMA_VERSION = 1
@@ -61,11 +65,24 @@ def run(argv: list[str] | None = None) -> int:
                 f"--under-test {forbidden[0]}: {forbidden[0]} can't be a change under test, "
                 "since it says both runs serve the same model"
             )
+        formats = {
+            path: _format(parser, path, args.input_format)
+            for path in (args.reference, args.candidate, args.noise_floor)
+            if path is not None
+        }
         probe = Probe.load(args.probe) if args.probe else None
         threshold = _setting(parser, args.threshold, probe, "threshold")
         target_fpr = _setting(parser, args.target_fpr, probe, "target_fpr")
         report = _check(
-            args.reference, args.candidate, args.noise_floor, probe, threshold, target_fpr, args.seed, args.under_test
+            args.reference,
+            args.candidate,
+            args.noise_floor,
+            probe,
+            threshold,
+            target_fpr,
+            args.seed,
+            args.under_test,
+            formats,
         )
     except UsageError as e:
         print(e.usage, end="", file=sys.stderr)
@@ -112,8 +129,8 @@ def _parser() -> _Parser:
         description="Exit codes: 0 PASS, 10 THRESHOLD STALE, 11 SCORER DEGRADED, 12 INCONCLUSIVE, "
         "1 tool failure (including a pairing error), 2 usage error.",
     )
-    check_parser.add_argument("--reference", required=True, help="reference snapshot (.npz)")
-    check_parser.add_argument("--candidate", required=True, help="candidate snapshot (.npz)")
+    check_parser.add_argument("--reference", required=True, help="reference snapshot (.npz) or scores (.jsonl)")
+    check_parser.add_argument("--candidate", required=True, help="candidate snapshot (.npz) or scores (.jsonl)")
     check_parser.add_argument(
         "--noise-floor", metavar="RERUN", help="a rerun of the reference, to measure the noise floor"
     )
@@ -122,6 +139,11 @@ def _parser() -> _Parser:
     check_parser.add_argument("--target-fpr", type=_rate, help="defaults to the probe's, e.g. 0.01 for 1%%")
     check_parser.add_argument(
         "--under-test", action="append", default=[], metavar="KEY", help="a further metadata key that may differ"
+    )
+    check_parser.add_argument(
+        "--input-format",
+        choices=sorted(set(FORMATS.values())),
+        help="read every input in this format, whatever its extension (default: from each file's extension)",
     )
     check_parser.add_argument("--seed", type=_seed, default=0, help="bootstrap seed (default 0)")
     check_parser.add_argument("--json", action="store_true", help="print the Report as JSON")
@@ -166,11 +188,30 @@ def _setting(parser: _Parser, given: float | None, probe: Probe | None, key: str
     parser.error(f"--{key.replace('_', '-')} is required unless the probe records it")
 
 
-def _check(reference, candidate, rerun, probe, threshold, target_fpr, seed=0, under_test=()) -> Report:
+def _format(parser: _Parser, path: str, override: str | None) -> str:
+    if override is not None:
+        return override
+    if (fmt := FORMATS.get(Path(path).suffix.lower())) is None:
+        parser.error(
+            f"can't tell the format of {path} from its extension: name it .npz (a snapshot) or .jsonl "
+            "(scores), or pass --input-format"
+        )
+    return fmt
+
+
+def _load(path, fmt: str, order=None) -> Snapshot:
+    """A snapshot, or a JSONL of scores put in the reference's id order when order is given."""
+    return load_scores_jsonl(path, order) if fmt == "jsonl" else Snapshot.load(path)
+
+
+def _check(reference, candidate, rerun, probe, threshold, target_fpr, seed=0, under_test=(), formats=None) -> Report:
+    formats = formats or {}
+    reference_snapshot = _load(reference, formats.get(reference, "npz"))
+    order = reference_snapshot.ids
     return check_snapshots(
-        Snapshot.load(reference),
-        Snapshot.load(candidate),
-        None if rerun is None else Snapshot.load(rerun),
+        reference_snapshot,
+        _load(candidate, formats.get(candidate, "npz"), order),
+        None if rerun is None else _load(rerun, formats.get(rerun, "npz"), order),
         threshold=threshold,
         target_fpr=target_fpr,
         probe=probe,
