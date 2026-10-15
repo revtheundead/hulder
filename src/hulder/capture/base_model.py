@@ -69,11 +69,11 @@ def base_model_for(
     except UNREADABLE as error:
         if quantization is not None:
             return None, _recorded_none(
-                f"{model}@{revision}'s config.json couldn't be read ({error}), so hulder can't tell "
+                f"{model}@{revision}'s config.json couldn't be read ({_why(error)}), so hulder can't tell "
                 f"whether {quantization!r} was applied before upload or at load"
             )
         return model, (
-            f"{model}@{revision}'s config.json couldn't be read ({error}), so hulder assumed the "
+            f"{model}@{revision}'s config.json couldn't be read ({_why(error)}), so hulder assumed the "
             "checkpoint is not quantized and recorded it as its own base_model. If it is a quantized "
             "checkpoint, pass its base model as override= to base_model_for."
         )
@@ -82,7 +82,9 @@ def base_model_for(
     try:
         base_model = card(model, revision)
     except UNREADABLE as error:
-        return None, _recorded_none(f"{model}@{revision} is quantized but its model card couldn't be read ({error})")
+        return None, _recorded_none(
+            f"{model}@{revision} is quantized but its model card couldn't be read ({_why(error)})"
+        )
     if isinstance(base_model, list) and len(base_model) == 1:
         base_model = base_model[0]
     if isinstance(base_model, list) and len(base_model) > 1:
@@ -94,6 +96,12 @@ def base_model_for(
 
 def _recorded_none(reason: str) -> str:
     return (
-        f"{reason}, so hulder recorded no base_model, and check will warn that it can't confirm both "
+        f"{reason}. hulder recorded no base_model, so check will warn that it can't confirm both "
         "runs serve the same model. Pass the base model as override= to base_model_for."
     )
+
+
+def _why(error: Exception) -> str:
+    """The error's type and first line: hub errors run to several lines with request ids."""
+    lines = str(error).strip().splitlines()
+    return f"{type(error).__name__}: {lines[0]}" if lines else type(error).__name__
