@@ -54,7 +54,7 @@ Exit code 0 (PASS)
 
 Check 2 swaps in the official AWQ int4 checkpoint. It flips 11 decisions and moves scores by 0.0515 on average against 0.000208 on the rerun, so the change is real, but with 180 benign examples the gate can't yet say whether the false-positive rate crossed its 10.0% tolerance. The verdict is INCONCLUSIVE, exit 12, with an estimate of how many more examples would settle it.
 
-**Reading a report.** The brackets are 95% confidence intervals, and PASS needs the pessimistic end of each one inside the band printed under it. THRESHOLD STALE means scores moved but the ranking survived, so a new threshold fixes it. SCORER DEGRADED means the ranking itself is damaged and the probe needs retraining. PASS, THRESHOLD STALE, SCORER DEGRADED and INCONCLUSIVE exit 0, 10, 11 and 12, leaving 1 and 2 for crashes and usage errors. [Reading a report](docs/reading-a-report.md) walks through check 2 line by line.
+**Reading a report.** The brackets are 95% confidence intervals, and PASS needs the pessimistic end of each one inside the band printed under it. THRESHOLD STALE means scores moved but the ranking survived, so a new threshold fixes it, and the report proposes one. SCORER DEGRADED means the ranking itself is damaged and the probe needs retraining. PASS, THRESHOLD STALE, SCORER DEGRADED and INCONCLUSIVE exit 0, 10, 11 and 12, leaving 1 and 2 for crashes and usage errors. [Reading a report](docs/reading-a-report.md) walks through check 2 line by line.
 
 ## Your own serving change
 
@@ -68,7 +68,7 @@ The [live tutorial](docs/tutorial-live.md) captures the demo with vLLM on a GPU 
 
 ## Limits
 
-v0.1 has run only on an RTX 2070 (Turing) in fp16 and AWQ int4, with Qwen2.5-1.5B-Instruct under vLLM 0.30.0. Its tolerance bands are fixed, THRESHOLD STALE doesn't yet propose a new threshold, and small FPR rises need large calibration sets to judge. The full list is in [docs/design.md §10](docs/design.md#10-known-limits).
+v0.1 has run only on an RTX 2070 (Turing) in fp16 and AWQ int4, with Qwen2.5-1.5B-Instruct under vLLM 0.30.0. Its tolerance bands are fixed, the threshold THRESHOLD STALE proposes misses more attacks in exchange for its FPR guarantee, and small FPR rises need large calibration sets to judge. The full list is in [docs/design.md §10](docs/design.md#10-known-limits).
 
 ## More
 
