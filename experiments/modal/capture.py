@@ -202,13 +202,12 @@ def git(*args: str) -> str:
 
 def spec_for(entry: tuple, timeout_s: int) -> dict:
     """The worker spec for one (label, config[, env]) entry of an experiment."""
-    fields, n, base_model = lib.CONFIGS[entry[1]]
+    fields, n = lib.CONFIGS[entry[1]]
     env = entry[2] if len(entry) > 2 else {}
     return {
         "config": fields,
         "prompts": lib.smoke_prompts(n),
         "save": n > 1,
-        "base_model": base_model,
         "env": env,
         "timeout_s": timeout_s,
     }

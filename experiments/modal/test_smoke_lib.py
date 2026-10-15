@@ -31,11 +31,10 @@ def test_smoke_prompts_refuse_more_than_the_file_holds(tmp_path):
 def test_online_fp8_differs_from_bf16_only_in_quantization():
     bf16, online = lib.CONFIGS["qwen3_4b_bf16"][0], lib.CONFIGS["qwen3_4b_fp8_online"][0]
     assert {k for k in bf16.keys() | online.keys() if bf16.get(k) != online.get(k)} == {"quantization"}
-    assert lib.CONFIGS["qwen3_4b_fp8_online"][2] == "Qwen/Qwen3-4B"  # itself, not its card's parent
 
 
 def test_every_config_pins_a_full_revision_and_thinking_off():
-    for cfg, _, _ in lib.CONFIGS.values():
+    for cfg, _ in lib.CONFIGS.values():
         assert len(cfg["revision"]) == 40
         assert cfg["enable_thinking"] is False
 
