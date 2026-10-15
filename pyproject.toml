@@ -1,6 +1,6 @@
 [project]
 name = "hulder"
-version = "0.1.1"
+version = "0.2.0rc1"
 description = "Release gate for thresholded scores, such as activation probes, across LLM serving configs"
 readme = "docs/pypi.md"
 authors = [
