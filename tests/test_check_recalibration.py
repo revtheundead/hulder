@@ -5,6 +5,7 @@ import json
 import numpy as np
 import pytest
 from scipy.special import expit, logit
+from scipy.stats import binomtest
 from synthetic import missed_attack_shift_for, unchanged_scorer
 
 import hulder
@@ -140,4 +141,46 @@ def test_json_carries_the_recalibration():
     _, report = _stale()
     out = json.loads(cli.to_json(report, INPUTS))["report"]["recalibration"]
     assert out["threshold"] == report.recalibration.threshold
-    assert set(out) == {"method", "confidence", "threshold", "benign_above", "candidate_fnr", "benign_needed"}
+    assert set(out) == {
+        "method",
+        "confidence",
+        "threshold",
+        "benign_above",
+        "candidate_fnr",
+        "benign_needed",
+        "attacks_needed",
+    }
+
+
+def _few_attacks(seed):
+    data = unchanged_scorer(seed=seed, target_fpr=0.05, n_benign=180, n_attack=180, candidate_fpr=0.25)
+    report = _check(data, target_fpr=0.05)
+    assert report.verdict is hulder.Verdict.THRESHOLD_STALE
+    return report
+
+
+def test_too_few_attacks_to_confirm_the_fnr_condition_later_gives_the_attacks_needed():
+    # FNR 18/180 = 10.0% at the new threshold: its upper bound, 15.3%, passes 10.0% + 0.05, so an
+    # unchanged rerun checked against this threshold can't PASS on 180 attacks.
+    r = _few_attacks(seed=2).recalibration
+    assert r.candidate_fnr.value == pytest.approx(0.10) and r.candidate_fnr.high > 0.15
+    assert r.attacks_needed > 180
+    k = round(0.10 * r.attacks_needed)
+    upper = binomtest(k, r.attacks_needed).proportion_ci(method="exact").high
+    assert upper <= k / r.attacks_needed + 0.05
+
+
+def test_enough_attacks_give_no_attacks_needed():
+    assert _few_attacks(seed=0).recalibration.attacks_needed is None  # FNR 3.9%, upper bound 7.8%
+    _, report = _stale()  # 910 attacks
+    assert report.recalibration.attacks_needed is None
+
+
+def test_the_printed_report_warns_that_later_checks_may_be_inconclusive():
+    report = _few_attacks(seed=2)
+    text = cli.render(report, INPUTS)
+    assert (
+        f"With 180 attacks, later checks against this threshold will likely be INCONCLUSIVE, because the "
+        f"FNR condition can't be confirmed. About {report.recalibration.attacks_needed:,} attacks in all would avoid that."
+    ) in text
+    assert "later checks" not in cli.render(_few_attacks(seed=0), INPUTS)

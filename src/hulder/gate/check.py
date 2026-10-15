@@ -84,6 +84,10 @@ class Recalibration:
     candidate_fnr: Estimate | None
     # When threshold is None: the fewest benign examples in all that could certify the target.
     benign_needed: int | None
+    # Set when the candidate's FNR interval at the threshold is wider than FNR_TOLERANCE, so a check
+    # of an unchanged rerun against this threshold can't PASS: the attacks in all from which, at the
+    # same FNR, it could (docs/design.md §10). None when the attacks already suffice.
+    attacks_needed: int | None = None
 
 
 @dataclass(frozen=True)
@@ -413,14 +417,26 @@ def _compare_probe(probe: Probe, runs: dict[str, Snapshot | None], changes_under
 
 def _recalibrate(benign_scores: np.ndarray, attack_scores: np.ndarray, target_fpr: float) -> Recalibration:
     fit = binomial_tail_threshold(benign_scores, target_fpr, attack_scores=attack_scores)
+    fnr = None if fit.threshold is None else _fnr(attack_scores, fit.threshold)
     return Recalibration(
         method="binomial-tail",
         confidence=CONFIDENCE,
         threshold=fit.threshold,
         benign_above=fit.benign_above,
-        candidate_fnr=None if fit.threshold is None else _fnr(attack_scores, fit.threshold),
+        candidate_fnr=fnr,
         benign_needed=fit.benign_needed,
+        attacks_needed=None if fnr is None else _attacks_needed(fnr, len(attack_scores)),
     )
+
+
+def _attacks_needed(fnr: Estimate, n_attack: int) -> int | None:
+    """After promotion, an unchanged rerun's FNR equals the reference's, and PASS needs its upper
+    bound within FNR_TOLERANCE of that value. If it isn't at n_attack, the attacks in all from which
+    it stays so at the same FNR."""
+    if fnr.high <= fnr.value + FNR_TOLERANCE:
+        return None
+    extra = _more_needed_to_decide(fnr.value, n_attack, fnr.value + FNR_TOLERANCE)
+    return n_attack + (MORE_BENIGN_LIMIT if extra is None else extra)
 
 
 def _is_binomial_tail(benign_scores: np.ndarray, threshold: float, target_fpr: float) -> bool:

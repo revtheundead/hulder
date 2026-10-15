@@ -995,7 +995,17 @@
         "SCORER DEGRADED": 0.0,
         "INCONCLUSIVE": 0.433
       },
-      "not_calibrated_warning": 0.0
+      "not_calibrated_warning": 0.0,
+      "attacks_needed_warning": {
+        "not warned, PASS": 564,
+        "warned, INCONCLUSIVE": 416,
+        "not warned, INCONCLUSIVE": 17,
+        "warned, PASS": 3
+      },
+      "attacks_needed": {
+        "median": 224.0,
+        "max": 363
+      }
     },
     {
       "n_benign": 1191,
@@ -1011,11 +1021,18 @@
         "SCORER DEGRADED": 0.0,
         "INCONCLUSIVE": 0.0
       },
-      "not_calibrated_warning": 0.0
+      "not_calibrated_warning": 0.0,
+      "attacks_needed_warning": {
+        "not warned, PASS": 1000
+      },
+      "attacks_needed": {
+        "median": null,
+        "max": null
+      }
     }
   ],
   "run_manifest": {
-    "git_commit": "84ca1cbd9774ac760e3c4be5e6b26b7b1f4f7b21",
+    "git_commit": "03b69c2e985a4d365fe0c82bb63af49316b100ab",
     "git_dirty": false,
     "python": "3.12.14",
     "packages": {
