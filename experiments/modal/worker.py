@@ -3,7 +3,7 @@ including the vLLM engine-core process's, lands in one file. Imports vLLM.
 
     python worker.py SPEC.json OUT_DIR
 
-SPEC holds the CaptureConfig fields, the prompts, metadata to add
+SPEC holds the CaptureConfig fields, the prompts, an optional base_model override, metadata to add
 to every snapshot and whether to save snapshots. Writes one Snapshot per captured layer
 (<layer>.npz) and worker.json to OUT_DIR.
 """
@@ -33,9 +33,11 @@ def main(spec_path: str, out_dir: str) -> None:
     start = time.time()
     captured = capture([r["text"] for r in rows], cfg)
     seconds = time.time() - start
-    base_model, warning = base_model_for(cfg.model, cfg.revision, cfg.quantization)
+    base_model, warning = base_model_for(cfg.model, cfg.revision, cfg.quantization, override=spec["base_model"])
     if warning:
-        raise SystemExit(warning)
+        import smoke_lib  # beside this file, in the container and the checkout
+
+        raise SystemExit(smoke_lib.base_model_error(spec["config_name"], warning))
     saved = []
     if spec["save"]:
         for i, layer in enumerate(cfg.layers):

@@ -66,6 +66,20 @@ CONFIGS = {
     "qwen3_4b_fp8_online": ({**COMMON, **QWEN3_4B, "quantization": "fp8"}, 64),
     "qwen3_8b_bf16_load": ({**COMMON, **QWEN3_8B}, 1),
 }
+# config name -> base model, passed to base_model_for as override=. Only for a checkpoint whose
+# base model it can't find; the worker stops with a warning naming the entry to add.
+BASE_MODEL_OVERRIDES: dict[str, str] = {}
+
+
+def base_model_error(config: str, warning: str) -> str:
+    """Why the worker stops on a base_model warning: a snapshot without a base model can't be
+    checked against its reference, so a run here stays strict where the examples carry on."""
+    return (
+        f"{warning}\nThis runner stops rather than record no base model. To resolve it, add "
+        f'"{config}": "<base model>" to BASE_MODEL_OVERRIDES in experiments/modal/smoke_lib.py.'
+    )
+
+
 # Per-run environment for the batch-invariance experiment. Batch-invariant mode on sm_8x swaps
 # mm/addmm/matmul/linear for Triton persistent kernels, sets FlashAttention to one split and turns
 # off AOT compile loading (vLLM 0.30.0, model_executor/determinism/batch_invariant.py).

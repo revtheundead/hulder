@@ -208,6 +208,8 @@ def spec_for(entry: tuple, timeout_s: int) -> dict:
         "config": fields,
         "prompts": lib.smoke_prompts(n),
         "save": n > 1,
+        "config_name": entry[1],
+        "base_model": lib.BASE_MODEL_OVERRIDES.get(entry[1]),
         "env": env,
         "timeout_s": timeout_s,
     }
