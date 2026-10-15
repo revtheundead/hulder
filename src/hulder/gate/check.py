@@ -398,7 +398,7 @@ def _compare_metadata(
         return [f"Only the {given} has metadata, so the two runs' metadata was not compared."], ()
     under_test = set(UNDER_TEST) | set(extra_under_test)
     warnings, changes = [], []
-    if "base_model" not in reference or "base_model" not in candidate:
+    if reference.get("base_model") is None or candidate.get("base_model") is None:
         warnings.append(
             "The base model couldn't be determined for both runs, so the check can't confirm "
             "they serve the same model. Set base_model in the metadata."

@@ -316,8 +316,12 @@ def test_a_key_on_one_side_only_counts_as_a_difference():
     assert "'chat_template' differs" in warning
 
 
-def test_a_missing_base_model_warns_that_it_could_not_be_determined():
+@pytest.mark.parametrize("recorded", ["missing", None], ids=["key missing", "None"])
+def test_a_missing_base_model_warns_that_it_could_not_be_determined(recorded):
+    # snapshot_metadata records the None that base_model_for returns when it can't tell.
     without = {k: v for k, v in _AWQ.items() if k != "base_model"}
+    if recorded is None:
+        without["base_model"] = None
     report = _check_with_meta(_META, without)
     [warning] = report.warnings
     assert "base model" in warning
