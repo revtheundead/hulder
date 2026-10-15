@@ -33,9 +33,11 @@ def main(spec_path: str, out_dir: str) -> None:
     start = time.time()
     captured = capture([r["text"] for r in rows], cfg)
     seconds = time.time() - start
-    base_model, warning = base_model_for(cfg.model, cfg.revision, cfg.quantization, override=spec.get("base_model"))
+    base_model, warning = base_model_for(cfg.model, cfg.revision, cfg.quantization, override=spec["base_model"])
     if warning:
-        raise SystemExit(warning)
+        import smoke_lib  # beside this file, in the container and the checkout
+
+        raise SystemExit(smoke_lib.base_model_error(spec["config_name"], warning))
     saved = []
     if spec["save"]:
         for i, layer in enumerate(cfg.layers):

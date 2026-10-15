@@ -162,8 +162,8 @@ def capture_run(name: str, out: Path) -> None:
     captured = capture([r["text"] for r in rows], cfg)
     seconds = time.time() - start
     base_model, warning = base_model_for(cfg.model, cfg.revision, cfg.quantization)
-    if warning:
-        raise SystemExit(warning)
+    if warning:  # what it assumed; check warns again if no base_model was recorded
+        print(f"warning: {warning}", file=sys.stderr, flush=True)
     hulder.Snapshot(
         ids=np.array([r["id"] for r in rows]),
         labels=np.array([r["label"] for r in rows]),

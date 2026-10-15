@@ -286,6 +286,14 @@ def test_capture_run_saves_the_snapshot_and_its_manifest(tmp_path, fake_engine):
     assert manifest["prompts_sha256"] == demo.prompts_sha256()
 
 
+def test_a_base_model_warning_is_printed_and_the_capture_still_saves(tmp_path, fake_engine, monkeypatch, capsys):
+    warning = "org/m@r's model card couldn't be read (offline). Pass the base model as override= to base_model_for."
+    monkeypatch.setattr(hulder.capture, "base_model_for", lambda model, revision, quantization: (None, warning))
+    demo.capture_run("awq", tmp_path)
+    assert f"warning: {warning}" in capsys.readouterr().err
+    assert hulder.Snapshot.load(tmp_path / "awq.npz").metadata["base_model"] is None
+
+
 def test_a_capture_interrupted_before_its_manifest_lands_leaves_the_old_one_whole(tmp_path, fake_engine, monkeypatch):
     # The manifest is written atomically like the snapshot, so a killed child never leaves half a .json.
     (tmp_path / "awq.json").write_text('{"old": true}')

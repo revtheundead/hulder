@@ -31,11 +31,10 @@ def test_smoke_prompts_refuse_more_than_the_file_holds(tmp_path):
 def test_online_fp8_differs_from_bf16_only_in_quantization():
     bf16, online = lib.CONFIGS["qwen3_4b_bf16"][0], lib.CONFIGS["qwen3_4b_fp8_online"][0]
     assert {k for k in bf16.keys() | online.keys() if bf16.get(k) != online.get(k)} == {"quantization"}
-    assert lib.CONFIGS["qwen3_4b_fp8_online"][2] == "Qwen/Qwen3-4B"  # itself, not its card's parent
 
 
 def test_every_config_pins_a_full_revision_and_thinking_off():
-    for cfg, _, _ in lib.CONFIGS.values():
+    for cfg, _ in lib.CONFIGS.values():
         assert len(cfg["revision"]) == 40
         assert cfg["enable_thinking"] is False
 
@@ -190,3 +189,16 @@ def test_clusters_group_bit_exact_captures_per_config_and_engine_env(tmp_path):
     assert [[m["name"] for m in c] for c in default["clusters"]] == [["r/a", "r/c"], ["r/b"]]
     assert default["between_clusters_relative_l2_mean"]["0 vs 1"][f"layer {lib.LAYERS[0]}"] > 0
     assert [[m["name"] for m in c] for c in by_env[json.dumps(lib.BATCH_INVARIANT)]["clusters"]] == [["r/inv"]]
+
+
+def test_a_base_model_warning_stops_the_run_naming_the_override_that_resolves_it():
+    warning = "Qwen/Qwen3-4B-FP8@96b30dc's model card couldn't be read (offline). Pass the base model as override=."
+    error = lib.base_model_error("qwen3_4b_fp8", warning)
+    assert warning in error
+    assert "BASE_MODEL_OVERRIDES" in error and "experiments/modal/smoke_lib.py" in error
+    assert '"qwen3_4b_fp8": "<base model>"' in error
+
+
+def test_no_config_needs_a_base_model_override():
+    # base_model_for resolves every config's base model itself; an entry here is for unusual checkpoints.
+    assert lib.BASE_MODEL_OVERRIDES == {}

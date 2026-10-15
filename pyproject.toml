@@ -48,8 +48,9 @@ dev = [
     "huggingface-hub",
     "torch",
 ]
-# The fast suite and lint on the base install, as CI runs them.
-test = ["pytest>=8", "ruff==0.16.10"]
+# The fast suite and lint on the base install, as CI runs them. pyyaml so the model-card parsing
+# tests run; test_import still checks that importing hulder never loads it.
+test = ["pytest>=8", "ruff==0.16.10", "pyyaml>=6.0.3"]
 
 [project.scripts]
 hulder = "hulder.cli:main"

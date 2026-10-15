@@ -76,6 +76,7 @@ v0.1 has run only on an RTX 2070 (Turing) in fp16 and AWQ int4, with Qwen2.5-1.5
 - [Live tutorial](docs/tutorial-live.md): the demo captured with vLLM on a GPU, and your own snapshots
 - [Design](docs/design.md): the problem and prior art, the public API, every design decision with the alternatives it rejected, the verdict rule, known limits and roadmap
 - [Results](docs/results/phase1/): every measurement behind v0.1, with the command that reproduces it, including where the gate loses
+- [Changelog](CHANGELOG.md)
 - [Contributing](CONTRIBUTING.md)
 
 Apache-2.0. The bundled demo data is derived from a CC-BY-4.0 dataset, attributed in `src/hulder/data/NOTICE.md`.

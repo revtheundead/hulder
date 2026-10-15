@@ -56,18 +56,30 @@ COMMON = {
     "max_model_len": 1024,
     "max_num_batched_tokens": 1024,
 }
-# name -> (CaptureConfig fields, prompts captured, base_model override). The overrides are needed
-# because base_model_for reads a quantized model's card: Qwen3-4B-FP8's lists its base as a
-# one-element list it doesn't read, and online quantization of Qwen3-4B itself would read Qwen3-4B's
-# card, which names its pretrained parent. The 8B run captures one prompt, only to read the KV-cache
-# headroom bf16 leaves on 24 GB; its activations are dropped.
+# name -> (CaptureConfig fields, prompts captured). base_model_for finds every base model itself:
+# Qwen3-4B-FP8's card names it, and online FP8 of Qwen3-4B is its own base. The 8B run captures one
+# prompt, only to read the KV-cache headroom bf16 leaves on 24 GB; its activations are dropped.
 CONFIGS = {
-    "qwen3_4b_bf16": ({**COMMON, **QWEN3_4B}, 64, None),
-    "qwen3_4b_fp8": ({**COMMON, **QWEN3_4B_FP8}, 64, "Qwen/Qwen3-4B"),
+    "qwen3_4b_bf16": ({**COMMON, **QWEN3_4B}, 64),
+    "qwen3_4b_fp8": ({**COMMON, **QWEN3_4B_FP8}, 64),
     # vLLM's online FP8: bf16 weights quantized at load, per-tensor scales.
-    "qwen3_4b_fp8_online": ({**COMMON, **QWEN3_4B, "quantization": "fp8"}, 64, "Qwen/Qwen3-4B"),
-    "qwen3_8b_bf16_load": ({**COMMON, **QWEN3_8B}, 1, None),
+    "qwen3_4b_fp8_online": ({**COMMON, **QWEN3_4B, "quantization": "fp8"}, 64),
+    "qwen3_8b_bf16_load": ({**COMMON, **QWEN3_8B}, 1),
 }
+# config name -> base model, passed to base_model_for as override=. Only for a checkpoint whose
+# base model it can't find; the worker stops with a warning naming the entry to add.
+BASE_MODEL_OVERRIDES: dict[str, str] = {}
+
+
+def base_model_error(config: str, warning: str) -> str:
+    """Why the worker stops on a base_model warning: a snapshot without a base model can't be
+    checked against its reference, so a run here stays strict where the examples carry on."""
+    return (
+        f"{warning}\nThis runner stops rather than record no base model. To resolve it, add "
+        f'"{config}": "<base model>" to BASE_MODEL_OVERRIDES in experiments/modal/smoke_lib.py.'
+    )
+
+
 # Per-run environment for the batch-invariance experiment. Batch-invariant mode on sm_8x swaps
 # mm/addmm/matmul/linear for Triton persistent kernels, sets FlashAttention to one split and turns
 # off AOT compile loading (vLLM 0.30.0, model_executor/determinism/batch_invariant.py).
