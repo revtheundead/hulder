@@ -10,6 +10,7 @@ from scipy.stats import beta, binomtest, rankdata
 
 from hulder.gate.pairing import PROMPT_IDS_KEY, PairingError, check_pairing
 from hulder.gate.probe import Probe, probe_logits
+from hulder.gate.recalibrate import CONFIDENCE, binomial_tail_threshold
 from hulder.gate.snapshot import Snapshot
 from hulder.gate.validate import example_ids, require_binary_labels
 
@@ -66,8 +67,31 @@ class Estimate:
 
 
 @dataclass(frozen=True)
+class Recalibration:
+    """A new threshold for the same target FPR, fitted on the candidate's benign calibration scores
+    (docs/design.md §6). With probability `confidence` over calibration sets, its FPR is at most
+    the target on traffic like the calibration set. It was fitted on the very scores the verdict
+    read, so confirm it on a fresh candidate snapshot before relying on it."""
+
+    method: str
+    confidence: float
+    # Flag a score strictly above it. None when the benign count can't certify the target.
+    threshold: float | None
+    # Candidate benign scores above the threshold.
+    benign_above: int | None
+    # The candidate's FNR at the threshold, with its Clopper-Pearson CI. Attack scores don't set
+    # the threshold, so the interval is valid.
+    candidate_fnr: Estimate | None
+    # When threshold is None: the fewest benign examples in all that could certify the target.
+    benign_needed: int | None
+
+
+@dataclass(frozen=True)
 class Report:
-    """Plain data: it neither prints nor exits, and compares with ==."""
+    """Plain data: it neither prints nor exits, and compares with ==. Unhashable by design:
+    changes_under_test can hold metadata values such as dicts."""
+
+    __hash__ = None
 
     verdict: Verdict
     # The threshold and target FPR the verdict was judged at, as passed to check.
@@ -119,6 +143,8 @@ class Report:
     # INCONCLUSIVE, and the FPR condition stays undecided up to MORE_BENIGN_LIMIT benign
     # examples in all: more data won't realistically settle it.
     more_benign_beyond_limit: bool = False
+    # Only for THRESHOLD STALE and INCONCLUSIVE (where it is optional): a recalibrated threshold.
+    recalibration: Recalibration | None = None
 
 
 def check(
@@ -207,7 +233,9 @@ def check(
         reference, candidate = expit(reference), expit(candidate)
     benign = labels == 0
     reference_fpr, candidate_fpr = _fpr(reference[benign], threshold), _fpr(candidate[benign], threshold)
-    if not reference_fpr.low <= target_fpr <= reference_fpr.high:
+    if not reference_fpr.low <= target_fpr <= reference_fpr.high and not _is_binomial_tail(
+        reference[benign], threshold, target_fpr
+    ):
         warnings.append(
             f"The reference's FPR at threshold {threshold:.4g} is {reference_fpr.value:.2%} "
             f"[95% CI {reference_fpr.low:.2%}, {reference_fpr.high:.2%}], which excludes the {target_fpr:.2%} target, "
@@ -242,6 +270,9 @@ def check(
         k, n, _ = _flag_rate(candidate[benign], threshold)
         more_benign_needed = _more_needed_to_decide(k / n, n, FPR_BAND_HIGH * target_fpr)
     more_benign_beyond_limit = verdict is Verdict.INCONCLUSIVE and more_benign_needed is None
+    recalibration = None
+    if verdict in (Verdict.THRESHOLD_STALE, Verdict.INCONCLUSIVE):
+        recalibration = _recalibrate(candidate[benign], candidate[~benign], target_fpr)
     flipped = (reference > threshold) != (candidate > threshold)
     floor = {}
     if rerun_identical:
@@ -280,6 +311,7 @@ def check(
         changes_under_test=changes,
         more_benign_needed=more_benign_needed,
         more_benign_beyond_limit=more_benign_beyond_limit,
+        recalibration=recalibration,
         rerun_identical_to_reference=rerun_identical,
         **floor,
         **logit_shift,
@@ -377,6 +409,25 @@ def _compare_probe(probe: Probe, runs: dict[str, Snapshot | None], changes_under
                 f"{reference[key]!r}), so the probe may score activations unlike those it was trained on."
             )
     return warnings
+
+
+def _recalibrate(benign_scores: np.ndarray, attack_scores: np.ndarray, target_fpr: float) -> Recalibration:
+    fit = binomial_tail_threshold(benign_scores, target_fpr, attack_scores=attack_scores)
+    return Recalibration(
+        method="binomial-tail",
+        confidence=CONFIDENCE,
+        threshold=fit.threshold,
+        benign_above=fit.benign_above,
+        candidate_fnr=None if fit.threshold is None else _fnr(attack_scores, fit.threshold),
+        benign_needed=fit.benign_needed,
+    )
+
+
+def _is_binomial_tail(benign_scores: np.ndarray, threshold: float, target_fpr: float) -> bool:
+    """Whether threshold flags as many of these benign scores as their binomial-tail threshold
+    does: a recalibrated threshold promoted with its snapshot, conservative on purpose."""
+    fit = binomial_tail_threshold(benign_scores, target_fpr)
+    return fit.threshold is not None and int((benign_scores > threshold).sum()) == fit.benign_above
 
 
 def _require_finite(**runs: np.ndarray | None) -> None:

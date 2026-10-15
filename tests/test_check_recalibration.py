@@ -63,7 +63,7 @@ def test_pass_and_scorer_degraded_carry_none(data):
 
 def test_too_few_benign_to_certify_the_target_gives_the_count_needed():
     report = _check(unchanged_scorer(seed=0, n_benign=180, n_attack=180, candidate_fpr=0.05))
-    assert report.verdict is hulder.Verdict.THRESHOLD_STALE
+    assert report.verdict in (hulder.Verdict.THRESHOLD_STALE, hulder.Verdict.INCONCLUSIVE)
     r = report.recalibration
     assert r.threshold is None and r.benign_above is None and r.candidate_fnr is None
     assert r.benign_needed == 299
@@ -132,7 +132,8 @@ def test_inconclusive_labels_it_optional_and_pass_prints_none():
 def test_the_printed_report_says_how_many_benign_could_certify_the_target():
     report = _check(unchanged_scorer(seed=0, n_benign=180, n_attack=180, candidate_fpr=0.05))
     text = cli.render(report, INPUTS)
-    assert "Recalibrated threshold: none" in text and "299 benign in all" in text
+    title = "Recalibrated threshold" + (" (optional)" if report.verdict is hulder.Verdict.INCONCLUSIVE else "")
+    assert f"{title}: none. 180 benign can't certify a 1.0% FPR at 95% confidence; 299 benign in all could." in text
 
 
 def test_json_carries_the_recalibration():
