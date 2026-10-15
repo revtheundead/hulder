@@ -26,13 +26,23 @@ class Fit:
     benign_needed: int | None
 
 
-def binomial_tail_threshold(benign_scores: np.ndarray, target_fpr: float, confidence: float = CONFIDENCE) -> Fit:
+def binomial_tail_threshold(
+    benign_scores: np.ndarray,
+    target_fpr: float,
+    confidence: float = CONFIDENCE,
+    *,
+    attack_scores: np.ndarray | None = None,
+) -> Fit:
     """The most permissive threshold whose FPR is at most target_fpr with the given confidence.
 
     With j benign scores allowed above it, the threshold's true FPR exceeds the target only if at
     most j of n benign draws land above the target's quantile, which has probability
     P(Bin(n, target_fpr) <= j). So j is the largest count with that probability at most
-    1 - confidence. Ties can only leave fewer than j above it, which is conservative."""
+    1 - confidence. Ties can only leave fewer than j above it, which is conservative.
+
+    The threshold is then rounded up to a short decimal that flags the same calibration
+    examples, benign and, when attack_scores are given, attack, so the candidate's FNR at it
+    is what the order statistic itself would give."""
     scores = np.sort(np.asarray(benign_scores, dtype=np.float64))
     n = len(scores)
     _validate(n, target_fpr)
@@ -46,8 +56,9 @@ def binomial_tail_threshold(benign_scores: np.ndarray, target_fpr: float, confid
         needed = math.ceil(math.log(delta) / math.log1p(-target_fpr))
         return Fit(threshold=None, benign_above=None, benign_needed=needed)
     last_unflagged = scores[n - allowed - 1]
-    higher = scores[scores > last_unflagged]
-    threshold = short_threshold(last_unflagged, higher[0] if len(higher) else math.inf)
+    every = scores if attack_scores is None else np.r_[scores, np.asarray(attack_scores, dtype=np.float64)]
+    higher = every[every > last_unflagged]
+    threshold = short_threshold(last_unflagged, float(higher.min()) if len(higher) else math.inf)
     return Fit(threshold=threshold, benign_above=int((scores > threshold).sum()), benign_needed=None)
 
 

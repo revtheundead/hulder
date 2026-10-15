@@ -46,6 +46,14 @@ def test_the_threshold_is_the_shortest_decimal_that_flags_the_same_benign():
     assert fit.threshold == 0.45  # in [0.441032871, 0.4523), and printed exactly as passed back
 
 
+def test_rounding_up_never_unflags_a_calibration_attack():
+    benign = np.r_[np.linspace(0.0, 0.43, 176), [0.441032871, 0.6, 0.7, 0.8]]
+    # Without attacks the gap [0.441032871, 0.6) allows 0.5; the attack at 0.4417 caps it.
+    assert binomial_tail_threshold(benign, 0.05).threshold == 0.5
+    fit = binomial_tail_threshold(benign, 0.05, attack_scores=np.array([0.2, 0.4417, 0.9]))
+    assert fit.threshold == 0.4411 and fit.threshold < 0.4417
+
+
 @pytest.mark.parametrize(
     ("lo", "hi", "expected"),
     [
