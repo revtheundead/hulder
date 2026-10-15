@@ -1,0 +1,108 @@
+{
+  "run_id": "20261015T114213Z",
+  "experiment": "two_path_census",
+  "single_use": true,
+  "commit": "a04e0708074b433d55e5dfbc0e6962b7585573ef",
+  "command": "uv run --with modal==1.6.1 modal run experiments/modal/capture.py --experiment two_path_census",
+  "modal": "1.6.1",
+  "rates_usd_per_s": {
+    "L4": 0.000222,
+    "cpu_core": 1.31e-05,
+    "memory_gib": 2.22e-06
+  },
+  "spent_before_usd": 0.9,
+  "containers": [
+    {
+      "labels": [
+        "a_default_1",
+        "a_default_2",
+        "a_default_3",
+        "a_default_4",
+        "a_default_5",
+        "a_invariant"
+      ],
+      "wall_seconds": 312.3,
+      "estimated_usd": 0.1079
+    },
+    {
+      "labels": [
+        "b_default_1",
+        "b_default_2",
+        "b_default_3",
+        "b_default_4",
+        "b_default_5",
+        "b_invariant"
+      ],
+      "wall_seconds": 380.8,
+      "estimated_usd": 0.1315
+    }
+  ],
+  "configs": {
+    "a_default_1": {
+      "container": 0,
+      "config": "qwen3_4b_bf16",
+      "returncode": 0
+    },
+    "a_default_2": {
+      "container": 0,
+      "config": "qwen3_4b_bf16",
+      "returncode": 0
+    },
+    "a_default_3": {
+      "container": 0,
+      "config": "qwen3_4b_bf16",
+      "returncode": 0
+    },
+    "a_default_4": {
+      "container": 0,
+      "config": "qwen3_4b_bf16",
+      "returncode": 0
+    },
+    "a_default_5": {
+      "container": 0,
+      "config": "qwen3_4b_bf16",
+      "returncode": 0
+    },
+    "a_invariant": {
+      "container": 0,
+      "config": "qwen3_4b_bf16",
+      "returncode": 0
+    },
+    "b_default_1": {
+      "container": 1,
+      "config": "qwen3_4b_bf16",
+      "returncode": 0
+    },
+    "b_default_2": {
+      "container": 1,
+      "config": "qwen3_4b_bf16",
+      "returncode": 0
+    },
+    "b_default_3": {
+      "container": 1,
+      "config": "qwen3_4b_bf16",
+      "returncode": 0
+    },
+    "b_default_4": {
+      "container": 1,
+      "config": "qwen3_4b_bf16",
+      "returncode": 0
+    },
+    "b_default_5": {
+      "container": 1,
+      "config": "qwen3_4b_bf16",
+      "returncode": 0
+    },
+    "b_invariant": {
+      "container": 1,
+      "config": "qwen3_4b_bf16",
+      "returncode": 0
+    }
+  },
+  "download": {
+    "seconds": 1.6,
+    "wall_seconds": 7.6,
+    "estimated_usd": 0.0003
+  },
+  "estimated_usd": 0.2397
+}

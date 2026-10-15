@@ -123,11 +123,11 @@ EXPERIMENTS = {
         False,
         10 * 60,
     ),
-    # The cause of the two bf16 paths: ten default engines, traced, so at a minority rate near 2 in 8 at least one
-    # lands on the other path with probability 1 - 0.75**10 = 94%, and its cuBLASLt algorithms can be
-    # diffed against the majority's. Each container ends with one batch-invariant engine, to test that
-    # mode's path across containers against the 2026-10-13 run. Single-use, so two fresh containers.
-    # 8 minutes per config: the slowest traced engine so far took about 210 s.
+    # The cause of the two bf16 paths (docs/design.md §10). Ten default engines, traced, so at a minority
+    # rate near 2 in 8 at least one lands on the other path with probability 1 - 0.75**10 = 94%, and its
+    # cuBLASLt algorithms can be diffed against the majority's. Each container ends with one batch-invariant
+    # engine, to test that mode's path across containers against the 2026-10-13 run. Single-use, so two
+    # fresh containers. 8 minutes per config: the slowest traced engine so far took about 210 s.
     "two_path_census": (
         [
             [
