@@ -1,6 +1,6 @@
 from importlib.metadata import version
 
-from hulder.gate.check import Estimate, Report, Verdict, check, check_snapshots
+from hulder.gate.check import Estimate, Recalibration, Report, Verdict, check, check_snapshots
 from hulder.gate.pairing import PairingError, prompt_ids_sha256
 from hulder.gate.probe import Probe, apply_probe
 from hulder.gate.snapshot import Snapshot
@@ -9,6 +9,7 @@ __all__ = [
     "Estimate",
     "PairingError",
     "Probe",
+    "Recalibration",
     "Report",
     "Snapshot",
     "Verdict",

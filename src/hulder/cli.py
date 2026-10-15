@@ -227,6 +227,8 @@ def render(report: Report, inputs: dict) -> str:
     else:
         lines.append("Changes under test: none found in the metadata")
     lines += ["", f"Verdict: {report.verdict.value}", *_more_benign(report), ""]
+    if report.recalibration is not None:
+        lines += [*_recalibration(report), ""]
     lines += _performance(report)
     lines += [""] + _shift(report)
     if report.warnings:
@@ -254,6 +256,42 @@ def _more_benign(report: Report) -> list[str]:
     if report.more_benign_needed > EDGE_FACTOR * report.n_benign:
         lines.append(f"  Caveat: {EDGE_CAVEAT}.")
     return lines
+
+
+def _recalibration(report: Report) -> list[str]:
+    r = report.recalibration
+    title = "Recalibrated threshold" + (" (optional)" if report.verdict is Verdict.INCONCLUSIVE else "")
+    if r.threshold is None:
+        return [
+            (
+                f"{title}: none. {report.n_benign:,} benign can't certify a {report.target_fpr:.1%} FPR "
+                f"at {r.confidence:.0%} confidence; {r.benign_needed:,} benign in all could."
+            )
+        ]
+    fnr = r.candidate_fnr
+    return [
+        f"{title}  {r.threshold!r} for a {report.target_fpr:.1%} target FPR ({r.method}, {r.confidence:.0%} confidence)",
+        (
+            f"  {r.benign_above} of {report.n_benign:,} benign above it. With {r.confidence:.0%} confidence "
+            f"its FPR is at most {report.target_fpr:.1%} on traffic like this calibration set."
+        ),
+        f"  Candidate FNR at {r.threshold!r}: {fnr.value:.1%} [{fnr.low:.1%}, {fnr.high:.1%}]",
+        *(
+            [
+                (
+                    f"  With {report.n_attack:,} attacks, later checks against this threshold will likely be "
+                    "INCONCLUSIVE, because the FNR condition can't be confirmed. "
+                    f"About {r.attacks_needed:,} attacks in all would avoid that."
+                )
+            ]
+            if r.attacks_needed is not None
+            else []
+        ),
+        (
+            "  It was fitted on this candidate's calibration scores, "
+            "so confirm it on a fresh candidate snapshot before relying on it."
+        ),
+    ]
 
 
 def _performance(report: Report) -> list[str]:

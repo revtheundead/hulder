@@ -20,6 +20,11 @@ Changes under test (reference -> candidate)
 Verdict: INCONCLUSIVE
   300 more benign examples would settle the FPR condition, if the observed rate held.
 
+Recalibrated threshold (optional)  0.5391 for a 5.0% target FPR (binomial-tail, 95% confidence)
+  3 of 180 benign above it. With 95% confidence its FPR is at most 5.0% on traffic like this calibration set.
+  Candidate FNR at 0.5391: 4.4% [1.9%, 8.6%]
+  It was fitted on this candidate's calibration scores, so confirm it on a fresh candidate snapshot before relying on it.
+
 Performance at threshold 0.3952   reference                 candidate
   FPR                             4.4% [1.9%, 8.6%]         7.2% [3.9%, 12.0%]
   FNR                             0.0% [0.0%, 2.0%]         0.0% [0.0%, 2.0%]
@@ -54,9 +59,11 @@ Exit code 12 (INCONCLUSIVE)
 
 **Why INCONCLUSIVE.** Question 1 is the open one. The candidate's FPR interval, [3.9%, 12.0%], straddles the 10.0% line. The data can't rule out an FPR above the tolerance, so it can't PASS. It can't confirm one either, which would need the whole interval above 10.0% and would make the verdict THRESHOLD STALE. "300 more benign examples would settle the FPR condition, if the observed rate held" means that if the candidate kept flagging 7.2% of benign prompts, 300 more of them would pull the interval's upper end below 10.0%. It's an estimate, not a promise.
 
+**The recalibrated threshold.** If the threshold is what's wrong, this is the replacement for the same 5.0% target, fitted on the candidate's own benign scores. It's labelled optional because the verdict is INCONCLUSIVE, not THRESHOLD STALE. It allows only 3 of the 180 benign scores above it, fewer than one in twenty, because it must keep the FPR at or below 5.0% for 95% of the calibration sets this one could have been. That caution has a price. At 0.5391 the candidate misses 4.4% of attacks, where at 0.3952 it missed none. It was fitted on the same scores this report reads, so check it on a fresh candidate snapshot before relying on it. Passing `--threshold 0.5391` reproduces it exactly.
+
 **Shift and the noise floor.** This section never decides the verdict. It says whether the change moved the scorer at all. Prompt by prompt against the reference, the candidate flipped 11 decisions (3.1%) and moved scores by 0.0515 on average. The rerun flipped 0 and moved them by 0.000208, because GPU runs aren't bit-identical. That rerun is the noise floor, how much scores move when nothing changed. Δlogit is the same comparison on the probe's raw output before the sigmoid, 0.502 against 0.00197. The candidate's excess over the rerun is 0.0513 with interval [0.0457, 0.0577], clear of zero, so it exceeds the noise floor. Without `--noise-floor`, as in check 1, this reads "not measured".
 
-**THRESHOLD STALE or SCORER DEGRADED.** Two other verdicts can come out of a real change, and they need different fixes. THRESHOLD STALE means scores moved but the ranking survived. The probe still separates attacks from benign prompts as well as before, and only the cut-off is in the wrong place. The fix is to recalibrate, picking a new threshold on the candidate's benign scores for the same target FPR, with no retraining. v0.1 reports the verdict only. SCORER DEGRADED means the ranking itself is damaged, because the ΔAUROC upper bound fell below -0.02. No threshold fixes that, so the probe has to be retrained on activations from the new config.
+**THRESHOLD STALE or SCORER DEGRADED.** Two other verdicts can come out of a real change, and they need different fixes. THRESHOLD STALE means scores moved but the ranking survived. The probe still separates attacks from benign prompts as well as before, and only the cut-off is in the wrong place. The fix is to recalibrate, picking a new threshold on the candidate's benign scores for the same target FPR, with no retraining. The report proposes one, as above. SCORER DEGRADED means the ranking itself is damaged, because the ΔAUROC upper bound fell below -0.02. No threshold fixes that, so the probe has to be retrained on activations from the new config.
 
 ## Reproduce it
 

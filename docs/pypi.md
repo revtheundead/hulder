@@ -22,7 +22,7 @@ hulder quickstart
 
 It runs two checks on bundled activations from Qwen2.5-1.5B-Instruct in a few seconds on CPU, with a demo probe that shows how the gate works and is not a prompt-attack monitor. A second fp16 run as the candidate gives PASS. The official AWQ int4 checkpoint flips 11 decisions and moves scores far beyond the rerun's noise floor, but with 180 benign examples the gate can't yet say whether the false-positive rate crossed its tolerance, so it gives INCONCLUSIVE. `hulder check --help` lists the options.
 
-v0.1 has run only on an RTX 2070 (Turing) in fp16 and AWQ int4. Its tolerance bands are fixed, and THRESHOLD STALE doesn't yet propose a new threshold.
+v0.1 has run only on an RTX 2070 (Turing) in fp16 and AWQ int4. Its tolerance bands are fixed, and the threshold THRESHOLD STALE proposes misses more attacks in exchange for its FPR guarantee.
 
 ## More
 

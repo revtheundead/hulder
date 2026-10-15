@@ -2,6 +2,17 @@
 
 Notable changes to hulder. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html). `hulder.capture` is experimental, so its names may change in any 0.x release (`docs/design.md` §4).
 
+## [Unreleased]
+
+### Added
+
+- THRESHOLD STALE, and INCONCLUSIVE as optional, propose a recalibrated threshold for the same target FPR, fitted on the candidate's benign scores. With 95% confidence over calibration sets its FPR is at most the target (a binomial-tail bound). The report gives the candidate's FNR at it, or the number of benign examples that could certify the target when there are too few, 299 at a 1% target. It is fitted on the scores the verdict read, so confirm it on a fresh candidate snapshot. With too few attacks to confirm the FNR condition at the new threshold later, the report warns that later checks will likely be INCONCLUSIVE and gives the attacks that would avoid it (`Recalibration.attacks_needed`). `Report.recalibration` and `--json` carry it, and `Recalibration` joins `hulder.__all__`. Measured in `docs/results/phase2/recalibration.md`.
+
+### Changed
+
+- A threshold that flags as many reference benign scores as their own binomial-tail fit no longer draws the warning that it wasn't calibrated on the reference snapshot, so a promoted recalibrated threshold checks cleanly.
+- `Report` is unhashable by design. 0.1 advertised hashing and raised `TypeError` when a change under test held a dict.
+
 ## [0.1.1] - 2026-10-15
 
 ### Fixed

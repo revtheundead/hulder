@@ -13,6 +13,7 @@ PUBLIC = [
     "Estimate",
     "PairingError",
     "Probe",
+    "Recalibration",
     "Report",
     "Snapshot",
     "Verdict",
