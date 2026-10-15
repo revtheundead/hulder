@@ -63,6 +63,35 @@ def test_the_batch_invariant_experiment_logs_cublas_on_default_runs_only_and_fit
     assert 0.86 + lib.worst_case_cost(len(group), timeout_s) <= lib.BUDGET_USD  # spent today, estimated
 
 
+def test_the_two_path_census_traces_five_defaults_then_one_invariant_in_each_of_two_containers():
+    containers, single_use, timeout_s = lib.EXPERIMENTS["two_path_census"]
+    assert single_use and len(containers) == 2 and timeout_s == 8 * 60
+    for group in containers:
+        assert [e[1] for e in group] == ["qwen3_4b_bf16"] * 6
+        assert [e[2] for e in group] == [{lib.CUBLAS_LOG: "1"}] * 5 + [lib.BATCH_INVARIANT]
+    worst = sum(lib.worst_case_cost(len(group), timeout_s) for group in containers)
+    assert 0.90 + worst <= lib.BUDGET_USD  # spent on 2026-10-15 before the run, from Modal's usage page
+
+
+TRACE_LINE = (
+    "[2026-10-13 15:11:50][cublasLt][{pid}][Trace][cublasLtTSTMatmul] A=0X2B3FD{ptr} "
+    "Adesc=[type=R_16BF rows=2560 cols=6144 ld=2560] workSpace=0X0 algo=[algoId={algo} tile=MATMUL_TILE_128x128] "
+    "stream=0X0\n"
+)
+
+
+def test_matmul_signatures_read_raw_traces_fingerprints_and_old_summaries_alike():
+    raw = TRACE_LINE.format(pid=1234, ptr="0000000", algo=5) * 3
+    fingerprint = "\n".join(lib.cublas_fingerprint(raw))
+    # The 2026-10-13 batch_invariant run kept count-prefixed lines without timestamps (cublas_summary.txt).
+    summary = "      3 " + TRACE_LINE.format(pid=99, ptr="27A3000", algo=5).split("]", 1)[1]
+    other = TRACE_LINE.format(pid=1234, ptr="0000000", algo=21)
+    [signature] = lib.matmul_signatures(raw)
+    assert lib.matmul_signatures(fingerprint) == lib.matmul_signatures(summary) == {signature}
+    assert signature.startswith("[cublasLt]") and "algoId=5" in signature and "0X" not in signature
+    assert lib.matmul_signatures(other) != {signature}
+
+
 def test_cublas_fingerprint_keeps_shapes_and_algorithms_and_drops_pointers_times_and_pids():
     line = (
         "[2026-10-13 15:11:50][cublasLt][{pid}][Trace][cublasLtTSTMatmul] A=0X2B3FD{ptr} "
@@ -202,3 +231,35 @@ def test_a_base_model_warning_stops_the_run_naming_the_override_that_resolves_it
 def test_no_config_needs_a_base_model_override():
     # base_model_for resolves every config's base model itself; an entry here is for unusual checkpoints.
     assert lib.BASE_MODEL_OVERRIDES == {}
+
+
+def test_clusters_report_which_captures_chose_the_same_cublas_algorithms(tmp_path):
+    import clusters
+
+    import hulder
+
+    ids, labels = np.array([f"p{i}" for i in range(4)]), np.array([0, 0, 1, 1])
+    acts = {layer: np.ones((4, 8), np.float16) for layer in lib.LAYERS}
+    traces = {  # label -> (file, contents); "untraced" has no trace
+        "a": ("cublas_fingerprint.txt", "\n".join(lib.cublas_fingerprint(TRACE_LINE.format(pid=1, ptr="0", algo=5)))),
+        "old": ("cublas_summary.txt", "      2 " + TRACE_LINE.format(pid=2, ptr="0", algo=5).split("]", 1)[1]),
+        "b": ("cublas_fingerprint.txt", "\n".join(lib.cublas_fingerprint(TRACE_LINE.format(pid=3, ptr="0", algo=21)))),
+        "untraced": None,
+    }
+    for label, trace in traces.items():
+        (tmp_path / label).mkdir()
+        worker = {"capture_config": {"model": "m"}, "snapshots": ["x"]}
+        manifest = {"nvidia_smi": "NVIDIA L4, GPU-1, 580.95.05, 23034 MiB", "engine_env": {}, "worker": worker}
+        (tmp_path / label / "manifest.json").write_text(json.dumps(manifest))
+        if trace:
+            (tmp_path / label / trace[0]).write_text(trace[1])
+        for layer, a in acts.items():
+            hulder.Snapshot(ids=ids, labels=labels, activations=a).save(tmp_path / label / f"{layer}")
+    (tmp_path / "manifest.json").write_text(json.dumps({"run_id": "r", "configs": {k: {} for k in traces}}))
+    [result] = clusters.clusters(clusters.members([tmp_path]))
+    sets = result["cublas_signature_sets"]
+    assert [s["members"] for s in sets] == [["r/a", "r/old"], ["r/b"]]
+    assert sets[0]["signatures"] == 1 and "only_here" not in sets[0]
+    [only_b], [only_first] = sets[1]["only_here"], sets[1]["only_in_first"]
+    assert "algoId=21" in only_b and "algoId=5" in only_first
+    assert result["untraced"] == ["r/untraced"]
