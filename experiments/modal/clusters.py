@@ -6,6 +6,8 @@ logging) are kept apart.
 
 Writes OUT.json and prints it. Each cluster lists its members as <run id>/<label>, with GPU UUID,
 driver, container and position in the container, so what a cluster's members share can be read off.
+Captures with a cuBLASLt trace (cublas_fingerprint.txt, or the 2026-10-13 run's cublas_summary.txt)
+are also grouped by the set of matmul algorithms they chose, each set diffed against the first.
 """
 
 import json
@@ -38,6 +40,8 @@ def members(run_dirs: list[Path]) -> list[dict]:
             position[container] = position.get(container, 0) + 1
             _, uuid, driver, _ = (f.strip() for f in manifest["nvidia_smi"].split(","))
             config = manifest["worker"]["capture_config"]
+            traces = [run_dir / label / name for name in ("cublas_fingerprint.txt", "cublas_summary.txt")]
+            trace = next((p for p in traces if p.exists()), None)
             found.append(
                 {
                     "name": f"{run['run_id']}/{label}",
@@ -47,6 +51,7 @@ def members(run_dirs: list[Path]) -> list[dict]:
                     "gpu_driver": driver,
                     "container": f"{run['run_id']}#{container}",
                     "position_in_container": position[container],
+                    "cublas": lib.matmul_signatures(trace.read_text(errors="replace")) if trace else None,
                 }
             )
     return found
@@ -87,8 +92,32 @@ def clusters(found: list[dict]) -> list[dict]:
                 "identity": json.loads(identity),
                 "clusters": [[{k: m[k] for k in keep} for m in c] for c in exact],
                 "between_clusters_relative_l2_mean": between,
+                "cublas_signature_sets": signature_sets(group),
+                "untraced": [m["name"] for m in group if m["cublas"] is None],
             }
         )
+    return out
+
+
+def signature_sets(group: list[dict]) -> list[dict]:
+    """The traced captures grouped by the exact set of cuBLASLt matmul algorithms they chose, in
+    order of first appearance, each later set with what it has and lacks against the first."""
+    sets: list[tuple[set[str], list[str]]] = []
+    for m in group:
+        if m["cublas"] is None:
+            continue
+        home = next((names for sigs, names in sets if sigs == m["cublas"]), None)
+        if home is None:
+            sets.append((m["cublas"], [m["name"]]))
+        else:
+            home.append(m["name"])
+    out = []
+    for i, (sigs, names) in enumerate(sets):
+        entry: dict = {"members": names, "signatures": len(sigs)}
+        if i:
+            entry["only_here"] = sorted(sigs - sets[0][0])
+            entry["only_in_first"] = sorted(sets[0][0] - sigs)
+        out.append(entry)
     return out
 
 

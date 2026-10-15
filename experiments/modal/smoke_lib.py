@@ -123,6 +123,22 @@ EXPERIMENTS = {
         False,
         10 * 60,
     ),
+    # The cause of the two bf16 paths: ten default engines, traced, so at a minority rate near 2 in 8 at least one
+    # lands on the other path with probability 1 - 0.75**10 = 94%, and its cuBLASLt algorithms can be
+    # diffed against the majority's. Each container ends with one batch-invariant engine, to test that
+    # mode's path across containers against the 2026-10-13 run. Single-use, so two fresh containers.
+    # 8 minutes per config: the slowest traced engine so far took about 210 s.
+    "two_path_census": (
+        [
+            [
+                *((f"{c}_default_{i}", "qwen3_4b_bf16", {CUBLAS_LOG: "1"}) for i in range(1, 6)),
+                (f"{c}_invariant", "qwen3_4b_bf16", BATCH_INVARIANT),
+            ]
+            for c in "ab"
+        ],
+        True,
+        8 * 60,
+    ),
 }
 
 
@@ -183,6 +199,21 @@ def cublas_log_env(out_dir: str) -> dict:
     return {"CUBLASLT_LOG_LEVEL": "2", "CUBLASLT_LOG_FILE": f"{out_dir}/cublaslt.%i.log"}
 
 
+def _normalised_matmul(line: str) -> str:
+    """A cuBLASLt matmul line from "[cublasLt]" on, with process id and pointers taken out."""
+    line = line[line.index("[cublasLt]") :]
+    line = re.sub(r"\[\d+\]", "[N]", line)  # process id
+    line = re.sub(r"\b([A-D]|workSpace|stream)=0x[0-9a-f]+\s*", "", line, flags=re.IGNORECASE)
+    return re.sub(r"\s+", " ", line).strip()
+
+
+def matmul_signatures(text: str) -> set[str]:
+    """The distinct cuBLASLt matmul calls (shapes, compute type, chosen algorithm) in a raw trace, a
+    cublas_fingerprint file or a 2026-10-13 cublas_summary.txt, without counts. Two runs whose sets
+    differ chose different GEMM algorithms somewhere."""
+    return {_normalised_matmul(line) for line in text.splitlines() if "Matmul]" in line and "[cublasLt]" in line}
+
+
 def cublas_fingerprint(log: str) -> list[str]:
     """Each distinct cuBLASLt matmul call (operand shapes, compute type and chosen algorithm) with
     pointers and process ids taken out, prefixed by how often it occurred. Two runs that chose
@@ -190,12 +221,9 @@ def cublas_fingerprint(log: str) -> list[str]:
     the eager GEMMs only."""
     counts: dict[str, int] = {}
     for line in log.splitlines():
-        if "Matmul]" not in line:
+        if "Matmul]" not in line or "[cublasLt]" not in line:
             continue
-        line = re.sub(r"^\[[^]]*\]", "", line)  # timestamp
-        line = re.sub(r"\[\d+\]", "[N]", line)  # process id
-        line = re.sub(r"\b([A-D]|workSpace|stream)=0x[0-9a-f]+\s*", "", line, flags=re.IGNORECASE)
-        line = re.sub(r"\s+", " ", line).strip()
+        line = _normalised_matmul(line)
         counts[line] = counts.get(line, 0) + 1
     return [f"{n:6d} {line}" for line, n in sorted(counts.items())]
 
