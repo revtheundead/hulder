@@ -65,7 +65,7 @@ A team serves a ~9B open model on vLLM in bf16, with a prompt-attack probe on la
 
 They capture layer-20 activations for a labelled calibration set under each serving config: the reference twice, so the gate can measure the noise floor, and the candidate once. v0.1 has no capture command. The `vllm` extra's `hulder.capture` runs vLLM offline with the extraction settings of §5, or any other capture works. Its `capture`, `CaptureConfig` and `snapshot_metadata` are public but experimental in v0.1 and may change in 0.x (§4). Each run is saved as a `Snapshot`, and `hulder check` compares the candidate with the reference on CPU. The live tutorial's "Your own serving change" (`docs/tutorial-live.md`) shows the code, and `docs/reading-a-report.md` walks through real output on the bundled fp16 vs AWQ int4 demo. In this FP8 scenario the verdict would read THRESHOLD STALE and the exit code 10.
 
-A THRESHOLD STALE verdict means the scorer still separates the classes but the threshold no longer gives the target FPR, so it needs recalibrating on the candidate. The report proposes a recalibrated threshold for the same target FPR, fitted on the candidate's benign scores (§6), to confirm on a fresh candidate snapshot before relying on it. From Python, `hulder.check_snapshots(reference, candidate, rerun, threshold=..., target_fpr=..., probe=probe)` does what the CLI does on loaded `Snapshot`s and returns the `Report`. `hulder.check` takes plain arrays. Scores from any other scorer go in as JSONL instead of snapshots (v0.2, §11).
+A THRESHOLD STALE verdict means the scorer still separates the classes but the threshold no longer gives the target FPR, so it needs recalibrating on the candidate. The report proposes a recalibrated threshold for the same target FPR, fitted on the candidate's benign scores (§6), to confirm on a fresh candidate snapshot before relying on it. From Python, `hulder.check_snapshots(reference, candidate, rerun, threshold=..., target_fpr=..., probe=probe)` does what the CLI does on loaded `Snapshot`s and returns the `Report`. `hulder.check` takes plain arrays. Scores from any other scorer go in as JSONL instead of snapshots (`examples/scores_jsonl/`).
 
 The other important verdict is `SCORER DEGRADED` (e.g. AUROC falls to 0.81), where no threshold fixes it and the probe must be retrained on the new config. **The scenario's numbers (0.730, 3.4%, 0.81) are illustrative.**
 
@@ -115,7 +115,7 @@ control plane (stretch): probe registry (versions, thresholds) · rollout contro
  bundled sample data ───┘                          │ scores
                                                    ▼
  bring-your-own scores ───────scores──► check(reference, candidate, labels,
-  (JSONL, v0.2)                               threshold, target_fpr) ──► Report
+  (JSONL)                                     threshold, target_fpr) ──► Report
                                                    │
                                                    ▼
                               CLI: parse args · call check · print Report · exit code
@@ -128,7 +128,7 @@ control plane (stretch): probe registry (versions, thresholds) · rollout contro
 | Gate library (`check`, `apply_probe`) | Paired shift test, performance CIs, recalibration, verdict, returned as a `Report`. Numpy only | **Deep (stats)** |
 | CLI | Parse arguments, load inputs, call the library, print the report, set the exit code. No statistics | Thin |
 | Snapshot capture (`hulder[vllm]`) | Extract activations from vLLM for a calibration set and save them with a run manifest | Medium |
-| Score loader | Read bring-your-own scores (JSONL of id, score and label per serving config) and align the two configs by id (v0.2) | Thin |
+| Score loader | Read bring-your-own scores (JSONL of id, score and label per serving config, with an optional metadata line) and align the other runs to the reference by id. The CLI picks the format from each file's extension, or `--input-format` | Thin |
 | Probe training (`hulder[train]`) | Train a logistic regression probe on captured activations, export it | Simple on purpose |
 | In-server scoring | Compute probe score inside vLLM without breaking CUDA graphs or syncing the hot path; return per-request scores | **Deep (systems)** |
 | Gateway + policy | Per-route thresholds, fail-open/fail-closed, escalation decisions | Medium |
@@ -375,7 +375,7 @@ hulder/
 
 v0.1 is the gate on activation probes: `hulder check` and `hulder quickstart` on CPU, `hulder.capture` for vLLM, and the live tutorial on a local GPU. Next, in priority order:
 
-- **v0.2, gate complete.** A recalibrated threshold for THRESHOLD STALE, binomial-tail at 95% confidence (§6). Bring-your-own scores as JSONL of id, score and label per serving config.
+- **v0.2, gate complete.** A recalibrated threshold for THRESHOLD STALE, binomial-tail at 95% confidence (§6). Bring-your-own scores as JSONL of id, score and label per serving config (`examples/scores_jsonl/`).
 - **After v0.2, smaller items.** A GitHub Action wrapping the CLI. A second worked example, semantic-cache similarity at fp32 vs int8 on CPU (§7). Holm correction when checking several candidates at once (§6). An FNR condition that compares reference and candidate on the same attacks, so an unchanged scorer can PASS on a few hundred attacks (§10). A `hulder snapshot` command around `hulder.capture`. A rerun of the candidate as the noise floor (`--rerun-of candidate`). Configurable tolerance bands, recorded in the report. The multivariate shift diagnostic of §6 (MMD on activations). Equality for `Snapshot`.
 - **v0.3, runtime plugin.** In-server probe scoring with CUDA graphs on (D1, D3), metrics and drift alarms, with overhead measured against a no-probe baseline and `vllm-lens`.
 - **Benchmarks page.** Qwen3-4B or Qwen3-8B in bf16 against FP8, AWQ and FP8 KV cache on an L4, with the noise floor, 2 to 3 layers and the token-position ablation (§5 D2, §7).
