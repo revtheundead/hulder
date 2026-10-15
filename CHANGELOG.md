@@ -10,7 +10,7 @@ Notable changes to hulder. The format follows [Keep a Changelog](https://keepach
 - `base_model_for` reads a model card's `base_model` written as a one-element list, the form official FP8 checkpoints such as `Qwen/Qwen3-4B-FP8` use. 0.1.0 recorded no base model and warned.
 - `base_model_for` treats online quantization, where vLLM quantizes an unquantized checkpoint at load (for example `quantization="fp8"`), as the model itself. 0.1.0 read the card's pretrained parent instead, so `check` reported a model swap against the unquantized reference.
 - A checkpoint quantized before upload and captured with `quantization=None`, which vLLM detects from its `config.json`, takes its card's base model. 0.1.0 recorded the checkpoint itself, so `check` reported a model swap.
-- `check` warns when a snapshot records `base_model` as None, as it already did when the key was missing. 0.1.0 compared such a run without a warning.
+- `check` gives its base-model warning when a snapshot records `base_model` as None, as it does when the key is missing. 0.1.0 gave it only for a missing key, so a None was flagged only by the probe comparison, when a probe was applied. Verdicts, exit codes and report figures are unchanged.
 
 ### Changed
 
