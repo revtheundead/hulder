@@ -276,6 +276,17 @@ def _recalibration(report: Report) -> list[str]:
             f"its FPR is at most {report.target_fpr:.1%} on traffic like this calibration set."
         ),
         f"  Candidate FNR at {r.threshold!r}: {fnr.value:.1%} [{fnr.low:.1%}, {fnr.high:.1%}]",
+        *(
+            [
+                (
+                    f"  With {report.n_attack:,} attacks, later checks against this threshold will likely be "
+                    "INCONCLUSIVE, because the FNR condition can't be confirmed. "
+                    f"About {r.attacks_needed:,} attacks in all would avoid that."
+                )
+            ]
+            if r.attacks_needed is not None
+            else []
+        ),
         (
             "  It was fitted on this candidate's calibration scores, "
             "so confirm it on a fresh candidate snapshot before relying on it."
