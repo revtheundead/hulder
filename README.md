@@ -66,6 +66,8 @@ hulder check --probe probe.npz --reference ref.npz --noise-floor ref_rerun.npz -
 
 The [live tutorial](docs/tutorial-live.md) captures the demo with vLLM on a GPU and shows how to save your own snapshots. `hulder check --help` lists the options, and `hulder.check_snapshots` and `hulder.check` do the same from Python.
 
+Any other scorer, such as an embedding similarity or a guard model's probability, can bring its own scores instead, one JSONL file per serving config with an `id`, `score` and `label` per line. The [JSONL example](examples/scores_jsonl/README.md) gives the format and a synthetic stale threshold to try.
+
 ## Limits
 
 v0.1 has run only on an RTX 2070 (Turing) in fp16 and AWQ int4, with Qwen2.5-1.5B-Instruct under vLLM 0.30.0. Its tolerance bands are fixed, the threshold THRESHOLD STALE proposes misses more attacks in exchange for its FPR guarantee, and small FPR rises need large calibration sets to judge. The full list is in [docs/design.md §10](docs/design.md#10-known-limits).
