@@ -19,6 +19,7 @@ from scipy.stats import binomtest, norm
 from synthetic import FRESH_ENGINE_NOISE, FRESH_ENGINE_P_ZERO, unchanged_scorer
 
 import hulder
+from hulder.gate.check import _recalibrate
 from hulder.gate.recalibrate import CONFIDENCE, binomial_tail_threshold, conformal_threshold
 
 SEPARATION = 3.5
@@ -132,10 +133,13 @@ def promotion_round_trip(n_benign: int, n_attack: int, target_fpr: float, candid
     rerun against it. The rerun differs by fresh-engine noise only, so the check should PASS
     without saying the threshold wasn't calibrated on the new reference."""
     verdicts, warned, refused = [], 0, 0
+    # Added after the run, no bound: does Recalibration.attacks_needed predict the non-PASS?
+    predicted: dict[str, int] = {}
+    attacks_needed: list[int] = []
     for seed in seeds:
         d = unchanged_scorer(seed, target_fpr, n_benign, n_attack, candidate_fpr=candidate_fpr)
         benign = d.labels == 0
-        fit = binomial_tail_threshold(d.candidate[benign], target_fpr, attack_scores=d.candidate[~benign])
+        fit = _recalibrate(d.candidate[benign], d.candidate[~benign], target_fpr)
         if fit.threshold is None:
             refused += 1
             continue
@@ -146,6 +150,10 @@ def promotion_round_trip(n_benign: int, n_attack: int, target_fpr: float, candid
         rerun = expit(logit(d.candidate) + noise)
         report = hulder.check(d.candidate, rerun, d.labels, threshold=fit.threshold, target_fpr=target_fpr)
         verdicts.append(report.verdict.value)
+        key = f"{'warned' if fit.attacks_needed else 'not warned'}, {report.verdict.value}"
+        predicted[key] = predicted.get(key, 0) + 1
+        if fit.attacks_needed:
+            attacks_needed.append(fit.attacks_needed)
         warned += any(NOT_CALIBRATED in w for w in report.warnings)
     checked = len(verdicts)
     return {
@@ -154,6 +162,11 @@ def promotion_round_trip(n_benign: int, n_attack: int, target_fpr: float, candid
         "non_pass": sum(v != "PASS" for v in verdicts) / checked,
         "verdicts": {v.value: verdicts.count(v.value) / checked for v in hulder.Verdict},
         "not_calibrated_warning": warned / checked,
+        "attacks_needed_warning": predicted,
+        "attacks_needed": {
+            "median": float(np.median(attacks_needed)) if attacks_needed else None,
+            "max": max(attacks_needed) if attacks_needed else None,
+        },
     }
 
 
