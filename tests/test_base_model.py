@@ -165,7 +165,6 @@ base_model:
 
 
 def test_a_cards_base_model_is_read_as_written():
-    pytest.importorskip("yaml")  # in the vllm extra, which CI's base install leaves out
     assert base_model_in_card(QWEN3_4B_FP8_CARD) == ["Qwen/Qwen3-4B"]
 
 
@@ -173,6 +172,5 @@ def test_a_cards_base_model_is_read_as_written():
     "text", ["---\nbase_model: [unclosed\n---\n", "---\njust a string\n---\n"], ids=["malformed", "not a mapping"]
 )
 def test_a_damaged_front_matter_is_a_value_error_which_base_model_for_reports_as_unreadable(text):
-    pytest.importorskip("yaml")
     with pytest.raises(ValueError):
         base_model_in_card(text)

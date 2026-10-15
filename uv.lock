@@ -1487,11 +1487,13 @@ dev = [
     { name = "pandas" },
     { name = "pyarrow" },
     { name = "pytest" },
+    { name = "pyyaml" },
     { name = "ruff" },
     { name = "torch" },
 ]
 test = [
     { name = "pytest" },
+    { name = "pyyaml" },
     { name = "ruff" },
 ]
 
@@ -1513,11 +1515,13 @@ dev = [
     { name = "pandas", specifier = ">=2.3" },
     { name = "pyarrow", specifier = ">=21" },
     { name = "pytest", specifier = ">=8" },
+    { name = "pyyaml", specifier = ">=6.0.3" },
     { name = "ruff", specifier = "==0.16.10" },
     { name = "torch" },
 ]
 test = [
     { name = "pytest", specifier = ">=8" },
+    { name = "pyyaml", specifier = ">=6.0.3" },
     { name = "ruff", specifier = "==0.16.10" },
 ]
 
