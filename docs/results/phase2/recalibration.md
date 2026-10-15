@@ -8,7 +8,7 @@ Reproduce from the repo root:
 source scripts/dev-env.sh && uv run python experiments/phase2/recalibration.py
 ```
 
-The run used commit `84ca1cb` with a clean tree, 10,000 seeds per cell and 1,000 per promotion case. The generators and bounds are in `tests/recalibration_study.py`, committed at `c300c52` before any run.
+The run used commit `03b69c2` with a clean tree, 10,000 seeds per cell and 1,000 per promotion case. An earlier run at `84ca1cb` gave the same numbers, without the attacks-needed measurement added since. The generators and bounds are in `tests/recalibration_study.py`, committed at `c300c52` before any run.
 
 ## Setup
 
@@ -50,6 +50,15 @@ The run used commit `84ca1cb` with a clean tree, 10,000 seeds per cell and 1,000
 | 180 | 180 | 5% | 56.7% | 43.3% | 0% |
 | 1,191 | 910 | 1% | 100% | 0% | 0% |
 
+**Predicting it.** Added after the pre-registered run, with no bound. When the candidate's FNR interval at the new threshold is wider than the 0.05 FNR tolerance, an unchanged rerun can't PASS, so `Recalibration.attacks_needed` gives the attacks in all from which it could, and the report warns. Across the same 1,000 seeds per case:
+
+| Benign | Attack | Warned, then INCONCLUSIVE | Not warned, then INCONCLUSIVE | Warned, then PASS | Attacks needed, median [max] |
+|---|---|---|---|---|---|
+| 180 | 180 | 416 of 433 | 17 | 3 of 567 | 224 [363] |
+| 1,191 | 910 | 0 | 0 | 0 | none needed |
+
+The 17 it misses are reruns whose noise moved an attack across the threshold.
+
 ## Bounds fixed before running
 
 Four of five hold.
@@ -72,7 +81,7 @@ Four of five hold.
 
 ## Where it loses
 
-- At 180 benign, the demo's size, a recalibrated threshold can't be confirmed by an unchanged rerun 43% of the time (above).
+- At 180 benign, the demo's size, a recalibrated threshold can't be confirmed by an unchanged rerun 43% of the time (above). The report warns in 96% of those cases and says how many attacks would avoid it, typically about 220.
 - At a 1% target, binomial-tail needs at least 299 benign examples, and below about 1,000 the FNR it costs is large.
 - The guarantee is about traffic like the calibration set. The threshold is fitted on the same scores the verdict read, so `check` says to confirm it on a fresh candidate snapshot before relying on it.
 - These are synthetic scores from one pair of normal distributions. Binomial-tail's FPR guarantee doesn't depend on the distribution, but the FNR costs do.
