@@ -2,6 +2,12 @@
 
 Notable changes to hulder. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html). `hulder.capture` is experimental, so its names may change in any 0.x release (`docs/design.md` §4).
 
+## [Unreleased]
+
+### Added
+
+- `hulder.capture.Capture.prompt_token_counts`, each prompt's templated length in tokens as vLLM tokenized it. With chunked prefill off, a batch over `max_num_batched_tokens` is prefilled over more than one step, so this shows whether a batch ran as one forward pass.
+
 ## [0.2.0] - 2026-10-15
 
 ### Added
