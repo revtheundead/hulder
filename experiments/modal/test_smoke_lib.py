@@ -263,3 +263,147 @@ def test_clusters_report_which_captures_chose_the_same_cublas_algorithms(tmp_pat
     [only_b], [only_first] = sets[1]["only_here"], sets[1]["only_in_first"]
     assert "algoId=21" in only_b and "algoId=5" in only_first
     assert result["untraced"] == ["r/untraced"]
+
+
+def test_the_canary_is_the_first_batch_of_the_64_smoke_prompts_as_captured_since_2026_10_13():
+    # Literal ids of batch 1 of every Qwen3-4B capture so far, not smoke_prompts(8), which differs.
+    assert [r["id"] for r in lib.canary_prompts()] == [
+        "bpairs/apibp_0059_a",
+        "bpairs/apibp_0112_a",
+        "bpairs/apibp_0079_b",
+        "bpairs/apibp_0553_b",
+        "bpairs/apibp_0019_b",
+        "bpairs/apibp_0022_b",
+        "bpairs/apibp_0227_b",
+        "bpairs/apibp_0029_b",
+    ]
+    assert len(lib.canary_prompts()) == lib.COMMON["batch_size"]
+
+
+def _canary_acts(n=8, d=6, positions=(-1,), layers=lib.LAYERS, seed=0):
+    rng = np.random.default_rng(seed)
+    return rng.normal(size=(n, len(layers), len(positions), d)).astype(np.float16)
+
+
+def test_equal_canary_activations_hash_equal_and_one_ulp_anywhere_changes_the_hash():
+    acts = _canary_acts()
+    assert lib.canary_sha256(acts, lib.LAYERS, (-1,)) == lib.canary_sha256(acts.copy(), lib.LAYERS, (-1,))
+    nudged = acts.copy()
+    nudged[5, 1, 0, 3] = np.nextafter(nudged[5, 1, 0, 3], np.float16(np.inf))
+    assert lib.canary_sha256(nudged, lib.LAYERS, (-1,)) != lib.canary_sha256(acts, lib.LAYERS, (-1,))
+
+
+def test_the_canary_hash_depends_on_which_layer_and_prompt_each_value_belongs_to():
+    acts = _canary_acts()
+    base = lib.canary_sha256(acts, lib.LAYERS, (-1,))
+    assert lib.canary_sha256(acts[:, ::-1], lib.LAYERS, (-1,)) != base  # layer 18's values under 27
+    assert lib.canary_sha256(acts[::-1], lib.LAYERS, (-1,)) != base  # prompts reordered
+    # The same values listed in another layer order are the same capture.
+    assert lib.canary_sha256(acts[:, ::-1], lib.LAYERS[::-1], (-1,)) == base
+
+
+def test_the_canary_hash_reads_only_layers_18_and_27_at_position_minus_1():
+    # The pilot captures positions -1, -9 and -10, and could add layers; its hash still compares
+    # with the historical captures, which hold position -1 at layers 18 and 27 only.
+    acts = _canary_acts()
+    wide = _canary_acts(positions=(-9, -1, -10), layers=(4, *lib.LAYERS), seed=1)
+    wide[:, 1:, 1] = acts[:, :, 0]
+    assert lib.canary_sha256(wide, (4, *lib.LAYERS), (-9, -1, -10)) == lib.canary_sha256(acts, lib.LAYERS, (-1,))
+    with pytest.raises(ValueError, match="layer 27"):
+        lib.canary_sha256(acts[:, :1], (18,), (-1,))
+    with pytest.raises(ValueError, match="position -1"):
+        lib.canary_sha256(acts, lib.LAYERS, (-9,))
+
+
+def test_the_canary_hash_ignores_memory_layout_and_byte_order_but_fixes_dtype_and_shape():
+    acts = _canary_acts()
+    base = lib.canary_sha256(acts, lib.LAYERS, (-1,))
+    view = np.swapaxes(np.ascontiguousarray(np.swapaxes(acts, 0, 3)), 0, 3)  # same values, not C-contiguous
+    assert not view.flags.c_contiguous
+    assert lib.canary_sha256(view, lib.LAYERS, (-1,)) == base
+    assert lib.canary_sha256(acts.astype(">f2"), lib.LAYERS, (-1,)) == base
+    with pytest.raises(TypeError, match="float16"):
+        lib.canary_sha256(acts.astype(np.float32), lib.LAYERS, (-1,))
+    # The same bytes as 4 prompts of width 12 are another canary.
+    reshaped = np.ascontiguousarray(acts.transpose(0, 2, 1, 3)).reshape(4, 1, 2, 12).transpose(0, 2, 1, 3)
+    assert lib.canary_sha256(reshaped, lib.LAYERS, (-1,)) != base
+
+
+def test_a_canary_batch_exactly_at_the_token_budget_passes_and_one_token_over_fails():
+    # The counts exist only after capture, so this detects a canary split across forward passes
+    # after it happened; it can't prevent one.
+    lib.check_canary_budget([500, 523], 1023)
+    with pytest.raises(ValueError, match=r"1024 prompt tokens.*budget of 1023"):
+        lib.check_canary_budget([500, 524], 1023)
+
+
+def test_every_worker_spec_carries_the_canary_apart_from_the_requested_prompts():
+    spec = lib.worker_spec(("bf16", "qwen3_4b_bf16", {"X": "1"}), 300)
+    assert [r["id"] for r in spec["canary"]] == [r["id"] for r in lib.canary_prompts()]
+    assert spec["prompts"] == lib.smoke_prompts(64)
+    assert (spec["config_name"], spec["env"], spec["timeout_s"], spec["save"]) == (
+        "qwen3_4b_bf16",
+        {"X": "1"},
+        300,
+        True,
+    )
+
+
+CANARY_IDS = [r["id"] for r in lib.canary_prompts()]
+PILOT_IDS = [r["id"] for r in lib.smoke_prompts(64)[8:24]]  # a request that doesn't start with the canary
+SMOKE_IDS = [r["id"] for r in lib.smoke_prompts(64)]  # one that does, as every historical capture
+
+
+def test_the_canary_is_captured_first_unless_the_request_begins_with_it_in_order():
+    assert lib.capture_order(PILOT_IDS, CANARY_IDS, batch_size=8) == CANARY_IDS + PILOT_IDS
+    assert lib.capture_order(SMOKE_IDS, CANARY_IDS, batch_size=8) == SMOKE_IDS
+
+
+@pytest.mark.parametrize(
+    "request_ids",
+    [
+        PILOT_IDS[:3] + CANARY_IDS[2:3] + PILOT_IDS[3:],  # one canary id inside the request
+        CANARY_IDS[::-1] + PILOT_IDS,  # the canary first but out of order
+        CANARY_IDS[:7] + PILOT_IDS,  # most of it first
+        SMOKE_IDS + CANARY_IDS[:1],  # all of it first, then one again
+    ],
+    ids=["inside", "reordered", "partial", "repeated"],
+)
+def test_canary_ids_anywhere_but_exactly_first_are_refused(request_ids):
+    with pytest.raises(ValueError, match="canary prompt"):
+        lib.capture_order(request_ids, CANARY_IDS, batch_size=8)
+
+
+def test_the_canary_must_fill_exactly_one_batch():
+    with pytest.raises(ValueError, match="one batch"):
+        lib.capture_order(PILOT_IDS, CANARY_IDS, batch_size=16)
+
+
+def _captured(n, seed=0):
+    return np.random.default_rng(seed).normal(size=(n, 2, 3, 4)).astype(np.float16)
+
+
+def test_the_split_hashes_the_canary_rows_and_keeps_exactly_the_requested_rows():
+    order = CANARY_IDS + PILOT_IDS
+    acts = _captured(len(order))
+    split = lib.split_canary(order, PILOT_IDS, CANARY_IDS, acts, [50] * len(order), lib.LAYERS, (-9, -1, -10), 1023)
+    assert split.canary_sha256 == lib.canary_sha256(acts[:8], lib.LAYERS, (-9, -1, -10))
+    assert split.canary_prompt_tokens == 400
+    assert np.array_equal(split.activations, acts[8:])  # row i is PILOT_IDS[i]
+
+
+def test_a_request_that_begins_with_the_canary_keeps_every_row():
+    acts = _captured(64)
+    split = lib.split_canary(SMOKE_IDS, SMOKE_IDS, CANARY_IDS, acts, [50] * 64, lib.LAYERS, (-1, -9, -10), 1023)
+    assert np.array_equal(split.activations, acts)
+    assert split.canary_sha256 == lib.canary_sha256(acts[:8], lib.LAYERS, (-1, -9, -10))
+
+
+def test_the_split_refuses_a_canary_over_the_budget_and_rows_in_another_order():
+    order = CANARY_IDS + PILOT_IDS
+    acts, counts = _captured(len(order)), [128] * 8 + [50] * len(PILOT_IDS)
+    with pytest.raises(ValueError, match="1024 prompt tokens.*budget of 1023"):
+        lib.split_canary(order, PILOT_IDS, CANARY_IDS, acts, counts, lib.LAYERS, (-1,), 1023)
+    lib.split_canary(order, PILOT_IDS, CANARY_IDS, acts, counts, lib.LAYERS, (-1,), 1024)  # exactly at it
+    with pytest.raises(ValueError, match="capture order"):
+        lib.split_canary(PILOT_IDS + CANARY_IDS, PILOT_IDS, CANARY_IDS, acts, counts, lib.LAYERS, (-1,), 1024)

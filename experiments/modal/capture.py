@@ -200,21 +200,6 @@ def git(*args: str) -> str:
     return subprocess.run(["git", *args], cwd=ROOT, capture_output=True, text=True, check=True).stdout.strip()
 
 
-def spec_for(entry: tuple, timeout_s: int) -> dict:
-    """The worker spec for one (label, config[, env]) entry of an experiment."""
-    fields, n = lib.CONFIGS[entry[1]]
-    env = entry[2] if len(entry) > 2 else {}
-    return {
-        "config": fields,
-        "prompts": lib.smoke_prompts(n),
-        "save": n > 1,
-        "config_name": entry[1],
-        "base_model": lib.BASE_MODEL_OVERRIDES.get(entry[1]),
-        "env": env,
-        "timeout_s": timeout_s,
-    }
-
-
 @app.local_entrypoint()
 def main(experiment: str, spent_usd: float = 0.0, out: str = ".cache/modal-runs") -> None:
     if experiment not in lib.EXPERIMENTS:
@@ -275,7 +260,7 @@ def main(experiment: str, spent_usd: float = 0.0, out: str = ".cache/modal-runs"
         record()
         return ok
 
-    groups = [[(e[0], spec_for(e, timeout_s)) for e in group] for group in containers]
+    groups = [[(e[0], lib.worker_spec(e, timeout_s)) for e in group] for group in containers]
     if single_use:
         # All at once, so each container holds its own GPU; the budget covers all of them up front.
         if not affordable(sum(map(len, containers))):

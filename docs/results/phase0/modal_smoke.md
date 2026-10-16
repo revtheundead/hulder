@@ -69,6 +69,20 @@ Eighteen default bf16 captures of one config fall into two clusters. Each cluste
 
 So the earlier reading of the smoke rerun, a bf16 noise floor about ten times fp16's, was wrong. Within a path the floor measured here is zero. A rerun that lands on the reference's path then measures no floor, while a candidate on the other path shows a shift the serving change didn't cause.
 
+## The path canary
+
+From Phase 4 on, every capture records which numerical path its engine took. The canary is the first batch of the 64 prompts above, which every capture here ran first, and each engine now prefills it as its first batch before the requested prompts. Its hash, `canary_sha256`, is SHA-256 of the canary's float16 activations at layers 18 and 27 and the last prompt token, and every snapshot records it in its metadata. Captures with equal hashes ran the canary bit-identically. A hash not seen before is an unknown path, not evidence of a switch.
+
+- **The canary runs once.** A request whose first eight prompt ids are the canary's, in order, is captured as it is, as the 64 prompts above are. Any other request gets the canary added in front. A canary prompt anywhere else in a request, out of order, in part or a second time, stops the run, since the canary's batch would then differ or a prompt would run twice. Snapshots hold exactly the requested prompts.
+- **The batch is fixed.** In vLLM 0.30.0, with chunked prefill off, each `chat` call's requests are scheduled first come, first served, until a prompt doesn't fit the step's token budget (`v1/core/sched/scheduler.py:1072-1078`), and the next call starts only when they finish. The canary is 434 templated tokens by the Hugging Face tokenizer, against a budget of at least 1,023, so it runs as one forward pass of the same eight prompts. The runner checks this on vLLM's own token counts after each capture and fails the run, recording no hash, if the canary exceeded it.
+- **The hash is implemented correctly.** On batch 1 of the 23 bf16 captures above, the hashes split them exactly into the three bit-exact clusters (16, 2 and 5 batch-invariant), and both FP8 captures hash unlike all three. This shows the hash tells the known paths apart. It can't show that no other path exists.
+
+```bash
+source scripts/dev-env.sh && uv run pytest experiments/modal/test_canary_history.py
+```
+
+It needs the snapshots under `.cache/modal-runs`, which aren't committed, and skips without them.
+
 ## Timing and cost
 
 - **Cold start dominates the first run.** On a freshly built image the first config took 572 s of wall time, of which the worker ran 116 s. Later configs in a warm image took 60 to 130 s of wall time.

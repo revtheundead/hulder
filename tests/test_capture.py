@@ -102,3 +102,28 @@ def test_a_bf16_value_beyond_float16s_range_stops_the_capture(hidden_states, mon
     monkeypatch.setattr(hidden_states.example_hidden_states_connector, "load_hidden_states", _bf16_load(1e6))
     with pytest.raises(OverflowError, match="layer 2, position -1"):
         hidden_states.capture(["hi"], hidden_states.CaptureConfig(**CONFIG, dtype="bfloat16"))
+
+
+def test_capture_records_each_prompts_token_count_as_vllm_tokenized_it(hidden_states, monkeypatch):
+    # One token per word, so the counts differ by prompt; the connector file holds the same ids.
+    ids = {}
+
+    def chat(self, convs, params, use_tqdm=False, **kwargs):
+        outs = []
+        for conv in convs:
+            path = f"{len(ids)}.pt"
+            ids[path] = list(range(len(conv[-1]["content"].split()) + 2))
+            outs.append(SimpleNamespace(kv_transfer_params={"hidden_states_path": path}, prompt_token_ids=ids[path]))
+        return outs
+
+    def load(path):
+        import torch
+
+        n = len(ids[path])
+        return {"token_ids": torch.tensor(ids[path]), "hidden_states": torch.zeros(n, 1, 4)}
+
+    monkeypatch.setattr(FakeLLM, "chat", chat)
+    monkeypatch.setattr(hidden_states.example_hidden_states_connector, "load_hidden_states", load)
+    config = hidden_states.CaptureConfig(**CONFIG, batch_size=2)
+    result = hidden_states.capture(["one", "one two three", "one two"], config)
+    assert result.prompt_token_counts == [3, 5, 4]

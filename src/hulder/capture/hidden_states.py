@@ -7,7 +7,7 @@ Any script calling `capture` needs an `if __name__ == "__main__":` guard (spawn 
 
 import os
 import tempfile
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 import torch
@@ -56,13 +56,16 @@ class Capture:
     # config (docs/design.md §6, metadata rules).
     gpu: str
     enable_thinking: bool | None  # as passed to the chat template, None for its default
+    # Each prompt's length in tokens as vLLM tokenized it, templated, in prompt order. With chunked
+    # prefill off, a batch whose total exceeds max_num_batched_tokens is prefilled over several steps.
+    prompt_token_counts: list[int] = field(default_factory=list)
 
 
 def capture(prompts: list[str], cfg: CaptureConfig) -> Capture:
     convs = [[{"role": "system", "content": cfg.system_prompt}, {"role": "user", "content": p}] for p in prompts]
     params = SamplingParams(max_tokens=1, temperature=0)
     template = {} if cfg.enable_thinking is None else {"chat_template_kwargs": {"enable_thinking": cfg.enable_thinking}}
-    acts, tokens = [], []
+    acts, tokens, counts = [], [], []
     with tempfile.TemporaryDirectory() as tmp:
         llm = LLM(
             model=cfg.model,
@@ -98,6 +101,7 @@ def capture(prompts: list[str], cfg: CaptureConfig) -> Capture:
                 hidden = as_float32(obj["hidden_states"][pos].transpose(0, 1))  # numpy has no bfloat16
                 acts.append(to_float16(hidden[None], cfg.layers, cfg.positions, first_prompt=len(acts))[0])
                 tokens.append(tok.convert_ids_to_tokens(obj["token_ids"][pos].tolist()))
+                counts.append(len(out.prompt_token_ids))
                 os.remove(path)
             if start // cfg.batch_size % 100 == 0:
                 print(f"captured {min(start + cfg.batch_size, len(convs))}/{len(convs)}", flush=True)
@@ -106,4 +110,5 @@ def capture(prompts: list[str], cfg: CaptureConfig) -> Capture:
         position_tokens=tokens,
         gpu=torch.cuda.get_device_name(),
         enable_thinking=cfg.enable_thinking,
+        prompt_token_counts=counts,
     )

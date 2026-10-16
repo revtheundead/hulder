@@ -1,8 +1,10 @@
 """The parts of the Modal capture runner that need neither Modal nor a GPU: prompt selection,
 the configs and experiments, log facts, cost estimates and activation comparison. Tested in CI."""
 
+import hashlib
 import json
 import re
+from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
@@ -171,6 +173,115 @@ def smoke_prompts(n: int, path: Path = PROMPTS) -> list[dict]:
     if any(want.values()):
         raise ValueError(f"{path} has too few prompts of a label for n={n}")
     return chosen
+
+
+def canary_prompts() -> list[dict]:
+    """The path canary: the first batch of smoke_prompts(64), which was batch 1 of every Qwen3-4B
+    capture since 2026-10-13, so a new capture's canary hash compares with the historical ones. It
+    runs as the first batch of each engine, with the captured prompts after it."""
+    return smoke_prompts(64)[: COMMON["batch_size"]]
+
+
+def canary_sha256(activations: np.ndarray, layers: tuple[int, ...], positions: tuple[int, ...]) -> str:
+    """SHA-256 of the canary's activations at layers 18 and 27 and position -1, as (prompt, layer,
+    dim) little-endian float16 behind a header naming the format and shape. activations is laid out
+    as hulder.capture.Capture's, (prompts, layers, positions, dims), with the config's layers and
+    positions, so captures that record more layers or positions hash the same as the historical
+    ones. Equal hashes mean bit-identical canaries. A hash not seen before means an unknown path,
+    not that the path switched."""
+    if activations.dtype.newbyteorder("<") != np.dtype("<f2"):  # either byte order
+        raise TypeError(f"the canary hashes float16 as stored in snapshots, got {activations.dtype}")
+    for layer in LAYERS:
+        if layer not in layers:
+            raise ValueError(f"the canary needs layer {layer}, the capture has {layers}")
+    if -1 not in positions:
+        raise ValueError(f"the canary needs position -1, the capture has {positions}")
+    picked = activations[:, [layers.index(layer) for layer in LAYERS], positions.index(-1)]
+    data = np.ascontiguousarray(picked, dtype="<f2")
+    header = f"hulder-canary-v1 float16le {data.shape}\n".encode()
+    return hashlib.sha256(header + data.tobytes()).hexdigest()
+
+
+def check_canary_budget(token_counts: list[int], budget: int) -> None:
+    """Raise if the canary's prompts, as vLLM tokenized them, total more than the scheduler's token
+    budget for one step. With chunked prefill off, vLLM 0.30.0 then prefills them over more than one
+    forward pass (v1/core/sched/scheduler.py:1072-1078), so the canary's batch differs from the
+    historical one and its hash would mislead. The counts exist only after capture, so this detects
+    a split after the fact rather than preventing it."""
+    total = sum(token_counts)
+    if total > budget:
+        raise ValueError(
+            f"the canary's {total} prompt tokens exceed the scheduler's per-step budget of {budget}, so it "
+            "ran over more than one forward pass and its hash isn't comparable with the historical ones"
+        )
+
+
+def capture_order(request_ids: list[str], canary_ids: list[str], batch_size: int) -> list[str]:
+    """The prompt ids an engine captures, in order: the canary as its first batch, then the request.
+    A request whose first ids are exactly the canary's, in order, is captured as it is, so the
+    canary runs once, as in every historical capture. Any other canary id in the request raises,
+    since the canary's batch would then differ or its prompts run twice."""
+    if len(canary_ids) != batch_size:
+        raise ValueError(
+            f"the canary must fill exactly one batch: {len(canary_ids)} prompts at batch size {batch_size}"
+        )
+    begins = request_ids[: len(canary_ids)] == canary_ids
+    rest = request_ids[len(canary_ids) :] if begins else request_ids
+    stray = [(i, x) for i, x in enumerate(rest, len(request_ids) - len(rest)) if x in set(canary_ids)]
+    if stray:
+        i, x = stray[0]
+        raise ValueError(
+            f"canary prompt {x} is at position {i} of the request. The request must begin with all "
+            f"{len(canary_ids)} canary prompts in order, or hold none of them"
+        )
+    return request_ids if begins else canary_ids + request_ids
+
+
+@dataclass(frozen=True)
+class CanarySplit:
+    canary_sha256: str
+    canary_prompt_tokens: int
+    activations: np.ndarray  # the requested prompts' rows, in request order
+
+
+def split_canary(
+    captured_ids: list[str],
+    request_ids: list[str],
+    canary_ids: list[str],
+    activations: np.ndarray,
+    token_counts: list[int],
+    layers: tuple[int, ...],
+    positions: tuple[int, ...],
+    budget: int,
+) -> CanarySplit:
+    """Split a capture in capture_order into the canary's hash and the requested prompts' rows.
+    Raises, so nothing gets recorded, if the canary's tokens exceed the per-step budget
+    (check_canary_budget) or the capture isn't in capture_order."""
+    if captured_ids != capture_order(request_ids, canary_ids, len(canary_ids)):
+        raise ValueError("the captured prompts aren't in capture order, canary first then the request")
+    n = len(canary_ids)
+    check_canary_budget(token_counts[:n], budget)
+    return CanarySplit(
+        canary_sha256=canary_sha256(activations[:n], layers, positions),
+        canary_prompt_tokens=sum(token_counts[:n]),
+        activations=activations[len(captured_ids) - len(request_ids) :],
+    )
+
+
+def worker_spec(entry: tuple, timeout_s: int) -> dict:
+    """The worker spec for one (label, config[, env]) entry of an experiment. The worker runs the
+    canary as the engine's first batch, then the requested prompts."""
+    fields, n = CONFIGS[entry[1]]
+    return {
+        "config": fields,
+        "canary": canary_prompts(),
+        "prompts": smoke_prompts(n),
+        "save": n > 1,
+        "config_name": entry[1],
+        "base_model": BASE_MODEL_OVERRIDES.get(entry[1]),
+        "env": entry[2] if len(entry) > 2 else {},
+        "timeout_s": timeout_s,
+    }
 
 
 def log_facts(log: str) -> dict[str, list[str]]:
