@@ -327,3 +327,11 @@ def test_the_canary_hash_ignores_memory_layout_and_byte_order_but_fixes_dtype_an
     # The same bytes as 4 prompts of width 12 are another canary.
     reshaped = np.ascontiguousarray(acts.transpose(0, 2, 1, 3)).reshape(4, 1, 2, 12).transpose(0, 2, 1, 3)
     assert lib.canary_sha256(reshaped, lib.LAYERS, (-1,)) != base
+
+
+def test_a_canary_batch_exactly_at_the_token_budget_passes_and_one_token_over_fails():
+    # The counts exist only after capture, so this detects a canary split across forward passes
+    # after it happened; it can't prevent one.
+    lib.check_canary_budget([500, 523], 1023)
+    with pytest.raises(ValueError, match=r"1024 prompt tokens.*budget of 1023"):
+        lib.check_canary_budget([500, 524], 1023)

@@ -201,6 +201,20 @@ def canary_sha256(activations: np.ndarray, layers: tuple[int, ...], positions: t
     return hashlib.sha256(header + data.tobytes()).hexdigest()
 
 
+def check_canary_budget(token_counts: list[int], budget: int) -> None:
+    """Raise if the canary's prompts, as vLLM tokenized them, total more than the scheduler's token
+    budget for one step. With chunked prefill off, vLLM 0.30.0 then prefills them over more than one
+    forward pass (v1/core/sched/scheduler.py:1072-1078), so the canary's batch differs from the
+    historical one and its hash would mislead. The counts exist only after capture, so this detects
+    a split after the fact rather than preventing it."""
+    total = sum(token_counts)
+    if total > budget:
+        raise ValueError(
+            f"the canary's {total} prompt tokens exceed the scheduler's per-step budget of {budget}, so it "
+            "ran over more than one forward pass and its hash isn't comparable with the historical ones"
+        )
+
+
 def log_facts(log: str) -> dict[str, list[str]]:
     """The log lines of each LOG_FACTS kind, stripped, in order, each line once."""
     lines = [line.strip() for line in log.splitlines()]
