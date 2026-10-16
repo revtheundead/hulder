@@ -1,6 +1,7 @@
 """The parts of the Modal capture runner that need neither Modal nor a GPU: prompt selection,
 the configs and experiments, log facts, cost estimates and activation comparison. Tested in CI."""
 
+import hashlib
 import json
 import re
 from pathlib import Path
@@ -178,6 +179,26 @@ def canary_prompts() -> list[dict]:
     capture since 2026-10-13, so a new capture's canary hash compares with the historical ones. It
     runs as the first batch of each engine, with the captured prompts after it."""
     return smoke_prompts(64)[: COMMON["batch_size"]]
+
+
+def canary_sha256(activations: np.ndarray, layers: tuple[int, ...], positions: tuple[int, ...]) -> str:
+    """SHA-256 of the canary's activations at layers 18 and 27 and position -1, as (prompt, layer,
+    dim) little-endian float16 behind a header naming the format and shape. activations is laid out
+    as hulder.capture.Capture's, (prompts, layers, positions, dims), with the config's layers and
+    positions, so captures that record more layers or positions hash the same as the historical
+    ones. Equal hashes mean bit-identical canaries. A hash not seen before means an unknown path,
+    not that the path switched."""
+    if activations.dtype.newbyteorder("<") != np.dtype("<f2"):  # either byte order
+        raise TypeError(f"the canary hashes float16 as stored in snapshots, got {activations.dtype}")
+    for layer in LAYERS:
+        if layer not in layers:
+            raise ValueError(f"the canary needs layer {layer}, the capture has {layers}")
+    if -1 not in positions:
+        raise ValueError(f"the canary needs position -1, the capture has {positions}")
+    picked = activations[:, [layers.index(layer) for layer in LAYERS], positions.index(-1)]
+    data = np.ascontiguousarray(picked, dtype="<f2")
+    header = f"hulder-canary-v1 float16le {data.shape}\n".encode()
+    return hashlib.sha256(header + data.tobytes()).hexdigest()
 
 
 def log_facts(log: str) -> dict[str, list[str]]:

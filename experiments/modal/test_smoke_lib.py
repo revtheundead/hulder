@@ -278,3 +278,52 @@ def test_the_canary_is_the_first_batch_of_the_64_smoke_prompts_as_captured_since
         "bpairs/apibp_0029_b",
     ]
     assert len(lib.canary_prompts()) == lib.COMMON["batch_size"]
+
+
+def _canary_acts(n=8, d=6, positions=(-1,), layers=lib.LAYERS, seed=0):
+    rng = np.random.default_rng(seed)
+    return rng.normal(size=(n, len(layers), len(positions), d)).astype(np.float16)
+
+
+def test_equal_canary_activations_hash_equal_and_one_ulp_anywhere_changes_the_hash():
+    acts = _canary_acts()
+    assert lib.canary_sha256(acts, lib.LAYERS, (-1,)) == lib.canary_sha256(acts.copy(), lib.LAYERS, (-1,))
+    nudged = acts.copy()
+    nudged[5, 1, 0, 3] = np.nextafter(nudged[5, 1, 0, 3], np.float16(np.inf))
+    assert lib.canary_sha256(nudged, lib.LAYERS, (-1,)) != lib.canary_sha256(acts, lib.LAYERS, (-1,))
+
+
+def test_the_canary_hash_depends_on_which_layer_and_prompt_each_value_belongs_to():
+    acts = _canary_acts()
+    base = lib.canary_sha256(acts, lib.LAYERS, (-1,))
+    assert lib.canary_sha256(acts[:, ::-1], lib.LAYERS, (-1,)) != base  # layer 18's values under 27
+    assert lib.canary_sha256(acts[::-1], lib.LAYERS, (-1,)) != base  # prompts reordered
+    # The same values listed in another layer order are the same capture.
+    assert lib.canary_sha256(acts[:, ::-1], lib.LAYERS[::-1], (-1,)) == base
+
+
+def test_the_canary_hash_reads_only_layers_18_and_27_at_position_minus_1():
+    # The pilot captures positions -1, -9 and -10, and could add layers; its hash still compares
+    # with the historical captures, which hold position -1 at layers 18 and 27 only.
+    acts = _canary_acts()
+    wide = _canary_acts(positions=(-9, -1, -10), layers=(4, *lib.LAYERS), seed=1)
+    wide[:, 1:, 1] = acts[:, :, 0]
+    assert lib.canary_sha256(wide, (4, *lib.LAYERS), (-9, -1, -10)) == lib.canary_sha256(acts, lib.LAYERS, (-1,))
+    with pytest.raises(ValueError, match="layer 27"):
+        lib.canary_sha256(acts[:, :1], (18,), (-1,))
+    with pytest.raises(ValueError, match="position -1"):
+        lib.canary_sha256(acts, lib.LAYERS, (-9,))
+
+
+def test_the_canary_hash_ignores_memory_layout_and_byte_order_but_fixes_dtype_and_shape():
+    acts = _canary_acts()
+    base = lib.canary_sha256(acts, lib.LAYERS, (-1,))
+    view = np.swapaxes(np.ascontiguousarray(np.swapaxes(acts, 0, 3)), 0, 3)  # same values, not C-contiguous
+    assert not view.flags.c_contiguous
+    assert lib.canary_sha256(view, lib.LAYERS, (-1,)) == base
+    assert lib.canary_sha256(acts.astype(">f2"), lib.LAYERS, (-1,)) == base
+    with pytest.raises(TypeError, match="float16"):
+        lib.canary_sha256(acts.astype(np.float32), lib.LAYERS, (-1,))
+    # The same bytes as 4 prompts of width 12 are another canary.
+    reshaped = np.ascontiguousarray(acts.transpose(0, 2, 1, 3)).reshape(4, 1, 2, 12).transpose(0, 2, 1, 3)
+    assert lib.canary_sha256(reshaped, lib.LAYERS, (-1,)) != base
