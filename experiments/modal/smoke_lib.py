@@ -215,6 +215,22 @@ def check_canary_budget(token_counts: list[int], budget: int) -> None:
         )
 
 
+def worker_spec(entry: tuple, timeout_s: int) -> dict:
+    """The worker spec for one (label, config[, env]) entry of an experiment. The worker runs the
+    canary as the engine's first batch, then the requested prompts."""
+    fields, n = CONFIGS[entry[1]]
+    return {
+        "config": fields,
+        "canary": canary_prompts(),
+        "prompts": smoke_prompts(n),
+        "save": n > 1,
+        "config_name": entry[1],
+        "base_model": BASE_MODEL_OVERRIDES.get(entry[1]),
+        "env": entry[2] if len(entry) > 2 else {},
+        "timeout_s": timeout_s,
+    }
+
+
 def log_facts(log: str) -> dict[str, list[str]]:
     """The log lines of each LOG_FACTS kind, stripped, in order, each line once."""
     lines = [line.strip() for line in log.splitlines()]

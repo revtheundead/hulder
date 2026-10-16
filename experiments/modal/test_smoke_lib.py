@@ -335,3 +335,15 @@ def test_a_canary_batch_exactly_at_the_token_budget_passes_and_one_token_over_fa
     lib.check_canary_budget([500, 523], 1023)
     with pytest.raises(ValueError, match=r"1024 prompt tokens.*budget of 1023"):
         lib.check_canary_budget([500, 524], 1023)
+
+
+def test_every_worker_spec_carries_the_canary_apart_from_the_requested_prompts():
+    spec = lib.worker_spec(("bf16", "qwen3_4b_bf16", {"X": "1"}), 300)
+    assert [r["id"] for r in spec["canary"]] == [r["id"] for r in lib.canary_prompts()]
+    assert spec["prompts"] == lib.smoke_prompts(64)
+    assert (spec["config_name"], spec["env"], spec["timeout_s"], spec["save"]) == (
+        "qwen3_4b_bf16",
+        {"X": "1"},
+        300,
+        True,
+    )
