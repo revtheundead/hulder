@@ -347,3 +347,63 @@ def test_every_worker_spec_carries_the_canary_apart_from_the_requested_prompts()
         300,
         True,
     )
+
+
+CANARY_IDS = [r["id"] for r in lib.canary_prompts()]
+PILOT_IDS = [r["id"] for r in lib.smoke_prompts(64)[8:24]]  # a request that doesn't start with the canary
+SMOKE_IDS = [r["id"] for r in lib.smoke_prompts(64)]  # one that does, as every historical capture
+
+
+def test_the_canary_is_captured_first_unless_the_request_begins_with_it_in_order():
+    assert lib.capture_order(PILOT_IDS, CANARY_IDS, batch_size=8) == CANARY_IDS + PILOT_IDS
+    assert lib.capture_order(SMOKE_IDS, CANARY_IDS, batch_size=8) == SMOKE_IDS
+
+
+@pytest.mark.parametrize(
+    "request_ids",
+    [
+        PILOT_IDS[:3] + CANARY_IDS[2:3] + PILOT_IDS[3:],  # one canary id inside the request
+        CANARY_IDS[::-1] + PILOT_IDS,  # the canary first but out of order
+        CANARY_IDS[:7] + PILOT_IDS,  # most of it first
+        SMOKE_IDS + CANARY_IDS[:1],  # all of it first, then one again
+    ],
+    ids=["inside", "reordered", "partial", "repeated"],
+)
+def test_canary_ids_anywhere_but_exactly_first_are_refused(request_ids):
+    with pytest.raises(ValueError, match="canary prompt"):
+        lib.capture_order(request_ids, CANARY_IDS, batch_size=8)
+
+
+def test_the_canary_must_fill_exactly_one_batch():
+    with pytest.raises(ValueError, match="one batch"):
+        lib.capture_order(PILOT_IDS, CANARY_IDS, batch_size=16)
+
+
+def _captured(n, seed=0):
+    return np.random.default_rng(seed).normal(size=(n, 2, 3, 4)).astype(np.float16)
+
+
+def test_the_split_hashes_the_canary_rows_and_keeps_exactly_the_requested_rows():
+    order = CANARY_IDS + PILOT_IDS
+    acts = _captured(len(order))
+    split = lib.split_canary(order, PILOT_IDS, CANARY_IDS, acts, [50] * len(order), lib.LAYERS, (-9, -1, -10), 1023)
+    assert split.canary_sha256 == lib.canary_sha256(acts[:8], lib.LAYERS, (-9, -1, -10))
+    assert split.canary_prompt_tokens == 400
+    assert np.array_equal(split.activations, acts[8:])  # row i is PILOT_IDS[i]
+
+
+def test_a_request_that_begins_with_the_canary_keeps_every_row():
+    acts = _captured(64)
+    split = lib.split_canary(SMOKE_IDS, SMOKE_IDS, CANARY_IDS, acts, [50] * 64, lib.LAYERS, (-1, -9, -10), 1023)
+    assert np.array_equal(split.activations, acts)
+    assert split.canary_sha256 == lib.canary_sha256(acts[:8], lib.LAYERS, (-1, -9, -10))
+
+
+def test_the_split_refuses_a_canary_over_the_budget_and_rows_in_another_order():
+    order = CANARY_IDS + PILOT_IDS
+    acts, counts = _captured(len(order)), [128] * 8 + [50] * len(PILOT_IDS)
+    with pytest.raises(ValueError, match="1024 prompt tokens.*budget of 1023"):
+        lib.split_canary(order, PILOT_IDS, CANARY_IDS, acts, counts, lib.LAYERS, (-1,), 1023)
+    lib.split_canary(order, PILOT_IDS, CANARY_IDS, acts, counts, lib.LAYERS, (-1,), 1024)  # exactly at it
+    with pytest.raises(ValueError, match="capture order"):
+        lib.split_canary(PILOT_IDS + CANARY_IDS, PILOT_IDS, CANARY_IDS, acts, counts, lib.LAYERS, (-1,), 1024)

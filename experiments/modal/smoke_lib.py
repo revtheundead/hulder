@@ -4,6 +4,7 @@ the configs and experiments, log facts, cost estimates and activation comparison
 import hashlib
 import json
 import re
+from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
@@ -213,6 +214,58 @@ def check_canary_budget(token_counts: list[int], budget: int) -> None:
             f"the canary's {total} prompt tokens exceed the scheduler's per-step budget of {budget}, so it "
             "ran over more than one forward pass and its hash isn't comparable with the historical ones"
         )
+
+
+def capture_order(request_ids: list[str], canary_ids: list[str], batch_size: int) -> list[str]:
+    """The prompt ids an engine captures, in order: the canary as its first batch, then the request.
+    A request whose first ids are exactly the canary's, in order, is captured as it is, so the
+    canary runs once, as in every historical capture. Any other canary id in the request raises,
+    since the canary's batch would then differ or its prompts run twice."""
+    if len(canary_ids) != batch_size:
+        raise ValueError(
+            f"the canary must fill exactly one batch: {len(canary_ids)} prompts at batch size {batch_size}"
+        )
+    begins = request_ids[: len(canary_ids)] == canary_ids
+    rest = request_ids[len(canary_ids) :] if begins else request_ids
+    stray = [(i, x) for i, x in enumerate(rest, len(request_ids) - len(rest)) if x in set(canary_ids)]
+    if stray:
+        i, x = stray[0]
+        raise ValueError(
+            f"canary prompt {x} is at position {i} of the request. The request must begin with all "
+            f"{len(canary_ids)} canary prompts in order, or hold none of them"
+        )
+    return request_ids if begins else canary_ids + request_ids
+
+
+@dataclass(frozen=True)
+class CanarySplit:
+    canary_sha256: str
+    canary_prompt_tokens: int
+    activations: np.ndarray  # the requested prompts' rows, in request order
+
+
+def split_canary(
+    captured_ids: list[str],
+    request_ids: list[str],
+    canary_ids: list[str],
+    activations: np.ndarray,
+    token_counts: list[int],
+    layers: tuple[int, ...],
+    positions: tuple[int, ...],
+    budget: int,
+) -> CanarySplit:
+    """Split a capture in capture_order into the canary's hash and the requested prompts' rows.
+    Raises, so nothing gets recorded, if the canary's tokens exceed the per-step budget
+    (check_canary_budget) or the capture isn't in capture_order."""
+    if captured_ids != capture_order(request_ids, canary_ids, len(canary_ids)):
+        raise ValueError("the captured prompts aren't in capture order, canary first then the request")
+    n = len(canary_ids)
+    check_canary_budget(token_counts[:n], budget)
+    return CanarySplit(
+        canary_sha256=canary_sha256(activations[:n], layers, positions),
+        canary_prompt_tokens=sum(token_counts[:n]),
+        activations=activations[len(captured_ids) - len(request_ids) :],
+    )
 
 
 def worker_spec(entry: tuple, timeout_s: int) -> dict:
