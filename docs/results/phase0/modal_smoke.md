@@ -23,6 +23,8 @@ uv run python experiments/modal/clusters.py docs/results/phase0/modal/bf16_clust
 
 The census manifest records commit `a04e0708074b`, but `4298438` ran. The checkout was switched to another branch while the runner started, and the runner reads the commit after starting the app. The two commits differ only in `experiments/modal/`, in the experiment definition and the analysis helpers. `worker.py` and the hulder wheel the containers ran are identical at both.
 
+The census's container-a engine logs and cuBLASLt fingerprints (`a_*/capture.log`, `a_default_*/cublas_fingerprint.txt`) were lost to disk corruption on 2026-10-15, and their `.npz` activations were verified bit-identical to the 2026-10-13 captures on the same path. The 99-signature result below was computed and committed in the census session (`eeb045f`), from the traces as read then, and the 8 traces that remain (container b's five and the three from 2026-10-13) still agree with it.
+
 The smoke run predates named experiments. At `dfd9be3` it was `modal run experiments/modal/capture.py` with no arguments, four calls that Modal happened to serve from one warm container. `--experiment smoke` now runs the same configs in one container on purpose.
 
 ## Memory and kernels
