@@ -263,3 +263,18 @@ def test_clusters_report_which_captures_chose_the_same_cublas_algorithms(tmp_pat
     [only_b], [only_first] = sets[1]["only_here"], sets[1]["only_in_first"]
     assert "algoId=21" in only_b and "algoId=5" in only_first
     assert result["untraced"] == ["r/untraced"]
+
+
+def test_the_canary_is_the_first_batch_of_the_64_smoke_prompts_as_captured_since_2026_10_13():
+    # Literal ids of batch 1 of every Qwen3-4B capture so far, not smoke_prompts(8), which differs.
+    assert [r["id"] for r in lib.canary_prompts()] == [
+        "bpairs/apibp_0059_a",
+        "bpairs/apibp_0112_a",
+        "bpairs/apibp_0079_b",
+        "bpairs/apibp_0553_b",
+        "bpairs/apibp_0019_b",
+        "bpairs/apibp_0022_b",
+        "bpairs/apibp_0227_b",
+        "bpairs/apibp_0029_b",
+    ]
+    assert len(lib.canary_prompts()) == lib.COMMON["batch_size"]

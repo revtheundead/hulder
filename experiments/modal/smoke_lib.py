@@ -173,6 +173,13 @@ def smoke_prompts(n: int, path: Path = PROMPTS) -> list[dict]:
     return chosen
 
 
+def canary_prompts() -> list[dict]:
+    """The path canary: the first batch of smoke_prompts(64), which was batch 1 of every Qwen3-4B
+    capture since 2026-10-13, so a new capture's canary hash compares with the historical ones. It
+    runs as the first batch of each engine, with the captured prompts after it."""
+    return smoke_prompts(64)[: COMMON["batch_size"]]
+
+
 def log_facts(log: str) -> dict[str, list[str]]:
     """The log lines of each LOG_FACTS kind, stripped, in order, each line once."""
     lines = [line.strip() for line in log.splitlines()]
