@@ -7,6 +7,7 @@ Notable changes to hulder. The format follows [Keep a Changelog](https://keepach
 ### Added
 
 - `hulder.capture.Capture.prompt_token_counts`, each prompt's templated length in tokens as vLLM tokenized it. With chunked prefill off, a batch over `max_num_batched_tokens` is prefilled over more than one step, so this shows whether a batch ran as one forward pass.
+- `hulder.capture.Capture.engine_seconds` and `batch_seconds`. The first is the time to construct the vLLM engine, covering weight loading, profiling, KV-cache allocation, compilation and warmup, and the second is the wall time of each batch's `llm.chat` call including reading back its hidden states, so a capture's rate can be measured apart from its startup.
 
 ## [0.2.0] - 2026-10-15
 
