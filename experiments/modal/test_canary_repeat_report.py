@@ -61,7 +61,11 @@ def make_run(world, rows_by_label, *, algo_by_label=None, hash_by_label=None, fa
                 "modal": {"image_id": "im-1", "task_id": f"ta-{i}", "region": "us-east"},
                 "nvidia_packages": {"nvidia-cublas": "13.1.1.3"},
             }
-            manifest = {"returncode": 0, "worker": worker, "log": {"timings": []}}
+            # Labels starting with t are traced, as canary_repeat's t1 is.
+            env = {"VLLM_USE_FLASHINFER_SAMPLER": "0"}
+            if label.startswith("t"):
+                env |= {"CUBLASLT_LOG_LEVEL": "2", "CUBLASLT_LOG_FILE": f"/vol/runs/R/{label}/cublaslt.%i.log"}
+            manifest = {"returncode": 0, "worker": worker, "log": {"timings": []}, "engine_env": env}
         (out / "manifest.json").write_text(json.dumps(manifest))
         configs[label] = {"container": i, "returncode": manifest["returncode"]}
     run = {"run_id": "R", "commit": "c", "estimated_usd": 0.1, "configs": configs}
@@ -83,7 +87,8 @@ def test_each_batch_is_compared_with_the_majority_path_the_pilot_and_the_other_c
     assert [x["identical"] for x in b["vs_majority"]] == [True] * 7 + [False]
     assert [x["identical"] for x in a["vs_pilot"]] == [True] * 6 + [False]
     assert [x["identical"] for x in b["vs_pilot"]] == [True] * 7
-    assert [x["identical"] for x in summary["between_containers"]] == [True] * 6 + [False]
+    pair = summary["between_containers"]["a_canary_check vs b_canary_check"]
+    assert [x["identical"] for x in pair] == [True] * 6 + [False]
     assert summary["stop_reasons"] == []
     assert summary["findings"] == ["b_canary_check: batches [8] differ from the majority path (cluster 0.0)"]
 
@@ -129,7 +134,7 @@ def test_a_failed_container_is_a_stop_and_the_other_is_still_reported(world):
     summary = summarise(world, run_dir)
     assert summary["stop_reasons"] == ["b_canary_check failed (returncode -9): timed out after 480 s"]
     assert [x["identical"] for x in summary["configs"]["a_canary_check"]["vs_majority"]] == [True] * 8
-    assert summary["between_containers"] is None
+    assert summary["between_containers"] == {}
 
 
 def test_token_hashes_that_werent_recorded_dont_count_as_agreeing(world):
@@ -141,3 +146,29 @@ def test_token_hashes_that_werent_recorded_dont_count_as_agreeing(world):
         del manifest["worker"]["prompt_token_ids_sha256"], manifest["worker"]["canary_token_ids_sha256"]
         path.write_text(json.dumps(manifest))
     assert summarise(world, run_dir)["token_hashes_agree"] is None
+
+
+def test_batch_8_is_counted_among_the_untraced_containers_apart_from_the_traced_one(world):
+    majority_rows = {layer: a[8:] for layer, a in world["majority"].items()}
+    pilot_rows = world["pilot_rows"]
+    neither = {layer: a.copy() for layer, a in pilot_rows.items()}
+    for a in neither.values():
+        a[48:] += np.float16(0.25)  # batch 8 on values neither the majority path nor the pilot had
+    labels = {
+        "u1_canary_check": pilot_rows,
+        "u2_canary_check": majority_rows,
+        "u3_canary_check": pilot_rows,
+        "t1_canary_check": neither,
+    }
+    summary = summarise(world, make_run(world, labels))
+    assert summary["groups"] == {
+        "untraced": ["u1_canary_check", "u2_canary_check", "u3_canary_check"],
+        "traced": ["t1_canary_check"],
+    }
+    assert summary["batch_8"] == {
+        "untraced": {"containers": 3, "like_pilot": 2, "like_majority": 1, "neither": 0},
+        "traced": {"containers": 1, "like_pilot": 0, "like_majority": 0, "neither": 1},
+    }
+    assert summary["configs"]["t1_canary_check"]["traced"] is True
+    assert summary["configs"]["u1_canary_check"]["traced"] is False
+    assert len(summary["between_containers"]) == 6  # every pair of the four

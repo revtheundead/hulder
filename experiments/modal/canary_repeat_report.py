@@ -5,7 +5,9 @@
 Writes canary_repeat_report.json next to the run's manifest.json and prints it.
 
 Each container's canary_check is compared, batch by batch, with the majority bf16 path (recorded
-cluster 2.0), with the pilot's canary_check and with the other container. Batch 1 is the canary,
+cluster 2.0), with the pilot's canary_check and with every other container. Untraced and traced
+containers are kept apart, and batch 8 is counted per group as like the pilot's, like the
+majority path's or neither. Batch 1 is the canary,
 compared by its hash since its rows aren't saved, and batches 2 to 8 bit for bit. A failed or
 timed-out container is a stop. A batch that differs is a finding, since that is what the run
 measures. Each container's cuBLASLt algorithm set is matched against the recorded traces of the
@@ -14,6 +16,7 @@ majority path, and the containers' token hashes against each other.
 
 import json
 import sys
+from itertools import combinations
 from pathlib import Path
 
 import numpy as np
@@ -37,6 +40,18 @@ def _trace(capture: Path) -> set[str] | None:
     traces = [capture / name for name in ("cublas_fingerprint.txt", "cublas_summary.txt")]
     found = next((p for p in traces if p.exists()), None)
     return lib.matmul_signatures(found.read_text(errors="replace")) if found else None
+
+
+def _batch_8_counts(configs: list[dict]) -> dict:
+    """How many containers' batch 8 equals the pilot's, the majority path's, or neither."""
+    like_pilot = sum(c["vs_pilot"][-1]["identical"] for c in configs)
+    like_majority = sum(c["vs_majority"][-1]["identical"] for c in configs)
+    return {
+        "containers": len(configs),
+        "like_pilot": like_pilot,
+        "like_majority": like_majority,
+        "neither": len(configs) - like_pilot - like_majority,
+    }
 
 
 def summarise(
@@ -83,6 +98,8 @@ def summarise(
         signatures = _trace(run_dir / label)
         configs[label] = {
             "container": container,
+            # cuBLASLt tracing is the only engine-environment difference between the groups.
+            "traced": any(k.startswith("CUBLAS") for k in manifest.get("engine_env", {})),
             "gpu_uuid": worker.get("gpu_uuid"),
             "gpu_driver": worker.get("gpu_driver"),
             "modal": worker.get("modal"),
@@ -97,12 +114,14 @@ def summarise(
             "cublas_signatures": len(signatures) if signatures else None,
         }
 
-    labels = list(rows_by_label)
-    between = (
-        lib.compare_batches(rows_by_label[labels[0]], rows_by_label[labels[1]], first_batch=2)
-        if len(labels) == 2
-        else None
-    )
+    between = {
+        f"{x} vs {y}": lib.compare_batches(rows_by_label[x], rows_by_label[y], first_batch=2)
+        for x, y in combinations(rows_by_label, 2)
+    }
+    groups = {
+        "untraced": [label for label, c in configs.items() if not c["traced"]],
+        "traced": [label for label, c in configs.items() if c["traced"]],
+    }
     tokens = {(c["prompt_token_ids_sha256"], c["canary_token_ids_sha256"]) for c in configs.values()}
     keep = ("run_id", "commit", "estimated_usd", "stopped")
     return {
@@ -111,6 +130,8 @@ def summarise(
         "findings": findings,
         "reference": {"cluster": reference_cluster, "member": reference["members"][0], "traced": sorted(traced)},
         "configs": configs,
+        "groups": groups,
+        "batch_8": {group: _batch_8_counts([configs[label] for label in labels]) for group, labels in groups.items()},
         "between_containers": between,
         # None when no container ran or a hash wasn't recorded, rather than agreement by absence.
         "token_hashes_agree": len(tokens) == 1 if configs and None not in {x for t in tokens for x in t} else None,
