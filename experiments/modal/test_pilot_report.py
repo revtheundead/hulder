@@ -68,7 +68,9 @@ def make_run(tmp_path, recorded_rows, *, canary_rows=None, canary_hash=None, pil
     configs = {}
     for label in labels:
         (run_dir / label).mkdir(exist_ok=True)
-        manifest = {"returncode": 0, "seconds": 60.0, "worker": workers[label]}
+        init = {"canary_check": "10.49", "pilot": "9.61"}[label]
+        line = f"(EngineCore pid=30) INFO 10-15 11:43:12 [core.py:372] init engine (profile, create kv cache, warmup model) took {init} s (compilation: 0.66 s)"
+        manifest = {"returncode": 0, "seconds": 60.0, "worker": workers[label], "log": {"timings": [line]}}
         (run_dir / label / "manifest.json").write_text(json.dumps(manifest))
         (run_dir / label / "capture.log").write_text("captured\n")
         configs[label] = {"container": 0, "config": label, "returncode": 0}
@@ -216,3 +218,18 @@ def test_two_recorded_clusters_with_one_canary_hash_are_refused(tmp_path, record
     clusters.write_text(json.dumps(groups))
     with pytest.raises(ValueError, match=r"recorded clusters 0\.0 and 1\.0 share a canary hash"):
         report.recorded_hashes(clusters, runs)
+
+
+def test_vllms_own_init_engine_time_is_reported_next_to_engine_seconds(tmp_path, recorded):
+    rows, runs, clusters = recorded
+    run_dir = make_run(tmp_path, rows)
+    configs = report.summarise(run_dir, clusters, runs)["configs"]
+    assert (configs["canary_check"]["engine_seconds"], configs["canary_check"]["vllm_init_engine_seconds"]) == (
+        40.0,
+        10.49,
+    )
+    assert (configs["pilot"]["engine_seconds"], configs["pilot"]["vllm_init_engine_seconds"]) == (12.0, 9.61)
+    # Without the line, as in a log cut short, the time is None rather than a guess.
+    manifest = json.loads((run_dir / "pilot" / "manifest.json").read_text())
+    (run_dir / "pilot" / "manifest.json").write_text(json.dumps({**manifest, "log": {"timings": []}}))
+    assert report.summarise(run_dir, clusters, runs)["configs"]["pilot"]["vllm_init_engine_seconds"] is None

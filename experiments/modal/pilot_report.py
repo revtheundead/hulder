@@ -21,6 +21,7 @@ read from .cache/modal-runs.
 """
 
 import json
+import re
 import sys
 from collections import Counter
 from pathlib import Path
@@ -35,6 +36,8 @@ RUNS = lib.ROOT / ".cache" / "modal-runs"
 LABELS = ("canary_check", "pilot")
 IM_END = "<|im_end|>"
 GUARD = "exceed the scheduler's per-step budget"  # smoke_lib.check_canary_budget's message
+# vLLM 0.30.0's engine-core line (v1/engine/core.py:372), kept in each manifest's log.timings.
+INIT_ENGINE = re.compile(r"init engine \(.*?\) took ([\d.]+) s")
 
 
 def recorded_hashes(clusters_path: Path = CLUSTERS, runs_dir: Path = RUNS) -> dict[str, dict]:
@@ -111,6 +114,10 @@ def summarise(run_dir: Path, clusters_path: Path = CLUSTERS, runs_dir: Path = RU
             "returncode": manifest["returncode"],
             "seconds": manifest.get("seconds"),
             "engine_seconds": worker.get("engine_seconds"),
+            "vllm_init_engine_seconds": next(
+                (float(m[1]) for line in manifest.get("log", {}).get("timings", []) if (m := INIT_ENGINE.search(line))),
+                None,
+            ),
             "canary_sha256": worker["canary_sha256"],
             "canary_match": match,
             "gpu_uuid": worker.get("gpu_uuid"),
