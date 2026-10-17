@@ -15,11 +15,12 @@ writing anything.
 """
 
 import json
+import os
 import platform
 import sys
 import time
 from dataclasses import asdict
-from importlib.metadata import version
+from importlib.metadata import distributions, version
 from pathlib import Path
 
 import numpy as np
@@ -58,6 +59,9 @@ def main(spec_path: str, out_dir: str) -> None:
     base_model, warning = base_model_for(cfg.model, cfg.revision, cfg.quantization, override=spec["base_model"])
     if warning:
         raise SystemExit(smoke_lib.base_model_error(spec["config_name"], warning))
+    # The engine's own tokens: the requested prompts', and the canary's apart.
+    first = len(order) - len(ids)
+    requested_token_hash = smoke_lib.token_ids_sha256(captured.prompt_token_ids[first:])
     saved = []
     if spec["save"]:
         for i, layer in enumerate(cfg.layers):
@@ -72,11 +76,12 @@ def main(spec_path: str, out_dir: str) -> None:
                         **snapshot_metadata(cfg, captured, base_model, version("vllm"), layer=layer, position=position),
                         **spec.get("extra_metadata", {}),  # the GPU's UUID and driver, so another GPU warns
                         "canary_sha256": split.canary_sha256,  # the numerical path; another hash warns when checked
+                        "prompt_token_ids_sha256": requested_token_hash,  # the tokens these rows were fed
                     },
                 ).save(out / name)
                 saved.append(name)
     # The requested prompts' tokens at each position, in request order, without the canary's.
-    requested_tokens = captured.position_tokens[len(order) - len(ids) :]
+    requested_tokens = captured.position_tokens[first:]
     worker = {
         "capture_config": asdict(cfg),
         "base_model": base_model,
@@ -84,6 +89,8 @@ def main(spec_path: str, out_dir: str) -> None:
         "prompt_ids_sha256": hulder.prompt_ids_sha256(ids),
         "canary_sha256": split.canary_sha256,
         "canary_prompt_tokens": split.canary_prompt_tokens,
+        "prompt_token_ids_sha256": requested_token_hash,
+        "canary_token_ids_sha256": smoke_lib.token_ids_sha256(captured.prompt_token_ids[: len(canary)]),
         "gpu": captured.gpu,
         **spec.get("extra_metadata", {}),  # gpu_uuid and gpu_driver
         "capture_seconds": round(seconds, 1),  # engine start, load, compile and capture together
@@ -93,6 +100,17 @@ def main(spec_path: str, out_dir: str) -> None:
         "position_tokens": {str(p): [t[j] for t in requested_tokens] for j, p in enumerate(cfg.positions)},
         "snapshots": sorted(saved),
         "packages": {p: version(p) for p in ("hulder", "vllm", "torch", "numpy")},
+        # The CUDA wheels in this environment, cuBLAS among them. The engine-core process loads its
+        # libraries from the same environment.
+        "nvidia_packages": dict(
+            sorted(
+                (d.metadata["Name"], d.version)
+                for d in distributions()
+                if (d.metadata["Name"] or "").startswith("nvidia-")
+            )
+        ),
+        # Modal's identifiers for the image and container (None outside Modal). Not a content digest.
+        "modal": {k: os.environ.get(f"MODAL_{k.upper()}") for k in ("image_id", "task_id", "region")},
         "cuda": torch.version.cuda,
         "python": platform.python_version(),
     }

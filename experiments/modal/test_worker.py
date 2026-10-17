@@ -37,6 +37,7 @@ def worker(monkeypatch):
             gpu="NVIDIA L4",
             enable_thinking=cfg.enable_thinking,
             prompt_token_counts=[counts["per_prompt"]] * n,
+            prompt_token_ids=[[k, k + 1000] for k in range(n)],
             engine_seconds=41.5,
             batch_seconds=[0.25 * (b + 1) for b in range(-(-n // cfg.batch_size))],
         )
@@ -120,3 +121,43 @@ def test_the_worker_records_timing_the_gpu_and_the_requested_prompts_hash(worker
     assert record["batch_seconds"] == [0.25, 0.5, 0.75]  # the canary's batch first, then the 16 requested
     assert (record["gpu_uuid"], record["gpu_driver"]) == ("GPU-1234", "580.95.05")
     assert record["prompt_ids_sha256"] == hulder.prompt_ids_sha256([r["id"] for r in PILOT])
+
+
+def test_each_snapshot_records_the_token_ids_hash_of_its_own_rows(worker, tmp_path):
+    # Request row r is captured as prompt r + 8, whose fake token ids are [r + 8, r + 1008].
+    main, _, _ = worker
+    run(main, tmp_path, PILOT, positions=(-1, -9))
+    requested = lib.token_ids_sha256([[r + 8, r + 1008] for r in range(len(PILOT))])
+    for name in sorted(p.name for p in tmp_path.glob("*.npz")):
+        assert hulder.Snapshot.load(tmp_path / name).metadata["prompt_token_ids_sha256"] == requested
+    record = json.loads((tmp_path / "worker.json").read_text())
+    assert record["prompt_token_ids_sha256"] == requested
+    assert record["canary_token_ids_sha256"] == lib.token_ids_sha256([[k, k + 1000] for k in range(8)])
+
+
+def test_the_worker_records_the_modal_image_and_container_and_the_nvidia_wheels(worker, tmp_path, monkeypatch):
+    from importlib.metadata import PackageNotFoundError, version
+
+    main, _, _ = worker
+    for key, value in {"MODAL_IMAGE_ID": "im-abc", "MODAL_TASK_ID": "ta-123", "MODAL_REGION": "us-east-1"}.items():
+        monkeypatch.setenv(key, value)
+    run(main, tmp_path, PILOT)
+    record = json.loads((tmp_path / "worker.json").read_text())
+    assert record["modal"] == {"image_id": "im-abc", "task_id": "ta-123", "region": "us-east-1"}
+    try:
+        cublas = version("nvidia-cublas")
+    except PackageNotFoundError:
+        pytest.skip("no nvidia-cublas wheel installed here")
+    assert record["nvidia_packages"]["nvidia-cublas"] == cublas
+
+
+def test_outside_modal_the_container_fields_are_none(worker, tmp_path, monkeypatch):
+    main, _, _ = worker
+    for key in ("MODAL_IMAGE_ID", "MODAL_TASK_ID", "MODAL_REGION"):
+        monkeypatch.delenv(key, raising=False)
+    run(main, tmp_path, PILOT)
+    assert json.loads((tmp_path / "worker.json").read_text())["modal"] == {
+        "image_id": None,
+        "task_id": None,
+        "region": None,
+    }
