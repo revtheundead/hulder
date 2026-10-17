@@ -596,3 +596,24 @@ def test_equal_token_ids_hash_equal_whatever_their_integer_type():
 )
 def test_any_change_to_the_ids_their_prompts_or_order_changes_the_token_hash(other):
     assert lib.token_ids_sha256(other) != lib.token_ids_sha256([[151644, 8948, 198], [151644, 872]])
+
+
+def test_compare_batches_names_each_batch_that_differs_anywhere_at_any_layer():
+    rng = np.random.default_rng(2)
+    reference = {layer: rng.normal(size=(20, 4)).astype(np.float16) for layer in lib.LAYERS}
+    rows = {layer: a.copy() for layer, a in reference.items()}
+    rows[27][9, 3] = np.nextafter(rows[27][9, 3], np.float16(np.inf))  # one ulp, row 9: the second batch
+    batches = lib.compare_batches(rows, reference, batch_size=8, first_batch=2)
+    # 20 rows make batches of 8, 8 and 4, numbered from 2 as canary_check's rows are.
+    assert batches == [
+        {"batch": 2, "rows": 8, "identical": True},
+        {"batch": 3, "rows": 8, "identical": False},
+        {"batch": 4, "rows": 4, "identical": True},
+    ]
+
+
+def test_compare_batches_refuses_rows_of_another_shape():
+    a = {layer: np.zeros((16, 4), np.float16) for layer in lib.LAYERS}
+    b = {layer: np.zeros((8, 4), np.float16) for layer in lib.LAYERS}
+    with pytest.raises(ValueError, match="layer 18"):
+        lib.compare_batches(a, b)

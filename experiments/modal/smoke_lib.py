@@ -461,6 +461,23 @@ def gpu_metadata(nvidia_smi: str) -> dict:
     return {"gpu_uuid": uuid, "gpu_driver": driver}
 
 
+def compare_batches(
+    rows: dict[int, np.ndarray], reference: dict[int, np.ndarray], batch_size: int = 8, first_batch: int = 1
+) -> list[dict]:
+    """Per batch of rows, numbered from first_batch, whether it equals the reference bit for bit at
+    every layer. A capture can match its path on most batches and leave it on one."""
+    for layer in LAYERS:
+        if rows[layer].shape != reference[layer].shape:
+            raise ValueError(f"layer {layer}: rows of shape {rows[layer].shape} against {reference[layer].shape}")
+    n = len(rows[LAYERS[0]])
+    out = []
+    for b, start in enumerate(range(0, n, batch_size), first_batch):
+        span = slice(start, min(start + batch_size, n))
+        same = all(np.array_equal(rows[la][span].view(np.uint16), reference[la][span].view(np.uint16)) for la in LAYERS)
+        out.append({"batch": b, "rows": span.stop - span.start, "identical": same})
+    return out
+
+
 def relative_l2(a: np.ndarray, b: np.ndarray) -> np.ndarray:
     """Per-example ||a - b|| / ||a|| over the last axis, in float64."""
     a, b = np.asarray(a, np.float64), np.asarray(b, np.float64)
