@@ -69,7 +69,10 @@ def make_run(tmp_path, recorded_rows, *, canary_rows=None, canary_hash=None, pil
     for label in labels:
         (run_dir / label).mkdir(exist_ok=True)
         init = {"canary_check": "10.49", "pilot": "9.61"}[label]
-        line = f"(EngineCore pid=30) INFO 10-15 11:43:12 [core.py:372] init engine (profile, create kv cache, warmup model) took {init} s (compilation: 0.66 s)"
+        line = (
+            "(EngineCore pid=30) INFO 10-15 11:43:12 [core.py:372] init engine "
+            f"(profile, create kv cache, warmup model) took {init} s (compilation: 0.66 s)"
+        )
         manifest = {"returncode": 0, "seconds": 60.0, "worker": workers[label], "log": {"timings": [line]}}
         (run_dir / label / "manifest.json").write_text(json.dumps(manifest))
         (run_dir / label / "capture.log").write_text("captured\n")
