@@ -4,14 +4,17 @@
 
 Writes pilot_report.json next to the run's manifest.json and prints it.
 
-- Stop reasons: the run stopped, a config failed or timed out, the canary budget guard fired, or
-  canary_check hashes like a recorded cluster while its 56 rows differ from that cluster's. Any of
-  them means stop, report and wait.
-- Findings, not failures: a canary hash no recorded capture has (an unknown path, reported with
-  the GPU UUID, driver and container), and pilot prompts without <|im_end|> at position -9.
-- Timing: the pilot's batches without the canary's, which is reported apart, projected with
-  smoke_lib.timing_estimate from the slower of the two engines' startups. The band covers noise
-  between batches in one engine only, not between containers or GPUs.
+Stop reasons: the run stopped, a config failed or timed out, the canary budget guard fired, or
+canary_check hashes like a recorded cluster while its 56 rows differ from that cluster's. Any of
+them means stop, report and wait.
+
+Findings are reported without stopping. They cover a canary hash no recorded capture has, which is
+an unknown path and is given with the GPU UUID, driver and container, and pilot prompts without
+<|im_end|> at position -9.
+
+The pilot's timing leaves out the canary's batch, which is reported apart, and is projected with
+smoke_lib.timing_estimate from the slower of the two engines' startups. The band covers noise
+between batches in one engine only, not between containers or GPUs.
 
 The recorded clusters are docs/results/phase0/modal/bf16_clusters.json, and their snapshots are
 read from .cache/modal-runs.
