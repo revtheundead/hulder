@@ -500,3 +500,45 @@ def test_the_band_is_fixed_by_its_seed_holds_the_mean_and_narrows_with_more_batc
 def test_the_capture_fits_only_if_startup_and_the_bands_upper_end_stay_under_the_timeout(startup, fits):
     # 2040 batches of 0.5 s are 1020 s, so 180 s of startup reaches the 1200 s timeout exactly.
     assert lib.timing_estimate(startup, [0.5] * 125)["fits_timeout"] is fits
+
+
+def test_common_is_unchanged_so_the_canary_batch_stays_comparable():
+    assert lib.COMMON == {
+        "layers": (18, 27),
+        "positions": (-1,),
+        "system_prompt": "You are a helpful assistant.",
+        "enable_thinking": False,
+        "batch_size": 8,
+        "gpu_memory_utilization": 0.9,
+        "max_model_len": 1024,
+        "max_num_batched_tokens": 1024,
+    }
+
+
+def test_a_smoke_source_can_start_partway():
+    assert lib.prompts_for(("smoke", 64, 8)) == lib.smoke_prompts(64)[8:]
+
+
+def test_the_pilot_runs_canary_check_then_pilot_in_one_container_for_at_most_83_cents():
+    [group], single_use, timeout_s = lib.EXPERIMENTS["pilot"]
+    assert [e[0] for e in group] == ["canary_check", "pilot"] and not single_use
+    assert timeout_s == 20 * 60
+    assert lib.worst_case_cost(len(group), timeout_s) == pytest.approx(0.83, abs=0.005)
+
+
+def test_canary_check_captures_exactly_the_historical_64_prompt_batches():
+    [group], _, timeout_s = lib.EXPERIMENTS["pilot"]
+    spec = lib.worker_spec(group[0], timeout_s)
+    assert spec["config"] == lib.CONFIGS["qwen3_4b_bf16"][0]
+    assert spec["prompts"] == lib.smoke_prompts(64)[8:]
+    order = lib.capture_order([r["id"] for r in spec["prompts"]], CANARY_IDS, batch_size=8)
+    assert order == SMOKE_IDS
+
+
+def test_the_pilot_config_adds_positions_minus_9_and_minus_10_to_bf16_and_samples_1000_slabs_train_prompts():
+    [group], _, _ = lib.EXPERIMENTS["pilot"]
+    fields, source = lib.CONFIGS[group[1][1]]
+    bf16 = lib.CONFIGS["qwen3_4b_bf16"][0]
+    assert {k for k in fields.keys() | bf16.keys() if fields.get(k) != bf16.get(k)} == {"positions"}
+    assert fields["positions"] == (-1, -9, -10)
+    assert source == ("slabs_train", 1000, 0)

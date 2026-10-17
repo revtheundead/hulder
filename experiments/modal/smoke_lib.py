@@ -60,7 +60,7 @@ COMMON = {
     "max_model_len": 1024,
     "max_num_batched_tokens": 1024,
 }
-# name -> (CaptureConfig fields, prompt source), where the source is ("smoke", n) or
+# name -> (CaptureConfig fields, prompt source), where the source is ("smoke", n[, start]) or
 # ("slabs_train", n, seed) (prompts_for). base_model_for finds every base model itself:
 # Qwen3-4B-FP8's card names it, and online FP8 of Qwen3-4B is its own base. The 8B run captures one
 # prompt, only to read the KV-cache headroom bf16 leaves on 24 GB; its activations are dropped.
@@ -70,6 +70,11 @@ CONFIGS = {
     # vLLM's online FP8: bf16 weights quantized at load, per-tensor scales.
     "qwen3_4b_fp8_online": ({**COMMON, **QWEN3_4B, "quantization": "fp8"}, ("smoke", 64)),
     "qwen3_8b_bf16_load": ({**COMMON, **QWEN3_8B}, ("smoke", 1)),
+    # The timing pilot. With the canary in front, canary_check's batches are exactly the historical
+    # 64-prompt captures', so its rows compare bit for bit with the recorded cluster its hash names.
+    "qwen3_4b_bf16_canary_check": ({**COMMON, **QWEN3_4B}, ("smoke", 64, 8)),
+    # Positions -9 and -10 for the D2 ablation (docs/design.md §5): <|im_end|> and the last content token.
+    "qwen3_4b_bf16_pilot": ({**COMMON, **QWEN3_4B, "positions": (-1, -9, -10)}, ("slabs_train", 1000, 0)),
 }
 # config name -> base model, passed to base_model_for as override=. Only for a checkpoint whose
 # base model it can't find; the worker stops with a warning naming the entry to add.
@@ -144,6 +149,13 @@ EXPERIMENTS = {
         True,
         8 * 60,
     ),
+    # Sizes the full Qwen3-4B capture from 1,000 S-Labs train prompts, and checks that a capture with
+    # the canary in front reproduces the historical batches. Two fresh engines in one container.
+    "pilot": (
+        [[("canary_check", "qwen3_4b_bf16_canary_check"), ("pilot", "qwen3_4b_bf16_pilot")]],
+        False,
+        CONFIG_TIMEOUT_S,
+    ),
 }
 
 
@@ -193,10 +205,12 @@ def slabs_train_prompts(n: int, seed: int, path: Path = SLABS_SPLITS) -> list[di
 
 
 def prompts_for(source: tuple) -> list[dict]:
-    """The prompts a CONFIGS source names: ("smoke", n) or ("slabs_train", n, seed)."""
+    """The prompts a CONFIGS source names: ("smoke", n[, start]), smoke_prompts(n)[start:], or
+    ("slabs_train", n, seed)."""
     kind, *args = source
     if kind == "smoke":
-        return smoke_prompts(*args)
+        n, start = (*args, 0)[:2]
+        return smoke_prompts(n)[start:]
     if kind == "slabs_train":
         return slabs_train_prompts(*args)
     raise ValueError(f"unknown prompt source {source!r}")
