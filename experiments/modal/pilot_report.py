@@ -89,6 +89,24 @@ def position_findings(position_tokens: dict[str, list[str]], ids: list[str]) -> 
     return out
 
 
+def failure_reason(run_dir: Path, label: str, manifest: dict) -> str | None:
+    """Why a config failed, as a stop reason, or None if it didn't: the canary budget guard, a
+    timeout or another error."""
+    if manifest["returncode"] == 0:
+        return None
+    log = (run_dir / label / "capture.log").read_text(errors="replace")
+    why = "the canary budget guard fired" if GUARD in log else manifest.get("error", "see capture.log")
+    return f"{label} failed (returncode {manifest['returncode']}): {why}"
+
+
+def unknown_path(label: str, worker: dict, container: str) -> str:
+    """The finding for a canary hash no recorded capture has."""
+    return (
+        f"{label}: unknown path, canary hash {worker['canary_sha256'][:12]}… on {worker.get('gpu_uuid')}, "
+        f"driver {worker.get('gpu_driver')}, container {container}"
+    )
+
+
 def summarise(run_dir: Path, clusters_path: Path = CLUSTERS, runs_dir: Path = RUNS) -> dict:
     run = json.loads((run_dir / "manifest.json").read_text())
     recorded = recorded_hashes(clusters_path, runs_dir)
@@ -101,10 +119,8 @@ def summarise(run_dir: Path, clusters_path: Path = CLUSTERS, runs_dir: Path = RU
             stops.append(f"{label} did not run")
             continue
         manifest = json.loads(path.read_text())
-        if manifest["returncode"] != 0:
-            log = (run_dir / label / "capture.log").read_text(errors="replace")
-            why = "the canary budget guard fired" if GUARD in log else manifest.get("error", "see capture.log")
-            stops.append(f"{label} failed (returncode {manifest['returncode']}): {why}")
+        if failed := failure_reason(run_dir, label, manifest):
+            stops.append(failed)
         if "worker" not in manifest:
             continue
         worker = workers[label] = manifest["worker"]
@@ -125,10 +141,7 @@ def summarise(run_dir: Path, clusters_path: Path = CLUSTERS, runs_dir: Path = RU
             "container": container,
         }
         if match == "unknown path":
-            findings.append(
-                f"{label}: unknown path, canary hash {worker['canary_sha256'][:12]}… on {worker.get('gpu_uuid')}, "
-                f"driver {worker.get('gpu_driver')}, container {container}"
-            )
+            findings.append(unknown_path(label, worker, container))
 
     rows = {"status": "not applicable"}
     check = configs.get("canary_check")
