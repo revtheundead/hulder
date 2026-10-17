@@ -127,3 +127,24 @@ def test_capture_records_each_prompts_token_count_as_vllm_tokenized_it(hidden_st
     config = hidden_states.CaptureConfig(**CONFIG, batch_size=2)
     result = hidden_states.capture(["one", "one two three", "one two"], config)
     assert result.prompt_token_counts == [3, 5, 4]
+
+
+def test_capture_times_engine_startup_and_each_batch_apart(hidden_states, monkeypatch):
+    # A fake clock that the engine moves: 5 s to construct, 0.5 s per chat call.
+    clock = [100.0]
+    monkeypatch.setattr(hidden_states.time, "perf_counter", lambda: clock[0])
+    original_chat = FakeLLM.chat
+
+    def slow_init(self, **kwargs):
+        clock[0] += 5.0
+        self.calls = []
+
+    def slow_chat(self, convs, *args, **kwargs):
+        clock[0] += 0.5
+        return original_chat(self, convs, *args, **kwargs)
+
+    monkeypatch.setattr(FakeLLM, "__init__", slow_init)
+    monkeypatch.setattr(FakeLLM, "chat", slow_chat)
+    result = hidden_states.capture(["a", "b", "c", "d", "e"], hidden_states.CaptureConfig(**CONFIG, batch_size=2))
+    assert result.engine_seconds == 5.0
+    assert result.batch_seconds == [0.5, 0.5, 0.5]

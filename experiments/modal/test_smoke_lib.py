@@ -407,3 +407,172 @@ def test_the_split_refuses_a_canary_over_the_budget_and_rows_in_another_order():
     lib.split_canary(order, PILOT_IDS, CANARY_IDS, acts, counts, lib.LAYERS, (-1,), 1024)  # exactly at it
     with pytest.raises(ValueError, match="capture order"):
         lib.split_canary(PILOT_IDS + CANARY_IDS, PILOT_IDS, CANARY_IDS, acts, counts, lib.LAYERS, (-1,), 1024)
+
+
+def slabs_parquet(path, shuffle_seed=None):
+    """A splits.parquet stand-in: 30 train rows among other splits, optionally in shuffled row order.
+    Skips where pandas isn't installed, as in CI, which installs the test group only."""
+    pd = pytest.importorskip("pandas")
+
+    rows = [{"id": f"slabs/train/{i}", "split": "train", "text": f"train {i}", "label": i % 2} for i in range(30)]
+    rows += [{"id": f"slabs/test/{i}", "split": "test", "text": f"test {i}", "label": 0} for i in range(10)]
+    frame = pd.DataFrame(rows)
+    if shuffle_seed is not None:
+        frame = frame.sample(frac=1, random_state=shuffle_seed)
+    frame.to_parquet(path)
+    return path
+
+
+def test_the_slabs_train_sample_is_n_distinct_train_rows_fixed_by_its_seed(tmp_path):
+    path = slabs_parquet(tmp_path / "splits.parquet")
+    sample = lib.slabs_train_prompts(10, 0, path)
+    assert len({r["id"] for r in sample}) == 10
+    assert all(r["id"].startswith("slabs/train/") for r in sample)
+    for r in sample:
+        i = int(r["id"].rsplit("/", 1)[1])
+        assert r == {"id": f"slabs/train/{i}", "text": f"train {i}", "label": i % 2}
+    assert lib.slabs_train_prompts(10, 0, path) == sample
+    assert lib.slabs_train_prompts(10, 1, path) != sample
+
+
+def test_a_shuffled_parquet_gives_the_same_slabs_sample(tmp_path):
+    ordered = slabs_parquet(tmp_path / "ordered.parquet")
+    shuffled = slabs_parquet(tmp_path / "shuffled.parquet", shuffle_seed=7)
+    assert lib.slabs_train_prompts(10, 0, shuffled) == lib.slabs_train_prompts(10, 0, ordered)
+
+
+def test_the_slabs_sample_refuses_more_than_the_train_split_holds(tmp_path):
+    with pytest.raises(ValueError, match="30 train rows"):
+        lib.slabs_train_prompts(31, 0, slabs_parquet(tmp_path / "splits.parquet"))
+
+
+def test_the_existing_configs_still_request_their_smoke_prompts():
+    expected = {"qwen3_4b_bf16": 64, "qwen3_4b_fp8": 64, "qwen3_4b_fp8_online": 64, "qwen3_8b_bf16_load": 1}
+    for name, n in expected.items():
+        spec = lib.worker_spec(("x", name), 300)
+        assert spec["prompts"] == lib.smoke_prompts(n)
+        assert spec["save"] is (n > 1)
+
+
+def test_importing_smoke_lib_needs_no_pandas():
+    # The container imports smoke_lib, and only the local entrypoint reads the parquet.
+    import subprocess
+    import sys
+
+    code = "import sys, smoke_lib; assert 'pandas' not in sys.modules"
+    subprocess.run([sys.executable, "-c", code], cwd=lib.ROOT / "experiments" / "modal", check=True)
+
+
+def test_the_timing_estimate_projects_startup_plus_2040_mean_batches_and_describes_the_spread():
+    # Per-prompt times 0.1 to 0.5 s; numpy's linear percentiles put the 5th at 0.12 and the 95th at 0.48.
+    timing = lib.timing_estimate(30.0, [0.8, 1.6, 2.4, 3.2, 4.0])
+    assert timing["batches"] == 5 and timing["total_seconds"] == pytest.approx(12.0)
+    assert timing["mean_batch_seconds"] == pytest.approx(2.4)
+    assert timing["projection_seconds"] == pytest.approx(30 + 2040 * 2.4)
+    spread = timing["per_prompt_seconds"]
+    assert [spread[k] for k in ("median", "p5", "p95", "max")] == pytest.approx([0.3, 0.12, 0.48, 0.5])
+
+
+def test_constant_batch_times_collapse_the_band_onto_the_projection():
+    timing = lib.timing_estimate(12.0, [0.4] * 125)
+    assert timing["mean_band"] == pytest.approx([0.4, 0.4])
+    assert timing["projection_band"] == pytest.approx([12 + 816, 12 + 816])
+
+
+def test_the_bootstrap_band_is_the_percentile_interval_of_resampled_means():
+    # Two batch times: a resample's mean is 1, 2 or 3 with probability 1/4, 1/2, 1/4, so the 2.5th and
+    # 97.5th percentiles of 10,000 resampled means are 1 and 3.
+    timing = lib.timing_estimate(0.0, [1.0, 3.0])
+    assert timing["mean_band"] == [1.0, 3.0]
+    assert timing["bootstrap"] == {"seed": 0, "resamples": 10_000, "confidence": 0.95}
+
+
+def test_the_band_is_fixed_by_its_seed_holds_the_mean_and_narrows_with_more_batches():
+    times = np.random.default_rng(5).gamma(4.0, 0.1, size=500)
+    few, many = lib.timing_estimate(10.0, times[:50]), lib.timing_estimate(10.0, times)
+    assert lib.timing_estimate(10.0, times[:50]) == few
+    assert lib.timing_estimate(10.0, times[:50], seed=1)["mean_band"] != few["mean_band"]
+    assert few["mean_band"][0] < few["mean_batch_seconds"] < few["mean_band"][1]
+    assert many["mean_band"][1] - many["mean_band"][0] < few["mean_band"][1] - few["mean_band"][0]
+
+
+@pytest.mark.parametrize(("startup", "fits"), [(179.5, True), (180.0, False)])
+def test_the_capture_fits_only_if_startup_and_the_bands_upper_end_stay_under_the_timeout(startup, fits):
+    # 2040 batches of 0.5 s are 1020 s, so 180 s of startup reaches the 1200 s timeout exactly.
+    assert lib.timing_estimate(startup, [0.5] * 125)["fits_timeout"] is fits
+
+
+def test_common_is_unchanged_so_the_canary_batch_stays_comparable():
+    assert lib.COMMON == {
+        "layers": (18, 27),
+        "positions": (-1,),
+        "system_prompt": "You are a helpful assistant.",
+        "enable_thinking": False,
+        "batch_size": 8,
+        "gpu_memory_utilization": 0.9,
+        "max_model_len": 1024,
+        "max_num_batched_tokens": 1024,
+    }
+
+
+def test_a_smoke_source_can_start_partway():
+    assert lib.prompts_for(("smoke", 64, 8)) == lib.smoke_prompts(64)[8:]
+
+
+def test_the_pilot_runs_canary_check_then_pilot_in_one_container_for_at_most_83_cents():
+    [group], single_use, timeout_s = lib.EXPERIMENTS["pilot"]
+    assert [e[0] for e in group] == ["canary_check", "pilot"] and not single_use
+    assert timeout_s == 20 * 60
+    assert lib.worst_case_cost(len(group), timeout_s) == pytest.approx(0.83, abs=0.005)
+
+
+def test_canary_check_captures_exactly_the_historical_64_prompt_batches():
+    [group], _, timeout_s = lib.EXPERIMENTS["pilot"]
+    spec = lib.worker_spec(group[0], timeout_s)
+    assert spec["config"] == lib.CONFIGS["qwen3_4b_bf16"][0]
+    assert spec["prompts"] == lib.smoke_prompts(64)[8:]
+    order = lib.capture_order([r["id"] for r in spec["prompts"]], CANARY_IDS, batch_size=8)
+    assert order == SMOKE_IDS
+
+
+def test_the_pilot_config_adds_positions_minus_9_and_minus_10_to_bf16_and_samples_1000_slabs_train_prompts():
+    [group], _, _ = lib.EXPERIMENTS["pilot"]
+    fields, source = lib.CONFIGS[group[1][1]]
+    bf16 = lib.CONFIGS["qwen3_4b_bf16"][0]
+    assert {k for k in fields.keys() | bf16.keys() if fields.get(k) != bf16.get(k)} == {"positions"}
+    assert fields["positions"] == (-1, -9, -10)
+    assert source == ("slabs_train", 1000, 0)
+
+
+def test_the_runner_requires_todays_spend_rather_than_assuming_none():
+    # capture.py imports modal, absent here and in CI, so its entrypoint's signature is read from source.
+    import ast
+
+    tree = ast.parse((lib.ROOT / "experiments" / "modal" / "capture.py").read_text())
+    [main] = [n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "main"]
+    args = main.args
+    defaults = dict(zip([a.arg for a in args.args][len(args.args) - len(args.defaults) :], args.defaults, strict=True))
+    assert "spent_usd" in [a.arg for a in args.args] and "spent_usd" not in defaults
+
+
+def save_capture(directory, acts, ids=SMOKE_IDS):
+    """Snapshots of 64 prompts at layers 18 and 27, as a recorded capture saves them."""
+    import hulder
+
+    directory.mkdir(parents=True)
+    labels = np.arange(len(ids)) % 2
+    for i, layer in enumerate(lib.LAYERS):
+        hulder.Snapshot(ids=np.array(ids), labels=labels, activations=acts[:, i, 0]).save(directory / f"{layer}")
+
+
+def test_a_saved_captures_canary_hash_equals_the_workers_hash_of_the_same_activations(tmp_path):
+    acts = np.random.default_rng(3).normal(size=(64, 2, 1, 8)).astype(np.float16)
+    save_capture(tmp_path / "capture", acts)
+    split = lib.split_canary(SMOKE_IDS, SMOKE_IDS, CANARY_IDS, acts, [50] * 64, lib.LAYERS, (-1,), 1023)
+    assert lib.recorded_canary_hash(tmp_path / "capture") == split.canary_sha256
+
+
+def test_a_saved_capture_that_does_not_begin_with_the_canary_has_no_canary_hash(tmp_path):
+    save_capture(tmp_path / "capture", np.zeros((64, 2, 1, 8), np.float16), ids=SMOKE_IDS[::-1])
+    with pytest.raises(ValueError, match="doesn't begin with the canary"):
+        lib.recorded_canary_hash(tmp_path / "capture")

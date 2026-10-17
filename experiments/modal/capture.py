@@ -17,9 +17,9 @@ experiment instead runs its containers at once, each serving one call, to put ru
 Each snapshot records the GPU's UUID and driver, so runs from different GPUs warn when checked.
 
 Stop rules: each config stops after 20 minutes, and no container starts if the estimate of what
-was spent today (--spent-usd, plus this run so far) and that container's worst case would pass
-$3. Estimates use Modal's published rates (smoke_lib.py) and have run high against the actual
-charge on Modal's usage page.
+was spent today, plus this run so far and that container's worst case, would pass $3. Today's
+spend is --spent-usd, which is required and read from Modal's usage page. Estimates use Modal's
+published rates (smoke_lib.py) and have run high against the actual charge on that page.
 
 Writes, per run, the snapshots (one per layer), the full log and a manifest to
 --out/<run id>/<label>/, and the run's manifest to --out/<run id>/manifest.json. The tracked tree
@@ -201,7 +201,7 @@ def git(*args: str) -> str:
 
 
 @app.local_entrypoint()
-def main(experiment: str, spent_usd: float = 0.0, out: str = ".cache/modal-runs") -> None:
+def main(experiment: str, spent_usd: float, out: str = ".cache/modal-runs") -> None:
     if experiment not in lib.EXPERIMENTS:
         raise SystemExit(f"unknown experiment {experiment!r}; known: {list(lib.EXPERIMENTS)}")
     if git("status", "--porcelain", "--untracked-files=no"):
@@ -217,7 +217,10 @@ def main(experiment: str, spent_usd: float = 0.0, out: str = ".cache/modal-runs"
         "experiment": experiment,
         "single_use": single_use,
         "commit": git("rev-parse", "HEAD"),
-        "command": f"uv run --with modal==1.6.1 modal run experiments/modal/capture.py --experiment {experiment}",
+        "command": (
+            "uv run --with modal==1.6.1 modal run experiments/modal/capture.py "
+            f"--experiment {experiment} --spent-usd {spent_usd}"
+        ),
         "modal": modal.__version__,
         "rates_usd_per_s": {"L4": lib.L4_PER_S, "cpu_core": lib.CPU_CORE_PER_S, "memory_gib": lib.MEMORY_GIB_PER_S},
         "spent_before_usd": spent_usd,

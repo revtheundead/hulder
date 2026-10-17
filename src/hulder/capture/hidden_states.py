@@ -7,6 +7,7 @@ Any script calling `capture` needs an `if __name__ == "__main__":` guard (spawn 
 
 import os
 import tempfile
+import time
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -59,14 +60,19 @@ class Capture:
     # Each prompt's length in tokens as vLLM tokenized it, templated, in prompt order. With chunked
     # prefill off, a batch whose total exceeds max_num_batched_tokens is prefilled over several steps.
     prompt_token_counts: list[int] = field(default_factory=list)
+    # Seconds to construct the LLM: weight loading, profiling, KV-cache allocation, compilation and warmup.
+    engine_seconds: float | None = None
+    # Wall seconds of each batch's llm.chat call, including reading back its hidden-state files.
+    batch_seconds: list[float] = field(default_factory=list)
 
 
 def capture(prompts: list[str], cfg: CaptureConfig) -> Capture:
     convs = [[{"role": "system", "content": cfg.system_prompt}, {"role": "user", "content": p}] for p in prompts]
     params = SamplingParams(max_tokens=1, temperature=0)
     template = {} if cfg.enable_thinking is None else {"chat_template_kwargs": {"enable_thinking": cfg.enable_thinking}}
-    acts, tokens, counts = [], [], []
+    acts, tokens, counts, batch_seconds = [], [], [], []
     with tempfile.TemporaryDirectory() as tmp:
+        started = time.perf_counter()
         llm = LLM(
             model=cfg.model,
             revision=cfg.revision,
@@ -90,9 +96,11 @@ def capture(prompts: list[str], cfg: CaptureConfig) -> Capture:
                 kv_connector_extra_config={"shared_storage_path": tmp},
             ),
         )
+        engine_seconds = time.perf_counter() - started
         tok = llm.get_tokenizer()
         pos = list(cfg.positions)
         for start in range(0, len(convs), cfg.batch_size):
+            started = time.perf_counter()
             for out in llm.chat(convs[start : start + cfg.batch_size], params, use_tqdm=False, **template):
                 path = out.kv_transfer_params["hidden_states_path"]
                 obj = example_hidden_states_connector.load_hidden_states(path)
@@ -103,6 +111,7 @@ def capture(prompts: list[str], cfg: CaptureConfig) -> Capture:
                 tokens.append(tok.convert_ids_to_tokens(obj["token_ids"][pos].tolist()))
                 counts.append(len(out.prompt_token_ids))
                 os.remove(path)
+            batch_seconds.append(time.perf_counter() - started)
             if start // cfg.batch_size % 100 == 0:
                 print(f"captured {min(start + cfg.batch_size, len(convs))}/{len(convs)}", flush=True)
     return Capture(
@@ -111,4 +120,6 @@ def capture(prompts: list[str], cfg: CaptureConfig) -> Capture:
         gpu=torch.cuda.get_device_name(),
         enable_thinking=cfg.enable_thinking,
         prompt_token_counts=counts,
+        engine_seconds=engine_seconds,
+        batch_seconds=batch_seconds,
     )
