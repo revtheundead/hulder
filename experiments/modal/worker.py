@@ -81,10 +81,14 @@ def main(spec_path: str, out_dir: str) -> None:
         "capture_config": asdict(cfg),
         "base_model": base_model,
         "n_prompts": len(rows),
+        "prompt_ids_sha256": hulder.prompt_ids_sha256(ids),
         "canary_sha256": split.canary_sha256,
         "canary_prompt_tokens": split.canary_prompt_tokens,
         "gpu": captured.gpu,
+        **spec.get("extra_metadata", {}),  # gpu_uuid and gpu_driver
         "capture_seconds": round(seconds, 1),  # engine start, load, compile and capture together
+        "engine_seconds": captured.engine_seconds,  # constructing the LLM
+        "batch_seconds": captured.batch_seconds,  # each batch in capture order, the canary's first
         "last_tokens": sorted({tokens[0] for tokens in captured.position_tokens}),
         "position_tokens": {str(p): [t[j] for t in requested_tokens] for j, p in enumerate(cfg.positions)},
         "snapshots": sorted(saved),

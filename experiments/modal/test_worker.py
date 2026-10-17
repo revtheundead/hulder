@@ -37,6 +37,8 @@ def worker(monkeypatch):
             gpu="NVIDIA L4",
             enable_thinking=cfg.enable_thinking,
             prompt_token_counts=[counts["per_prompt"]] * n,
+            engine_seconds=41.5,
+            batch_seconds=[0.25 * (b + 1) for b in range(-(-n // cfg.batch_size))],
         )
 
     monkeypatch.setattr(hidden_states, "capture", capture)
@@ -44,8 +46,11 @@ def worker(monkeypatch):
     return module.main, calls, counts
 
 
+GPU = {"gpu_uuid": "GPU-1234", "gpu_driver": "580.95.05"}
+
+
 def run(main, tmp_path, prompts, positions=(-1,)):
-    spec = {**lib.worker_spec(("bf16", "qwen3_4b_bf16"), 300), "prompts": prompts, "extra_metadata": {}}
+    spec = {**lib.worker_spec(("bf16", "qwen3_4b_bf16"), 300), "prompts": prompts, "extra_metadata": GPU}
     spec["config"] = {**spec["config"], "positions": positions}
     (tmp_path / "spec.json").write_text(json.dumps(spec))
     main(str(tmp_path / "spec.json"), str(tmp_path))
@@ -102,3 +107,13 @@ def test_the_worker_records_each_requested_prompts_token_at_each_position(worker
     run(main, tmp_path, PILOT, positions=(-1, -9, -10))
     record = json.loads((tmp_path / "worker.json").read_text())
     assert record["position_tokens"] == {str(p): [f"p{p}#{r + 8}" for r in range(len(PILOT))] for p in (-1, -9, -10)}
+
+
+def test_the_worker_records_timing_the_gpu_and_the_requested_prompts_hash(worker, tmp_path):
+    main, _, _ = worker
+    run(main, tmp_path, PILOT)
+    record = json.loads((tmp_path / "worker.json").read_text())
+    assert record["engine_seconds"] == 41.5
+    assert record["batch_seconds"] == [0.25, 0.5, 0.75]  # the canary's batch first, then the 16 requested
+    assert (record["gpu_uuid"], record["gpu_driver"]) == ("GPU-1234", "580.95.05")
+    assert record["prompt_ids_sha256"] == hulder.prompt_ids_sha256([r["id"] for r in PILOT])
