@@ -407,3 +407,57 @@ def test_the_split_refuses_a_canary_over_the_budget_and_rows_in_another_order():
     lib.split_canary(order, PILOT_IDS, CANARY_IDS, acts, counts, lib.LAYERS, (-1,), 1024)  # exactly at it
     with pytest.raises(ValueError, match="capture order"):
         lib.split_canary(PILOT_IDS + CANARY_IDS, PILOT_IDS, CANARY_IDS, acts, counts, lib.LAYERS, (-1,), 1024)
+
+
+def slabs_parquet(path, shuffle_seed=None):
+    """A splits.parquet stand-in: 30 train rows among other splits, optionally in shuffled row order.
+    Skips where pandas isn't installed, as in CI, which installs the test group only."""
+    pd = pytest.importorskip("pandas")
+
+    rows = [{"id": f"slabs/train/{i}", "split": "train", "text": f"train {i}", "label": i % 2} for i in range(30)]
+    rows += [{"id": f"slabs/test/{i}", "split": "test", "text": f"test {i}", "label": 0} for i in range(10)]
+    frame = pd.DataFrame(rows)
+    if shuffle_seed is not None:
+        frame = frame.sample(frac=1, random_state=shuffle_seed)
+    frame.to_parquet(path)
+    return path
+
+
+def test_the_slabs_train_sample_is_n_distinct_train_rows_fixed_by_its_seed(tmp_path):
+    path = slabs_parquet(tmp_path / "splits.parquet")
+    sample = lib.slabs_train_prompts(10, 0, path)
+    assert len({r["id"] for r in sample}) == 10
+    assert all(r["id"].startswith("slabs/train/") for r in sample)
+    for r in sample:
+        i = int(r["id"].rsplit("/", 1)[1])
+        assert r == {"id": f"slabs/train/{i}", "text": f"train {i}", "label": i % 2}
+    assert lib.slabs_train_prompts(10, 0, path) == sample
+    assert lib.slabs_train_prompts(10, 1, path) != sample
+
+
+def test_a_shuffled_parquet_gives_the_same_slabs_sample(tmp_path):
+    ordered = slabs_parquet(tmp_path / "ordered.parquet")
+    shuffled = slabs_parquet(tmp_path / "shuffled.parquet", shuffle_seed=7)
+    assert lib.slabs_train_prompts(10, 0, shuffled) == lib.slabs_train_prompts(10, 0, ordered)
+
+
+def test_the_slabs_sample_refuses_more_than_the_train_split_holds(tmp_path):
+    with pytest.raises(ValueError, match="30 train rows"):
+        lib.slabs_train_prompts(31, 0, slabs_parquet(tmp_path / "splits.parquet"))
+
+
+def test_the_existing_configs_still_request_their_smoke_prompts():
+    expected = {"qwen3_4b_bf16": 64, "qwen3_4b_fp8": 64, "qwen3_4b_fp8_online": 64, "qwen3_8b_bf16_load": 1}
+    for name, n in expected.items():
+        spec = lib.worker_spec(("x", name), 300)
+        assert spec["prompts"] == lib.smoke_prompts(n)
+        assert spec["save"] is (n > 1)
+
+
+def test_importing_smoke_lib_needs_no_pandas():
+    # The container imports smoke_lib, and only the local entrypoint reads the parquet.
+    import subprocess
+    import sys
+
+    code = "import sys, smoke_lib; assert 'pandas' not in sys.modules"
+    subprocess.run([sys.executable, "-c", code], cwd=lib.ROOT / "experiments" / "modal", check=True)

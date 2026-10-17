@@ -12,6 +12,8 @@ import numpy as np
 # .parent rather than .parents[2], which fails inside a container where this file is /root/smoke_lib.py.
 ROOT = Path(__file__).resolve().parent.parent.parent
 PROMPTS = ROOT / "examples" / "live_demo" / "demo_prompts.jsonl"
+# The Phase 1 splits of S-Labs (docs/design.md §7), local only: the prompts travel in the worker spec.
+SLABS_SPLITS = ROOT / ".cache" / "probe" / "splits.parquet"
 
 # Modal's published rates in USD per second, from https://modal.com/pricing (checked 2026-10-13).
 # Billed per second of container time, CPU and memory at least at the requested amount.
@@ -58,15 +60,16 @@ COMMON = {
     "max_model_len": 1024,
     "max_num_batched_tokens": 1024,
 }
-# name -> (CaptureConfig fields, prompts captured). base_model_for finds every base model itself:
+# name -> (CaptureConfig fields, prompt source), where the source is ("smoke", n) or
+# ("slabs_train", n, seed) (prompts_for). base_model_for finds every base model itself:
 # Qwen3-4B-FP8's card names it, and online FP8 of Qwen3-4B is its own base. The 8B run captures one
 # prompt, only to read the KV-cache headroom bf16 leaves on 24 GB; its activations are dropped.
 CONFIGS = {
-    "qwen3_4b_bf16": ({**COMMON, **QWEN3_4B}, 64),
-    "qwen3_4b_fp8": ({**COMMON, **QWEN3_4B_FP8}, 64),
+    "qwen3_4b_bf16": ({**COMMON, **QWEN3_4B}, ("smoke", 64)),
+    "qwen3_4b_fp8": ({**COMMON, **QWEN3_4B_FP8}, ("smoke", 64)),
     # vLLM's online FP8: bf16 weights quantized at load, per-tensor scales.
-    "qwen3_4b_fp8_online": ({**COMMON, **QWEN3_4B, "quantization": "fp8"}, 64),
-    "qwen3_8b_bf16_load": ({**COMMON, **QWEN3_8B}, 1),
+    "qwen3_4b_fp8_online": ({**COMMON, **QWEN3_4B, "quantization": "fp8"}, ("smoke", 64)),
+    "qwen3_8b_bf16_load": ({**COMMON, **QWEN3_8B}, ("smoke", 1)),
 }
 # config name -> base model, passed to base_model_for as override=. Only for a checkpoint whose
 # base model it can't find; the worker stops with a warning naming the entry to add.
@@ -175,6 +178,30 @@ def smoke_prompts(n: int, path: Path = PROMPTS) -> list[dict]:
     return chosen
 
 
+def slabs_train_prompts(n: int, seed: int, path: Path = SLABS_SPLITS) -> list[dict]:
+    """n distinct S-Labs train prompts: the train rows sorted by id, so the parquet's row order
+    doesn't matter, then the first n of numpy's default_rng(seed) permutation, in that order.
+    Imports pandas only here, since the container imports this module but never reads the parquet."""
+    import pandas as pd
+
+    rows = pd.read_parquet(path, columns=["id", "split", "text", "label"])
+    train = rows[rows["split"] == "train"].sort_values("id", kind="stable").reset_index(drop=True)
+    if n > len(train):
+        raise ValueError(f"{path} has {len(train)} train rows, fewer than n={n}")
+    picked = train.iloc[np.random.default_rng(seed).permutation(len(train))[:n]]
+    return [{"id": str(r.id), "text": str(r.text), "label": int(r.label)} for r in picked.itertuples()]
+
+
+def prompts_for(source: tuple) -> list[dict]:
+    """The prompts a CONFIGS source names: ("smoke", n) or ("slabs_train", n, seed)."""
+    kind, *args = source
+    if kind == "smoke":
+        return smoke_prompts(*args)
+    if kind == "slabs_train":
+        return slabs_train_prompts(*args)
+    raise ValueError(f"unknown prompt source {source!r}")
+
+
 def canary_prompts() -> list[dict]:
     """The path canary: the first batch of smoke_prompts(64), which was batch 1 of every Qwen3-4B
     capture since 2026-10-13, so a new capture's canary hash compares with the historical ones. It
@@ -271,12 +298,13 @@ def split_canary(
 def worker_spec(entry: tuple, timeout_s: int) -> dict:
     """The worker spec for one (label, config[, env]) entry of an experiment. The worker runs the
     canary as the engine's first batch, then the requested prompts."""
-    fields, n = CONFIGS[entry[1]]
+    fields, source = CONFIGS[entry[1]]
+    prompts = prompts_for(source)
     return {
         "config": fields,
         "canary": canary_prompts(),
-        "prompts": smoke_prompts(n),
-        "save": n > 1,
+        "prompts": prompts,
+        "save": len(prompts) > 1,
         "config_name": entry[1],
         "base_model": BASE_MODEL_OVERRIDES.get(entry[1]),
         "env": entry[2] if len(entry) > 2 else {},
