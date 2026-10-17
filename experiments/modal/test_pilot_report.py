@@ -14,11 +14,6 @@ SMOKE_IDS = [r["id"] for r in lib.smoke_prompts(64)]
 IM_END = "<|im_end|>"
 
 
-def canary_hash_of(rows: dict[int, np.ndarray]) -> str:
-    acts = np.stack([rows[layer][:8] for layer in lib.LAYERS], axis=1)[:, :, None]
-    return lib.canary_sha256(acts, lib.LAYERS, (-1,))
-
-
 def save(directory, ids, acts: dict[int, np.ndarray], suffix=""):
     directory.mkdir(parents=True, exist_ok=True)
     labels = np.arange(len(ids)) % 2
@@ -41,7 +36,7 @@ def recorded(tmp_path):
 def make_run(tmp_path, recorded_rows, *, canary_rows=None, canary_hash=None, pilot_minus_9=None, pilot=True):
     """A pilot run directory: canary_check and pilot, as capture.py writes them."""
     run_dir = tmp_path / "run"
-    hash_ = canary_hash or canary_hash_of(recorded_rows)
+    hash_ = canary_hash or lib.recorded_canary_hash(tmp_path / "runs" / "r0" / "a")
     rows = canary_rows or {layer: a[8:] for layer, a in recorded_rows.items()}
     save(run_dir / "canary_check", SMOKE_IDS[8:], rows)
     n = 1000

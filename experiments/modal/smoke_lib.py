@@ -243,6 +243,21 @@ def canary_sha256(activations: np.ndarray, layers: tuple[int, ...], positions: t
     return hashlib.sha256(header + data.tobytes()).hexdigest()
 
 
+def recorded_canary_hash(capture: Path) -> str:
+    """The canary hash of a saved capture whose snapshots (<layer>.npz at layers 18 and 27,
+    position -1) begin with the canary, as every Qwen3-4B capture since 2026-10-13 does. Equal to
+    the hash the worker records for the same activations (split_canary). Raises if the snapshots
+    don't begin with the canary."""
+    import hulder
+
+    snapshots = [hulder.Snapshot.load(capture / f"{layer}.npz") for layer in LAYERS]
+    canary = [r["id"] for r in canary_prompts()]
+    if any([str(i) for i in s.ids[: len(canary)]] != canary for s in snapshots):
+        raise ValueError(f"{capture} doesn't begin with the canary")
+    acts = np.stack([s.activations[: len(canary)] for s in snapshots], axis=1)[:, :, None]
+    return canary_sha256(acts, LAYERS, (-1,))
+
+
 def check_canary_budget(token_counts: list[int], budget: int) -> None:
     """Raise if the canary's prompts, as vLLM tokenized them, total more than the scheduler's token
     budget for one step. With chunked prefill off, vLLM 0.30.0 then prefills them over more than one

@@ -45,7 +45,7 @@ def recorded_hashes(clusters_path: Path = CLUSTERS, runs_dir: Path = RUNS) -> di
     for g, group in enumerate(json.loads(clusters_path.read_text())):
         for c, cluster in enumerate(group["clusters"]):
             members = [m["name"] for m in cluster]
-            hashes = {_recorded_canary_hash(runs_dir / name) for name in members}
+            hashes = {lib.recorded_canary_hash(runs_dir / name) for name in members}
             if len(hashes) != 1:
                 raise ValueError(f"recorded cluster {g}.{c} holds {len(hashes)} canary hashes")
             hash_ = hashes.pop()
@@ -53,15 +53,6 @@ def recorded_hashes(clusters_path: Path = CLUSTERS, runs_dir: Path = RUNS) -> di
                 raise ValueError(f"recorded clusters {found[hash_]['cluster']} and {g}.{c} share a canary hash")
             found[hash_] = {"cluster": f"{g}.{c}", "members": members}
     return found
-
-
-def _recorded_canary_hash(capture: Path) -> str:
-    snapshots = [hulder.Snapshot.load(capture / f"{layer}.npz") for layer in lib.LAYERS]
-    canary = [r["id"] for r in lib.canary_prompts()]
-    if [str(i) for i in snapshots[0].ids[: len(canary)]] != canary:
-        raise ValueError(f"{capture} doesn't begin with the canary")
-    acts = np.stack([s.activations[: len(canary)] for s in snapshots], axis=1)[:, :, None]
-    return lib.canary_sha256(acts, lib.LAYERS, (-1,))
 
 
 def match_canary(canary_sha256: str, recorded: dict[str, dict]) -> dict | str:

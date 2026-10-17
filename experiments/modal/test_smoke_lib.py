@@ -553,3 +553,26 @@ def test_the_runner_requires_todays_spend_rather_than_assuming_none():
     args = main.args
     defaults = dict(zip([a.arg for a in args.args][len(args.args) - len(args.defaults) :], args.defaults, strict=True))
     assert "spent_usd" in [a.arg for a in args.args] and "spent_usd" not in defaults
+
+
+def save_capture(directory, acts, ids=SMOKE_IDS):
+    """Snapshots of 64 prompts at layers 18 and 27, as a recorded capture saves them."""
+    import hulder
+
+    directory.mkdir(parents=True)
+    labels = np.arange(len(ids)) % 2
+    for i, layer in enumerate(lib.LAYERS):
+        hulder.Snapshot(ids=np.array(ids), labels=labels, activations=acts[:, i, 0]).save(directory / f"{layer}")
+
+
+def test_a_saved_captures_canary_hash_equals_the_workers_hash_of_the_same_activations(tmp_path):
+    acts = np.random.default_rng(3).normal(size=(64, 2, 1, 8)).astype(np.float16)
+    save_capture(tmp_path / "capture", acts)
+    split = lib.split_canary(SMOKE_IDS, SMOKE_IDS, CANARY_IDS, acts, [50] * 64, lib.LAYERS, (-1,), 1023)
+    assert lib.recorded_canary_hash(tmp_path / "capture") == split.canary_sha256
+
+
+def test_a_saved_capture_that_does_not_begin_with_the_canary_has_no_canary_hash(tmp_path):
+    save_capture(tmp_path / "capture", np.zeros((64, 2, 1, 8), np.float16), ids=SMOKE_IDS[::-1])
+    with pytest.raises(ValueError, match="doesn't begin with the canary"):
+        lib.recorded_canary_hash(tmp_path / "capture")

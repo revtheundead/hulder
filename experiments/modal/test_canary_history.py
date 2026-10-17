@@ -9,11 +9,8 @@ a hash not seen here is an unknown path, not a path switch. Needs the snapshots 
 
 import json
 
-import numpy as np
 import pytest
 import smoke_lib as lib
-
-import hulder
 
 RUNS = lib.ROOT / ".cache" / "modal-runs"
 CLUSTERS = lib.ROOT / "docs" / "results" / "phase0" / "modal" / "bf16_clusters.json"
@@ -21,11 +18,7 @@ CLUSTERS = lib.ROOT / "docs" / "results" / "phase0" / "modal" / "bf16_clusters.j
 
 def canary_hash(name: str) -> str:
     """The canary hash of a recorded capture, named <run id>/<label>, from its first batch."""
-    snapshots = [hulder.Snapshot.load(RUNS / name / f"{layer}.npz") for layer in lib.LAYERS]
-    ids = [str(i) for i in snapshots[0].ids[: lib.COMMON["batch_size"]]]
-    assert ids == [r["id"] for r in lib.canary_prompts()]
-    acts = np.stack([s.activations[: len(ids)] for s in snapshots], axis=1)[:, :, None]
-    return lib.canary_sha256(acts, lib.LAYERS, (-1,))
+    return lib.recorded_canary_hash(RUNS / name)
 
 
 def recorded() -> list[dict]:
