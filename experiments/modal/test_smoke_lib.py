@@ -617,3 +617,13 @@ def test_compare_batches_refuses_rows_of_another_shape():
     b = {layer: np.zeros((8, 4), np.float16) for layer in lib.LAYERS}
     with pytest.raises(ValueError, match="layer 18"):
         lib.compare_batches(a, b)
+
+
+def test_canary_repeat_runs_one_traced_canary_check_in_each_of_two_fresh_containers_for_at_most_33_cents():
+    containers, single_use, timeout_s = lib.EXPERIMENTS["canary_repeat"]
+    assert single_use and timeout_s == 8 * 60
+    assert containers == [
+        [("a_canary_check", "qwen3_4b_bf16_canary_check", {lib.CUBLAS_LOG: "1"})],
+        [("b_canary_check", "qwen3_4b_bf16_canary_check", {lib.CUBLAS_LOG: "1"})],
+    ]
+    assert sum(lib.worst_case_cost(len(g), timeout_s) for g in containers) == pytest.approx(0.33, abs=0.005)

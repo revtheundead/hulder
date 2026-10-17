@@ -156,6 +156,14 @@ EXPERIMENTS = {
         False,
         CONFIG_TIMEOUT_S,
     ),
+    # Whether the pilot's canary_check result reproduces: it matched the majority bf16 path on
+    # batches 1 to 7 and on no recorded capture on batch 8. One traced canary_check in each of two
+    # fresh containers, compared batch by batch. 8 minutes per config, as the census.
+    "canary_repeat": (
+        [[(f"{c}_canary_check", "qwen3_4b_bf16_canary_check", {CUBLAS_LOG: "1"})] for c in "ab"],
+        True,
+        8 * 60,
+    ),
 }
 
 
