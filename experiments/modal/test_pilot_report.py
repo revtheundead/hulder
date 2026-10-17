@@ -210,3 +210,14 @@ def test_the_recorded_hashes_name_each_captures_own_cluster():
     by_member = {m: h for h, entry in hashes.items() for m in entry["members"]}
     assert by_member[majority[0]] == by_member[majority[-1]] != by_member[minority[0]]
     assert hashes[by_member[minority[0]]]["members"] == minority
+
+
+def test_two_recorded_clusters_with_one_canary_hash_are_refused(tmp_path, recorded):
+    # Two groups whose captures hold the same canary would make a hash name two clusters.
+    rows, runs, clusters = recorded
+    save(runs / "r1" / "b", SMOKE_IDS, rows)
+    groups = json.loads(clusters.read_text())
+    groups.append({"identity": [{"quantization": "fp8"}, {}], "clusters": [[{"name": "r1/b"}]]})
+    clusters.write_text(json.dumps(groups))
+    with pytest.raises(ValueError, match=r"recorded clusters 0\.0 and 1\.0 share a canary hash"):
+        report.recorded_hashes(clusters, runs)

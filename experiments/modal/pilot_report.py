@@ -39,7 +39,8 @@ GUARD = "exceed the scheduler's per-step budget"  # smoke_lib.check_canary_budge
 
 def recorded_hashes(clusters_path: Path = CLUSTERS, runs_dir: Path = RUNS) -> dict[str, dict]:
     """canary hash -> the recorded cluster ("<group>.<cluster>") with that hash and its members,
-    hashed from each member's first batch. Members of one cluster must hash alike."""
+    hashed from each member's first batch. Members of one cluster must hash alike, and no two
+    clusters may share a hash, since a hash would then name either."""
     found: dict[str, dict] = {}
     for g, group in enumerate(json.loads(clusters_path.read_text())):
         for c, cluster in enumerate(group["clusters"]):
@@ -47,7 +48,10 @@ def recorded_hashes(clusters_path: Path = CLUSTERS, runs_dir: Path = RUNS) -> di
             hashes = {_recorded_canary_hash(runs_dir / name) for name in members}
             if len(hashes) != 1:
                 raise ValueError(f"recorded cluster {g}.{c} holds {len(hashes)} canary hashes")
-            found[hashes.pop()] = {"cluster": f"{g}.{c}", "members": members}
+            hash_ = hashes.pop()
+            if hash_ in found:
+                raise ValueError(f"recorded clusters {found[hash_]['cluster']} and {g}.{c} share a canary hash")
+            found[hash_] = {"cluster": f"{g}.{c}", "members": members}
     return found
 
 
