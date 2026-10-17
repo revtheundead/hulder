@@ -295,6 +295,51 @@ def split_canary(
     )
 
 
+# The full Qwen3-4B capture, about 16,300 prompts at batch 8 with the canary in front.
+FULL_CAPTURE_BATCHES = 2040
+
+
+def timing_estimate(
+    engine_seconds: float,
+    batch_seconds: list[float],
+    *,
+    batch_size: int = 8,
+    n_batches: int = FULL_CAPTURE_BATCHES,
+    timeout_s: float = CONFIG_TIMEOUT_S,
+    seed: int = 0,
+    resamples: int = 10_000,
+) -> dict:
+    """How long a capture of n_batches would take: engine_seconds + n_batches x the mean batch time,
+    with a 95% percentile bootstrap band on the mean from resampling batch_seconds with
+    default_rng(seed). It fits the timeout if the band's upper end, with startup, stays under it.
+    The per-prompt median, 5th to 95th percentile and maximum describe the spread only. The band
+    covers noise between batches in one engine, not between containers or GPUs."""
+    times = np.asarray(batch_seconds, dtype=np.float64)
+    resampled = times[np.random.default_rng(seed).integers(0, len(times), (resamples, len(times)))].mean(axis=1)
+    band = [float(b) for b in np.percentile(resampled, [2.5, 97.5])]
+    per_prompt = times / batch_size
+    projection_band = [engine_seconds + n_batches * b for b in band]
+    return {
+        "batches": len(times),
+        "total_seconds": float(times.sum()),
+        "mean_batch_seconds": float(times.mean()),
+        "mean_band": band,
+        "per_prompt_seconds": {
+            "median": float(np.median(per_prompt)),
+            "p5": float(np.percentile(per_prompt, 5)),
+            "p95": float(np.percentile(per_prompt, 95)),
+            "max": float(per_prompt.max()),
+        },
+        "engine_seconds": engine_seconds,
+        "n_batches": n_batches,
+        "projection_seconds": engine_seconds + n_batches * float(times.mean()),
+        "projection_band": projection_band,
+        "timeout_s": timeout_s,
+        "fits_timeout": bool(projection_band[1] < timeout_s),
+        "bootstrap": {"seed": seed, "resamples": resamples, "confidence": 0.95},
+    }
+
+
 def worker_spec(entry: tuple, timeout_s: int) -> dict:
     """The worker spec for one (label, config[, env]) entry of an experiment. The worker runs the
     canary as the engine's first batch, then the requested prompts."""

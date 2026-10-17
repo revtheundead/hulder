@@ -461,3 +461,42 @@ def test_importing_smoke_lib_needs_no_pandas():
 
     code = "import sys, smoke_lib; assert 'pandas' not in sys.modules"
     subprocess.run([sys.executable, "-c", code], cwd=lib.ROOT / "experiments" / "modal", check=True)
+
+
+def test_the_timing_estimate_projects_startup_plus_2040_mean_batches_and_describes_the_spread():
+    # Per-prompt times 0.1 to 0.5 s; numpy's linear percentiles put the 5th at 0.12 and the 95th at 0.48.
+    timing = lib.timing_estimate(30.0, [0.8, 1.6, 2.4, 3.2, 4.0])
+    assert timing["batches"] == 5 and timing["total_seconds"] == pytest.approx(12.0)
+    assert timing["mean_batch_seconds"] == pytest.approx(2.4)
+    assert timing["projection_seconds"] == pytest.approx(30 + 2040 * 2.4)
+    spread = timing["per_prompt_seconds"]
+    assert [spread[k] for k in ("median", "p5", "p95", "max")] == pytest.approx([0.3, 0.12, 0.48, 0.5])
+
+
+def test_constant_batch_times_collapse_the_band_onto_the_projection():
+    timing = lib.timing_estimate(12.0, [0.4] * 125)
+    assert timing["mean_band"] == pytest.approx([0.4, 0.4])
+    assert timing["projection_band"] == pytest.approx([12 + 816, 12 + 816])
+
+
+def test_the_bootstrap_band_is_the_percentile_interval_of_resampled_means():
+    # Two batch times: a resample's mean is 1, 2 or 3 with probability 1/4, 1/2, 1/4, so the 2.5th and
+    # 97.5th percentiles of 10,000 resampled means are 1 and 3.
+    timing = lib.timing_estimate(0.0, [1.0, 3.0])
+    assert timing["mean_band"] == [1.0, 3.0]
+    assert timing["bootstrap"] == {"seed": 0, "resamples": 10_000, "confidence": 0.95}
+
+
+def test_the_band_is_fixed_by_its_seed_holds_the_mean_and_narrows_with_more_batches():
+    times = np.random.default_rng(5).gamma(4.0, 0.1, size=500)
+    few, many = lib.timing_estimate(10.0, times[:50]), lib.timing_estimate(10.0, times)
+    assert lib.timing_estimate(10.0, times[:50]) == few
+    assert lib.timing_estimate(10.0, times[:50], seed=1)["mean_band"] != few["mean_band"]
+    assert few["mean_band"][0] < few["mean_batch_seconds"] < few["mean_band"][1]
+    assert many["mean_band"][1] - many["mean_band"][0] < few["mean_band"][1] - few["mean_band"][0]
+
+
+@pytest.mark.parametrize(("startup", "fits"), [(179.5, True), (180.0, False)])
+def test_the_capture_fits_only_if_startup_and_the_bands_upper_end_stay_under_the_timeout(startup, fits):
+    # 2040 batches of 0.5 s are 1020 s, so 180 s of startup reaches the 1200 s timeout exactly.
+    assert lib.timing_estimate(startup, [0.5] * 125)["fits_timeout"] is fits
