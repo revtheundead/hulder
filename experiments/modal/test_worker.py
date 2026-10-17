@@ -84,11 +84,14 @@ def test_several_positions_give_one_snapshot_per_layer_and_position(worker, tmp_
     assert sorted(p.name for p in tmp_path.glob("*.npz")) == sorted(
         f"{layer}_{p}.npz" for layer in lib.LAYERS for p in (-1, -9, -10)
     )
-    # Layer 27 is index 1 and position -10 index 2; request row r is captured as prompt r + 8.
-    snapshot = hulder.Snapshot.load(tmp_path / "27_-10.npz")
-    assert snapshot.metadata["layer"] == 27 and snapshot.metadata["position"] == -10
-    assert snapshot.ids.tolist() == [r["id"] for r in PILOT]
-    assert snapshot.activations[:, 0].tolist() == [r + 8 + 32 + 128 for r in range(len(PILOT))]
+    # Request row r is captured as prompt r + 8, so its value at layer index i and position index j
+    # is r + 8 + 32 i + 64 j (the fake capture's encoding).
+    for i, layer in enumerate(lib.LAYERS):
+        for j, position in enumerate((-1, -9, -10)):
+            snapshot = hulder.Snapshot.load(tmp_path / f"{layer}_{position}.npz")
+            assert (snapshot.metadata["layer"], snapshot.metadata["position"]) == (layer, position)
+            assert snapshot.ids.tolist() == [r["id"] for r in PILOT]
+            assert snapshot.activations[:, 0].tolist() == [r + 8 + 32 * i + 64 * j for r in range(len(PILOT))]
     assert json.loads((tmp_path / "worker.json").read_text())["snapshots"] == sorted(
         f"{layer}_{p}.npz" for layer in lib.LAYERS for p in (-1, -9, -10)
     )
