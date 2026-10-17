@@ -5,7 +5,8 @@ including the vLLM engine-core process's, lands in one file. Imports vLLM.
 
 SPEC holds the CaptureConfig fields, the canary, the prompts, an optional base_model override,
 metadata to add to every snapshot and whether to save snapshots. Writes one Snapshot per captured
-layer (<layer>.npz) and worker.json to OUT_DIR.
+layer (<layer>.npz), or per layer and position (<layer>_<position>.npz) when the config captures
+more than one position, and worker.json to OUT_DIR.
 
 The canary runs as the engine's first batch (smoke_lib.capture_order), its hash goes into every
 snapshot's metadata as canary_sha256, and the snapshots hold exactly the requested prompts
@@ -60,17 +61,22 @@ def main(spec_path: str, out_dir: str) -> None:
     saved = []
     if spec["save"]:
         for i, layer in enumerate(cfg.layers):
-            hulder.Snapshot(
-                ids=np.array([r["id"] for r in rows]),
-                labels=np.array([r["label"] for r in rows]),
-                activations=split.activations[:, i, 0].astype(np.float16),  # the config's only position
-                metadata={
-                    **snapshot_metadata(cfg, captured, base_model, version("vllm"), layer=layer),
-                    **spec.get("extra_metadata", {}),  # the GPU's UUID and driver, so another GPU warns
-                    "canary_sha256": split.canary_sha256,  # the numerical path; another hash warns when checked
-                },
-            ).save(out / f"{layer}.npz")
-            saved.append(f"{layer}.npz")
+            for j, position in enumerate(cfg.positions):
+                # One position keeps the name every earlier experiment used.
+                name = f"{layer}.npz" if len(cfg.positions) == 1 else f"{layer}_{position}.npz"
+                hulder.Snapshot(
+                    ids=np.array([r["id"] for r in rows]),
+                    labels=np.array([r["label"] for r in rows]),
+                    activations=split.activations[:, i, j].astype(np.float16),
+                    metadata={
+                        **snapshot_metadata(cfg, captured, base_model, version("vllm"), layer=layer, position=position),
+                        **spec.get("extra_metadata", {}),  # the GPU's UUID and driver, so another GPU warns
+                        "canary_sha256": split.canary_sha256,  # the numerical path; another hash warns when checked
+                    },
+                ).save(out / name)
+                saved.append(name)
+    # The requested prompts' tokens at each position, in request order, without the canary's.
+    requested_tokens = captured.position_tokens[len(order) - len(ids) :]
     worker = {
         "capture_config": asdict(cfg),
         "base_model": base_model,
@@ -80,7 +86,8 @@ def main(spec_path: str, out_dir: str) -> None:
         "gpu": captured.gpu,
         "capture_seconds": round(seconds, 1),  # engine start, load, compile and capture together
         "last_tokens": sorted({tokens[0] for tokens in captured.position_tokens}),
-        "snapshots": saved,
+        "position_tokens": {str(p): [t[j] for t in requested_tokens] for j, p in enumerate(cfg.positions)},
+        "snapshots": sorted(saved),
         "packages": {p: version(p) for p in ("hulder", "vllm", "torch", "numpy")},
         "cuda": torch.version.cuda,
         "python": platform.python_version(),

@@ -26,12 +26,14 @@ def worker(monkeypatch):
     calls, counts = [], {"per_prompt": 50}
 
     def capture(prompts, cfg):
+        # Prompt k's value at layer i and position j is k + 32 i + 64 j, exact in float16, and its
+        # token at position p is "p<p>#<k>", so each row shows where it came from.
         calls.append(list(prompts))
-        rng = np.random.default_rng(len(calls))
         n = len(prompts)
+        k, i, j = np.ix_(range(n), range(len(cfg.layers)), range(len(cfg.positions)))
         return hidden_states.Capture(
-            activations=rng.normal(size=(n, len(cfg.layers), len(cfg.positions), 8)).astype(np.float16),
-            position_tokens=[["\n\n"] * len(cfg.positions)] * n,
+            activations=np.repeat((k + 32 * i + 64 * j)[..., None], 8, axis=-1).astype(np.float16),
+            position_tokens=[[f"p{p}#{k}" for p in cfg.positions] for k in range(n)],
             gpu="NVIDIA L4",
             enable_thinking=cfg.enable_thinking,
             prompt_token_counts=[counts["per_prompt"]] * n,
@@ -42,8 +44,9 @@ def worker(monkeypatch):
     return module.main, calls, counts
 
 
-def run(main, tmp_path, prompts):
+def run(main, tmp_path, prompts, positions=(-1,)):
     spec = {**lib.worker_spec(("bf16", "qwen3_4b_bf16"), 300), "prompts": prompts, "extra_metadata": {}}
+    spec["config"] = {**spec["config"], "positions": positions}
     (tmp_path / "spec.json").write_text(json.dumps(spec))
     main(str(tmp_path / "spec.json"), str(tmp_path))
 
@@ -68,3 +71,34 @@ def test_a_canary_over_the_token_budget_fails_the_worker_and_records_no_hash(wor
     with pytest.raises(ValueError, match="1024 prompt tokens.*budget of 1023"):
         run(main, tmp_path, PILOT)
     assert not list(tmp_path.glob("*.npz")) and not (tmp_path / "worker.json").exists()
+
+
+def test_several_positions_give_one_snapshot_per_layer_and_position(worker, tmp_path):
+    main, _, _ = worker
+    run(main, tmp_path, PILOT, positions=(-1, -9, -10))
+    assert sorted(p.name for p in tmp_path.glob("*.npz")) == sorted(
+        f"{layer}_{p}.npz" for layer in lib.LAYERS for p in (-1, -9, -10)
+    )
+    # Layer 27 is index 1 and position -10 index 2; request row r is captured as prompt r + 8.
+    snapshot = hulder.Snapshot.load(tmp_path / "27_-10.npz")
+    assert snapshot.metadata["layer"] == 27 and snapshot.metadata["position"] == -10
+    assert snapshot.ids.tolist() == [r["id"] for r in PILOT]
+    assert snapshot.activations[:, 0].tolist() == [r + 8 + 32 + 128 for r in range(len(PILOT))]
+    assert json.loads((tmp_path / "worker.json").read_text())["snapshots"] == sorted(
+        f"{layer}_{p}.npz" for layer in lib.LAYERS for p in (-1, -9, -10)
+    )
+
+
+def test_one_position_keeps_the_layer_only_snapshot_names(worker, tmp_path):
+    main, _, _ = worker
+    run(main, tmp_path, PILOT)
+    assert sorted(p.name for p in tmp_path.glob("*.npz")) == sorted(f"{layer}.npz" for layer in lib.LAYERS)
+    snapshot = hulder.Snapshot.load(tmp_path / "18.npz")
+    assert snapshot.activations[:, 0].tolist() == [r + 8 for r in range(len(PILOT))]
+
+
+def test_the_worker_records_each_requested_prompts_token_at_each_position(worker, tmp_path):
+    main, _, _ = worker
+    run(main, tmp_path, PILOT, positions=(-1, -9, -10))
+    record = json.loads((tmp_path / "worker.json").read_text())
+    assert record["position_tokens"] == {str(p): [f"p{p}#{r + 8}" for r in range(len(PILOT))] for p in (-1, -9, -10)}
