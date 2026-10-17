@@ -542,3 +542,14 @@ def test_the_pilot_config_adds_positions_minus_9_and_minus_10_to_bf16_and_sample
     assert {k for k in fields.keys() | bf16.keys() if fields.get(k) != bf16.get(k)} == {"positions"}
     assert fields["positions"] == (-1, -9, -10)
     assert source == ("slabs_train", 1000, 0)
+
+
+def test_the_runner_requires_todays_spend_rather_than_assuming_none():
+    # capture.py imports modal, absent here and in CI, so its entrypoint's signature is read from source.
+    import ast
+
+    tree = ast.parse((lib.ROOT / "experiments" / "modal" / "capture.py").read_text())
+    [main] = [n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "main"]
+    args = main.args
+    defaults = dict(zip([a.arg for a in args.args][len(args.args) - len(args.defaults) :], args.defaults, strict=True))
+    assert "spent_usd" in [a.arg for a in args.args] and "spent_usd" not in defaults
