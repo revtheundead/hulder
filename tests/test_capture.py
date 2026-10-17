@@ -148,3 +148,26 @@ def test_capture_times_engine_startup_and_each_batch_apart(hidden_states, monkey
     result = hidden_states.capture(["a", "b", "c", "d", "e"], hidden_states.CaptureConfig(**CONFIG, batch_size=2))
     assert result.engine_seconds == 5.0
     assert result.batch_seconds == [0.5, 0.5, 0.5]
+
+
+def test_capture_records_each_prompts_token_ids_as_vllm_tokenized_them(hidden_states, monkeypatch):
+    # Prompt k is tokenized as [100 k, 100 k + 1, ...], one id per word plus two, so ids and lengths differ.
+    ids = {}
+
+    def chat(self, convs, params, use_tqdm=False, **kwargs):
+        outs = []
+        for conv in convs:
+            path, k = f"{len(ids)}.pt", len(ids)
+            ids[path] = [100 * k + t for t in range(len(conv[-1]["content"].split()) + 2)]
+            outs.append(SimpleNamespace(kv_transfer_params={"hidden_states_path": path}, prompt_token_ids=ids[path]))
+        return outs
+
+    def load(path):
+        import torch
+
+        return {"token_ids": torch.tensor(ids[path]), "hidden_states": torch.zeros(len(ids[path]), 1, 4)}
+
+    monkeypatch.setattr(FakeLLM, "chat", chat)
+    monkeypatch.setattr(hidden_states.example_hidden_states_connector, "load_hidden_states", load)
+    result = hidden_states.capture(["one", "one two"], hidden_states.CaptureConfig(**CONFIG, batch_size=1))
+    assert result.prompt_token_ids == [[0, 1, 2], [100, 101, 102, 103]]
