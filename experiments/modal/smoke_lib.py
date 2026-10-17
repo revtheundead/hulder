@@ -258,6 +258,19 @@ def recorded_canary_hash(capture: Path) -> str:
     return canary_sha256(acts, LAYERS, (-1,))
 
 
+def token_ids_sha256(token_ids: list) -> str:
+    """SHA-256 of prompts' token ids in order, each prompt as its length then its ids, as
+    little-endian uint32 behind a format header, so moving a prompt boundary changes the hash.
+    Equal hashes mean the engine was fed the same tokens in the same prompts."""
+    parts = [b"hulder-token-ids-v1\n"]
+    for prompt in token_ids:
+        ids = np.asarray(prompt, dtype=np.int64)
+        if ids.size and (ids.min() < 0 or ids.max() >= 2**32):
+            raise ValueError("token ids must fit uint32")
+        parts.append(np.array([len(ids)], dtype="<u4").tobytes() + ids.astype("<u4").tobytes())
+    return hashlib.sha256(b"".join(parts)).hexdigest()
+
+
 def check_canary_budget(token_counts: list[int], budget: int) -> None:
     """Raise if the canary's prompts, as vLLM tokenized them, total more than the scheduler's token
     budget for one step. With chunked prefill off, vLLM 0.30.0 then prefills them over more than one

@@ -576,3 +576,23 @@ def test_a_saved_capture_that_does_not_begin_with_the_canary_has_no_canary_hash(
     save_capture(tmp_path / "capture", np.zeros((64, 2, 1, 8), np.float16), ids=SMOKE_IDS[::-1])
     with pytest.raises(ValueError, match="doesn't begin with the canary"):
         lib.recorded_canary_hash(tmp_path / "capture")
+
+
+def test_equal_token_ids_hash_equal_whatever_their_integer_type():
+    ids = [[151644, 8948, 198], [151644, 872]]
+    as_numpy = [np.array(p, dtype=np.int64) for p in ids]
+    assert lib.token_ids_sha256(ids) == lib.token_ids_sha256(as_numpy)
+    assert len(lib.token_ids_sha256(ids)) == 64
+
+
+@pytest.mark.parametrize(
+    "other",
+    [
+        [[151644, 8948, 199], [151644, 872]],  # one id changed
+        [[151644, 8948], [198, 151644, 872]],  # the same ids with a prompt boundary moved
+        [[151644, 872], [151644, 8948, 198]],  # the prompts in another order
+        [[151644, 8948, 198]],  # a prompt missing
+    ],
+)
+def test_any_change_to_the_ids_their_prompts_or_order_changes_the_token_hash(other):
+    assert lib.token_ids_sha256(other) != lib.token_ids_sha256([[151644, 8948, 198], [151644, 872]])
