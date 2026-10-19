@@ -1,6 +1,8 @@
 """The Modal runner's pure helpers. CPU only, no Modal."""
 
+import hashlib
 import json
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -701,3 +703,73 @@ def test_full_capture_runs_three_untraced_replicas_in_fresh_containers_for_at_mo
     # No env entry, so each runs under exactly the pilot's engine environment.
     assert containers == [[(f"r{i}", "qwen3_4b_bf16_full")] for i in (1, 2, 3)]
     assert sum(lib.worst_case_cost(len(g), timeout_s) for g in containers) == pytest.approx(0.75, abs=0.005)
+
+
+class FakeVolume:
+    """The Volume as capture.py uses it: read a file in chunks, remove a file."""
+
+    def __init__(self, files):
+        self.files, self.removed = dict(files), []
+
+    def read(self, name):
+        data = self.files[name]
+        yield data[:3]
+        yield data[3:]
+
+    def remove(self, name):
+        self.removed.append(name)
+
+
+def volume_files():
+    files = {"18_-1.npz": b"layer 18 rows", "27_-1.npz": b"layer 27 rows"}
+    return files, {name: hashlib.sha256(data).hexdigest() for name, data in files.items()}
+
+
+def test_volume_files_are_deleted_only_once_fetched_and_backed_up_matching_their_hashes(tmp_path):
+    files, expected = volume_files()
+    volume = FakeVolume(files)
+    status = lib.settle_volume_files(expected, volume.read, volume.remove, tmp_path / "run", tmp_path / "backup")
+    assert status == {
+        "files": expected,
+        "fetched": True,
+        "backed_up": True,
+        "deleted_from_volume": True,
+        "problem": None,
+    }
+    for name, data in files.items():
+        assert (tmp_path / "run" / name).read_bytes() == data == (tmp_path / "backup" / name).read_bytes()
+    assert (tmp_path / "backup" / "SHA256SUMS").read_text() == "".join(f"{expected[n]}  {n}\n" for n in sorted(files))
+    assert volume.removed == sorted(files)
+
+
+def test_a_fetched_file_that_doesnt_match_its_hash_is_neither_backed_up_nor_deleted(tmp_path):
+    files, expected = volume_files()
+    volume = FakeVolume({**files, "27_-1.npz": b"layer 27 rowz"})
+    status = lib.settle_volume_files(expected, volume.read, volume.remove, tmp_path / "run", tmp_path / "backup")
+    assert (status["fetched"], status["backed_up"], status["deleted_from_volume"]) == (False, False, False)
+    assert "27_-1.npz" in status["problem"]
+    assert volume.removed == [] and not (tmp_path / "backup").exists()
+
+
+def test_a_backup_that_doesnt_match_its_hash_deletes_nothing(tmp_path):
+    files, expected = volume_files()
+    volume = FakeVolume(files)
+
+    def corrupting_copy(src, dst):
+        Path(dst).write_bytes(Path(src).read_bytes()[:-1])
+
+    status = lib.settle_volume_files(
+        expected, volume.read, volume.remove, tmp_path / "run", tmp_path / "backup", copy=corrupting_copy
+    )
+    assert (status["fetched"], status["backed_up"], status["deleted_from_volume"]) == (True, False, False)
+    assert "backup" in status["problem"]
+    assert volume.removed == []
+
+
+def test_without_a_backup_dir_the_files_are_fetched_and_kept_on_the_volume(tmp_path):
+    files, expected = volume_files()
+    volume = FakeVolume(files)
+    status = lib.settle_volume_files(expected, volume.read, volume.remove, tmp_path / "run", None)
+    assert (status["fetched"], status["backed_up"], status["deleted_from_volume"]) == (True, False, False)
+    assert status["problem"] is None
+    assert volume.removed == []

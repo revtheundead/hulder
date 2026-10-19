@@ -3,7 +3,10 @@ the configs and experiments, log facts, cost estimates and activation comparison
 
 import hashlib
 import json
+import os
 import re
+import shutil
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -518,6 +521,63 @@ def compare_batches(
         same = all(np.array_equal(rows[la][span].view(np.uint16), reference[la][span].view(np.uint16)) for la in LAYERS)
         out.append({"batch": b, "rows": span.stop - span.start, "identical": same})
     return out
+
+
+def sha256_file(path: Path) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for block in iter(lambda: f.read(1 << 24), b""):
+            h.update(block)
+    return h.hexdigest()
+
+
+def _write_synced(path: Path, chunks: Iterable[bytes]) -> None:
+    """Write through a .part file, fsynced, then rename, so a crash leaves no half-written file."""
+    part = path.with_name(path.name + ".part")
+    with open(part, "wb") as f:
+        f.writelines(chunks)
+        f.flush()
+        os.fsync(f.fileno())
+    part.replace(path)
+
+
+def settle_volume_files(
+    expected: dict[str, str],
+    read: Callable[[str], Iterable[bytes]],
+    remove: Callable[[str], None],
+    local_dir: Path,
+    backup_dir: Path | None,
+    copy: Callable[[Path, Path], object] = shutil.copyfile,
+) -> dict:
+    """Fetch a config's files from the Volume into local_dir, check each against the sha256 the
+    container recorded, copy them to backup_dir with a SHA256SUMS and check the copies, and only
+    then remove them from the Volume. Any mismatch stops before the next step, so nothing is removed
+    that isn't held twice, verified. Without backup_dir the files stay on the Volume. Re-reading a
+    copy can be served from the page cache, so it shows the copy as written, not as stored."""
+    status = {"files": expected, "fetched": False, "backed_up": False, "deleted_from_volume": False, "problem": None}
+    local_dir.mkdir(parents=True, exist_ok=True)
+    for name, sha in sorted(expected.items()):
+        _write_synced(local_dir / name, read(name))
+        if sha256_file(local_dir / name) != sha:
+            status["problem"] = f"{name} as fetched doesn't match the container's sha256"
+            return status
+    status["fetched"] = True
+    if backup_dir is None:
+        return status
+    backup_dir.mkdir(parents=True, exist_ok=True)
+    for name, sha in sorted(expected.items()):
+        copy(local_dir / name, backup_dir / name)
+        with open(backup_dir / name, "rb+") as f:
+            os.fsync(f.fileno())
+        if sha256_file(backup_dir / name) != sha:
+            status["problem"] = f"the backup of {name} doesn't match the container's sha256"
+            return status
+    _write_synced(backup_dir / "SHA256SUMS", [f"{expected[n]}  {n}\n".encode() for n in sorted(expected)])
+    status["backed_up"] = True
+    for name in sorted(expected):
+        remove(name)
+    status["deleted_from_volume"] = True
+    return status
 
 
 def relative_l2(a: np.ndarray, b: np.ndarray) -> np.ndarray:
