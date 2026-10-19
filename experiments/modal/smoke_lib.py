@@ -567,17 +567,16 @@ def _write_synced(path: Path, chunks: Iterable[bytes]) -> None:
 def settle_volume_files(
     expected: dict[str, str],
     read: Callable[[str], Iterable[bytes]],
-    remove: Callable[[str], None],
     local_dir: Path,
     backup_dir: Path | None,
     copy: Callable[[Path, Path], object] = shutil.copyfile,
 ) -> dict:
-    """Fetch a config's files from the Volume into local_dir, check each against the sha256 the
-    container recorded, copy them to backup_dir with a SHA256SUMS and check the copies, and only
-    then remove them from the Volume. Any mismatch stops before the next step, so nothing is removed
-    that isn't held twice, verified. Without backup_dir the files stay on the Volume. Re-reading a
-    copy can be served from the page cache, so it shows the copy as written, not as stored."""
-    status = {"files": expected, "fetched": False, "backed_up": False, "deleted_from_volume": False, "problem": None}
+    """Fetch a config's files from the Volume into local_dir and check each against the sha256 the
+    container recorded, then copy them to backup_dir with a SHA256SUMS and check the copies. Any
+    mismatch stops before the next step. Nothing is removed from the Volume here: that is
+    release_volume_files, run later. Re-reading a copy can be served from the page cache, so it
+    shows the copy as written, not as stored."""
+    status = {"files": expected, "fetched": False, "backed_up": False, "problem": None}
     local_dir.mkdir(parents=True, exist_ok=True)
     for name, sha in sorted(expected.items()):
         _write_synced(local_dir / name, read(name))
@@ -597,10 +596,48 @@ def settle_volume_files(
             return status
     _write_synced(backup_dir / "SHA256SUMS", [f"{expected[n]}  {n}\n".encode() for n in sorted(expected)])
     status["backed_up"] = True
+    return status
+
+
+def boot_id() -> str | None:
+    """This kernel boot's id, which changes on every reboot (and on wsl --shutdown)."""
+    path = Path("/proc/sys/kernel/random/boot_id")
+    return path.read_text().strip() if path.exists() else None
+
+
+def release_volume_files(
+    status: dict,
+    backup_dir: Path,
+    remove: Callable[[str], None],
+    fetched_boot_id: str | None,
+    current_boot_id: str | None,
+) -> dict:
+    """Remove a config's files from the Volume once their backup is verified again after a reboot:
+    refused in the boot that fetched them, so a write the disk lost can't pass for one it holds,
+    and refused unless SHA256SUMS and every backed-up file match the container's sha256."""
+
+    def refuse(problem: str) -> dict:
+        return {"released": False, "removed": [], "problem": problem}
+
+    expected = status["files"]
+    if not status.get("backed_up"):
+        return refuse("the files were never backed up and verified")
+    if fetched_boot_id is None or current_boot_id is None or fetched_boot_id == current_boot_id:
+        return refuse("the files were fetched in this boot; reboot, then verify the backup again")
+    sums = backup_dir / "SHA256SUMS"
+    listed = {}
+    if sums.exists():
+        for line in sums.read_text().splitlines():
+            sha, _, name = line.partition("  ")
+            listed[name] = sha
+    if listed != expected:
+        return refuse(f"{sums} doesn't list the container's sha256 for each file")
+    for name, sha in sorted(expected.items()):
+        if not (backup_dir / name).exists() or sha256_file(backup_dir / name) != sha:
+            return refuse(f"the backup of {name} no longer matches the container's sha256")
     for name in sorted(expected):
         remove(name)
-    status["deleted_from_volume"] = True
-    return status
+    return {"released": True, "removed": sorted(expected), "problem": None}
 
 
 def batch_digests(rows: np.ndarray, batch_size: int = 8) -> list[str]:

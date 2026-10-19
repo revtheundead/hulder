@@ -25,8 +25,9 @@ Writes, per run, the snapshots (one per layer), the full log and a manifest to
 --out/<run id>/<label>/, and the run's manifest to --out/<run id>/manifest.json. The tracked tree
 must be clean, so the manifest's commit is what ran. Snapshots come back from the hulder-runs
 Volume, checked against the sha256 the container recorded. With --backup-dir they are also copied
-to <backup-dir>/<run id>/<label>/ with a SHA256SUMS, checked again, and only then removed from the
-Volume. Each config's manifest entry says which of those steps happened under "volume".
+to <backup-dir>/<run id>/<label>/ with a SHA256SUMS and checked again. Each config's manifest entry
+says which of those steps happened under "volume". Nothing is removed from the Volume here:
+volume_release.py does that after a reboot, once the backup verifies again.
 """
 
 import json
@@ -232,6 +233,8 @@ def main(experiment: str, spent_usd: float, out: str = ".cache/modal-runs", back
         "modal": modal.__version__,
         "rates_usd_per_s": {"L4": lib.L4_PER_S, "cpu_core": lib.CPU_CORE_PER_S, "memory_gib": lib.MEMORY_GIB_PER_S},
         "spent_before_usd": spent_usd,
+        # volume_release.py removes the snapshots from the Volume only in a later boot than this one.
+        "boot_id": lib.boot_id(),
         "containers": [],
         "configs": {},
     }
@@ -269,7 +272,6 @@ def main(experiment: str, spent_usd: float, out: str = ".cache/modal-runs", back
             volume = lib.settle_volume_files(
                 results[label]["volume_files"],
                 lambda name, label=label: runs.read_file(f"{run_id}/{label}/{name}"),
-                lambda name, label=label: runs.remove_file(f"{run_id}/{label}/{name}"),
                 run_dir / label,
                 Path(backup_dir) / run_id / label if backup_dir else None,
             )

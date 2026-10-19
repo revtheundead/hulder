@@ -706,7 +706,7 @@ def test_full_capture_runs_three_untraced_replicas_in_fresh_containers_for_at_mo
 
 
 class FakeVolume:
-    """The Volume as capture.py uses it: read a file in chunks, remove a file."""
+    """The Volume as capture.py and volume_release.py use it: read a file in chunks, remove one."""
 
     def __init__(self, files):
         self.files, self.removed = dict(files), []
@@ -725,54 +725,87 @@ def volume_files():
     return files, {name: hashlib.sha256(data).hexdigest() for name, data in files.items()}
 
 
-def test_volume_files_are_deleted_only_once_fetched_and_backed_up_matching_their_hashes(tmp_path):
+def test_volume_files_are_fetched_and_backed_up_matching_their_hashes(tmp_path):
     files, expected = volume_files()
-    volume = FakeVolume(files)
-    status = lib.settle_volume_files(expected, volume.read, volume.remove, tmp_path / "run", tmp_path / "backup")
-    assert status == {
-        "files": expected,
-        "fetched": True,
-        "backed_up": True,
-        "deleted_from_volume": True,
-        "problem": None,
-    }
+    status = lib.settle_volume_files(expected, FakeVolume(files).read, tmp_path / "run", tmp_path / "backup")
+    assert status == {"files": expected, "fetched": True, "backed_up": True, "problem": None}
     for name, data in files.items():
         assert (tmp_path / "run" / name).read_bytes() == data == (tmp_path / "backup" / name).read_bytes()
     assert (tmp_path / "backup" / "SHA256SUMS").read_text() == "".join(f"{expected[n]}  {n}\n" for n in sorted(files))
-    assert volume.removed == sorted(files)
 
 
-def test_a_fetched_file_that_doesnt_match_its_hash_is_neither_backed_up_nor_deleted(tmp_path):
+def test_a_fetched_file_that_doesnt_match_its_hash_is_not_backed_up(tmp_path):
     files, expected = volume_files()
     volume = FakeVolume({**files, "27_-1.npz": b"layer 27 rowz"})
-    status = lib.settle_volume_files(expected, volume.read, volume.remove, tmp_path / "run", tmp_path / "backup")
-    assert (status["fetched"], status["backed_up"], status["deleted_from_volume"]) == (False, False, False)
+    status = lib.settle_volume_files(expected, volume.read, tmp_path / "run", tmp_path / "backup")
+    assert (status["fetched"], status["backed_up"]) == (False, False)
     assert "27_-1.npz" in status["problem"]
-    assert volume.removed == [] and not (tmp_path / "backup").exists()
+    assert not (tmp_path / "backup").exists()
 
 
-def test_a_backup_that_doesnt_match_its_hash_deletes_nothing(tmp_path):
+def test_a_backup_that_doesnt_match_its_hash_is_not_counted_as_backed_up(tmp_path):
     files, expected = volume_files()
-    volume = FakeVolume(files)
 
     def corrupting_copy(src, dst):
         Path(dst).write_bytes(Path(src).read_bytes()[:-1])
 
     status = lib.settle_volume_files(
-        expected, volume.read, volume.remove, tmp_path / "run", tmp_path / "backup", copy=corrupting_copy
+        expected, FakeVolume(files).read, tmp_path / "run", tmp_path / "backup", copy=corrupting_copy
     )
-    assert (status["fetched"], status["backed_up"], status["deleted_from_volume"]) == (True, False, False)
+    assert (status["fetched"], status["backed_up"]) == (True, False)
     assert "backup" in status["problem"]
-    assert volume.removed == []
+    assert not (tmp_path / "backup" / "SHA256SUMS").exists()
 
 
-def test_without_a_backup_dir_the_files_are_fetched_and_kept_on_the_volume(tmp_path):
+def test_without_a_backup_dir_the_files_are_only_fetched(tmp_path):
     files, expected = volume_files()
+    status = lib.settle_volume_files(expected, FakeVolume(files).read, tmp_path / "run", None)
+    assert (status["fetched"], status["backed_up"], status["problem"]) == (True, False, None)
+
+
+def backed_up(tmp_path):
+    files, expected = volume_files()
+    status = lib.settle_volume_files(expected, FakeVolume(files).read, tmp_path / "run", tmp_path / "backup")
+    return status, FakeVolume(files)
+
+
+def test_a_backup_reverified_after_a_reboot_releases_its_files_from_the_volume(tmp_path):
+    status, volume = backed_up(tmp_path)
+    released = lib.release_volume_files(status, tmp_path / "backup", volume.remove, "boot-a", "boot-b")
+    assert released == {"released": True, "removed": sorted(status["files"]), "problem": None}
+    assert volume.removed == sorted(status["files"])
+
+
+def test_nothing_is_released_in_the_boot_that_fetched_the_files(tmp_path):
+    status, volume = backed_up(tmp_path)
+    released = lib.release_volume_files(status, tmp_path / "backup", volume.remove, "boot-a", "boot-a")
+    assert (released["released"], volume.removed) == (False, [])
+    assert "reboot" in released["problem"]
+
+
+def test_nothing_is_released_when_a_backed_up_file_no_longer_matches(tmp_path):
+    status, volume = backed_up(tmp_path)
+    (tmp_path / "backup" / "27_-1.npz").write_bytes(b"layer 27 rowz")
+    released = lib.release_volume_files(status, tmp_path / "backup", volume.remove, "boot-a", "boot-b")
+    assert (released["released"], volume.removed) == (False, [])
+    assert "27_-1.npz" in released["problem"]
+
+
+def test_nothing_is_released_when_sha256sums_disagrees_with_the_containers_hashes(tmp_path):
+    status, volume = backed_up(tmp_path)
+    (tmp_path / "backup" / "SHA256SUMS").write_text(f"{'0' * 64}  18_-1.npz\n")
+    released = lib.release_volume_files(status, tmp_path / "backup", volume.remove, "boot-a", "boot-b")
+    assert (released["released"], volume.removed) == (False, [])
+    assert "SHA256SUMS" in released["problem"]
+
+
+def test_nothing_is_released_that_was_never_backed_up(tmp_path):
+    files, expected = volume_files()
+    status = lib.settle_volume_files(expected, FakeVolume(files).read, tmp_path / "run", None)
     volume = FakeVolume(files)
-    status = lib.settle_volume_files(expected, volume.read, volume.remove, tmp_path / "run", None)
-    assert (status["fetched"], status["backed_up"], status["deleted_from_volume"]) == (True, False, False)
-    assert status["problem"] is None
-    assert volume.removed == []
+    released = lib.release_volume_files(status, tmp_path / "backup", volume.remove, "boot-a", "boot-b")
+    assert (released["released"], volume.removed) == (False, [])
+    assert "backed up" in released["problem"]
 
 
 def replica_digests(**arrays):

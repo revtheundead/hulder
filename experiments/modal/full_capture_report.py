@@ -138,6 +138,8 @@ def summarise(
         for label, count in outliers.items()
         if 2 * count > n
     ]
+    record = run_dir / "volume_release.json"
+    released = json.loads(record.read_text())["configs"] if record.exists() else {}
     vs_pilot = _vs_pilot(pilot_dir / "pilot", run_dir / labels[0], names, digests, batches)
     if unlike := [b["batch"] for b in vs_pilot if b["identical"] is False]:
         findings.append(f"the kept batches {unlike} differ from the pilot's")
@@ -161,7 +163,9 @@ def summarise(
         },
         "outliers_per_replica": outliers,
         "vs_pilot": vs_pilot,
-        "volume": {label: _volume(run["configs"][label].get("volume")) for label in sorted(run["configs"])},
+        "volume": {
+            label: _volume(run["configs"][label].get("volume"), released.get(label)) for label in sorted(run["configs"])
+        },
         "expected": _expected(),
         "canaries": canaries,
         "majority_canary": majority_canary,
@@ -188,13 +192,18 @@ def _vs_pilot(pilot_capture: Path, replica: Path, names: list[str], digests: dic
     return out
 
 
-def _volume(status: dict | None) -> str:
-    """Whether a replica's snapshots were removed from the Volume (smoke_lib.settle_volume_files)."""
+def _volume(status: dict | None, release: dict | None) -> str:
+    """Where a replica's snapshots stand: capture.py fetches and backs them up and leaves them on
+    the Volume, and volume_release.py removes them after a reboot (smoke_lib.release_volume_files)."""
+    if release and release["released"]:
+        return "removed from the hulder-runs Volume after its backup verified again in a later boot"
     if status is None:
         return "not recorded"
-    if status["deleted_from_volume"]:
-        return "deleted from the hulder-runs Volume, after the fetch and the backup matched the container's sha256"
-    return f"still on the hulder-runs Volume: {status['problem'] or 'no backup dir was given'}"
+    if not status["backed_up"]:
+        return f"on the hulder-runs Volume, not backed up: {status['problem'] or 'no backup dir was given'}"
+    if release:
+        return f"on the hulder-runs Volume, backed up and verified; volume_release.py refused: {release['problem']}"
+    return "on the hulder-runs Volume, backed up and verified; volume_release.py removes it after a reboot"
 
 
 def _keep(run_dir, labels, names, batches, workers, majority_canary, splits) -> dict:

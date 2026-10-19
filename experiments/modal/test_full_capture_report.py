@@ -16,7 +16,7 @@ IDS = [f"slabs/train/{i}" for i in range(16)] + [f"slabs/test/{i}" for i in rang
 KEYS = ("18_-1", "27_-1")
 # Prompt i was fed the token ids [i, i + 1000].
 TOKENS = [[i, i + 1000] for i in range(len(IDS))]
-DELETED = {"files": {}, "fetched": True, "backed_up": True, "deleted_from_volume": True, "problem": None}
+BACKED_UP = {"files": {}, "fetched": True, "backed_up": True, "problem": None}
 
 
 @pytest.fixture
@@ -94,7 +94,7 @@ def make_run(world, changes=None, *, canary=None, workers=None, failed=None, vol
             "container": i,
             "config": "qwen3_4b_bf16_full",
             "returncode": manifest["returncode"],
-            "volume": (volume or {}).get(label, DELETED),
+            "volume": (volume or {}).get(label, BACKED_UP),
         }
     run = {"run_id": "R", "commit": "c", "estimated_usd": 0.3, "stopped": None, "configs": configs}
     (run_dir / "manifest.json").write_text(json.dumps(run))
@@ -273,12 +273,30 @@ def test_a_pilot_of_other_prompts_is_refused(world):
         summarise(world, make_run(world))
 
 
-def test_the_report_says_whether_each_replicas_snapshots_left_the_volume(world):
-    kept_on = {**DELETED, "backed_up": False, "deleted_from_volume": False}
-    volume = {"r2": kept_on, "r3": {**kept_on, "problem": "the backup of 18_-1.npz doesn't match"}}
+def test_the_report_says_each_replicas_snapshots_are_still_on_the_volume_after_the_run(world):
+    not_backed_up = {**BACKED_UP, "backed_up": False}
+    volume = {"r2": not_backed_up, "r3": {**not_backed_up, "problem": "the backup of 18_-1.npz doesn't match"}}
     summary = summarise(world, make_run(world, volume=volume))
     assert summary["volume"] == {
-        "r1": "deleted from the hulder-runs Volume, after the fetch and the backup matched the container's sha256",
-        "r2": "still on the hulder-runs Volume: no backup dir was given",
-        "r3": "still on the hulder-runs Volume: the backup of 18_-1.npz doesn't match",
+        "r1": "on the hulder-runs Volume, backed up and verified; volume_release.py removes it after a reboot",
+        "r2": "on the hulder-runs Volume, not backed up: no backup dir was given",
+        "r3": "on the hulder-runs Volume, not backed up: the backup of 18_-1.npz doesn't match",
     }
+
+
+def test_the_report_reads_what_volume_release_did(world):
+    run_dir = make_run(world)
+    refused = {"released": False, "removed": [], "problem": "the backup of 27_-1.npz no longer matches"}
+    record = {
+        "boot_id": "b",
+        "configs": {"r1": {"released": True, "removed": ["18_-1.npz"], "problem": None}, "r2": refused},
+    }
+    (run_dir / "volume_release.json").write_text(json.dumps(record))
+    summary = summarise(world, run_dir)
+    assert (
+        summary["volume"]["r1"] == "removed from the hulder-runs Volume after its backup verified again in a later boot"
+    )
+    assert summary["volume"]["r2"] == (
+        "on the hulder-runs Volume, backed up and verified; volume_release.py refused: "
+        "the backup of 27_-1.npz no longer matches"
+    )
