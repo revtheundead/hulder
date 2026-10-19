@@ -633,6 +633,15 @@ def majority_rows(
     return np.concatenate(parts) if parts else first[:0]
 
 
+def expected_split_rates(p: float) -> dict[str, float]:
+    """For three replicas that each leave the kept path on a batch with probability p,
+    independently: the share of batches where exactly one does, a 2-to-1 split, and where two or
+    more do. The second is an upper bound on batches with no majority, and also covers two
+    replicas deviating alike, which would give an off-path majority nothing can detect."""
+    split = 3 * p * (1 - p) ** 2
+    return {"split": split, "two_or_more_deviate": 1 - (1 - p) ** 3 - split}
+
+
 def relative_l2(a: np.ndarray, b: np.ndarray) -> np.ndarray:
     """Per-example ||a - b|| / ||a|| over the last axis, in float64."""
     a, b = np.asarray(a, np.float64), np.asarray(b, np.float64)

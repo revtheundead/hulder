@@ -836,3 +836,11 @@ def test_the_kept_rows_are_each_batchs_majority_in_capture_order_without_the_no_
     # The same selection applied to the prompt ids gives the kept ids.
     ids = np.array([f"p{i}" for i in range(20)])
     assert list(lib.majority_rows({label: ids for label in arrays}, agreement)) == [f"p{i}" for i in range(16)]
+
+
+def test_the_expected_split_rates_for_three_independent_replicas():
+    # At p = 1/35: exactly one of three deviates with 3 * 34**2 / 35**3 = 3468/42875, and two or
+    # more with 1 - (34**3 + 3468) / 35**3 = 103/42875.
+    rates = lib.expected_split_rates(1 / 35)
+    assert rates == pytest.approx({"split": 3468 / 42875, "two_or_more_deviate": 103 / 42875}, rel=1e-12)
+    assert lib.expected_split_rates(0.0) == {"split": 0.0, "two_or_more_deviate": 0.0}
