@@ -82,7 +82,7 @@ def test_a_canary_over_the_token_budget_fails_the_worker_and_records_no_hash(wor
 def test_several_positions_give_one_snapshot_per_layer_and_position(worker, tmp_path):
     main, _, _ = worker
     run(main, tmp_path, PILOT, positions=(-1, -9, -10))
-    assert sorted(p.name for p in tmp_path.glob("*.npz")) == sorted(
+    assert sorted(p.name for p in tmp_path.glob("*.npz") if p.name != lib.TOKEN_IDS_FILE) == sorted(
         f"{layer}_{p}.npz" for layer in lib.LAYERS for p in (-1, -9, -10)
     )
     # Request row r is captured as prompt r + 8, so its value at layer index i and position index j
@@ -101,7 +101,9 @@ def test_several_positions_give_one_snapshot_per_layer_and_position(worker, tmp_
 def test_one_position_keeps_the_layer_only_snapshot_names(worker, tmp_path):
     main, _, _ = worker
     run(main, tmp_path, PILOT)
-    assert sorted(p.name for p in tmp_path.glob("*.npz")) == sorted(f"{layer}.npz" for layer in lib.LAYERS)
+    assert sorted(p.name for p in tmp_path.glob("*.npz") if p.name != lib.TOKEN_IDS_FILE) == sorted(
+        f"{layer}.npz" for layer in lib.LAYERS
+    )
     snapshot = hulder.Snapshot.load(tmp_path / "18.npz")
     assert snapshot.activations[:, 0].tolist() == [r + 8 for r in range(len(PILOT))]
 
@@ -128,7 +130,7 @@ def test_each_snapshot_records_the_token_ids_hash_of_its_own_rows(worker, tmp_pa
     main, _, _ = worker
     run(main, tmp_path, PILOT, positions=(-1, -9))
     requested = lib.token_ids_sha256([[r + 8, r + 1008] for r in range(len(PILOT))])
-    for name in sorted(p.name for p in tmp_path.glob("*.npz")):
+    for name in sorted(p.name for p in tmp_path.glob("*.npz") if p.name != lib.TOKEN_IDS_FILE):
         assert hulder.Snapshot.load(tmp_path / name).metadata["prompt_token_ids_sha256"] == requested
     record = json.loads((tmp_path / "worker.json").read_text())
     assert record["prompt_token_ids_sha256"] == requested
@@ -161,3 +163,15 @@ def test_outside_modal_the_container_fields_are_none(worker, tmp_path, monkeypat
         "task_id": None,
         "region": None,
     }
+
+
+def test_the_worker_saves_the_requested_prompts_token_ids_beside_the_snapshots(worker, tmp_path):
+    main, _, _ = worker
+    run(main, tmp_path, PILOT)
+    record = json.loads((tmp_path / "worker.json").read_text())
+    assert record["token_ids_file"] == lib.TOKEN_IDS_FILE
+    ids, token_ids = lib.load_token_ids(tmp_path / lib.TOKEN_IDS_FILE)
+    # The fake capture gives prompt k of the engine's order the ids [k, k + 1000]; the canary is first.
+    assert ids == [r["id"] for r in PILOT]
+    assert token_ids == [[k, k + 1000] for k in range(8, 8 + len(PILOT))]
+    assert lib.token_ids_sha256(token_ids) == record["prompt_token_ids_sha256"]

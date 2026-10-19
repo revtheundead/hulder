@@ -844,3 +844,16 @@ def test_the_expected_split_rates_for_three_independent_replicas():
     rates = lib.expected_split_rates(1 / 35)
     assert rates == pytest.approx({"split": 3468 / 42875, "two_or_more_deviate": 103 / 42875}, rel=1e-12)
     assert lib.expected_split_rates(0.0) == {"split": 0.0, "two_or_more_deviate": 0.0}
+
+
+def test_saved_token_ids_load_back_as_they_were_and_hash_as_the_worker_hashed_them(tmp_path):
+    ids, token_ids = ["a", "b", "c"], [[151644, 8948, 198], [], [2**32 - 1]]
+    lib.save_token_ids(tmp_path / "token_ids.npz", ids, token_ids)
+    loaded_ids, loaded = lib.load_token_ids(tmp_path / "token_ids.npz")
+    assert (loaded_ids, loaded) == (ids, token_ids)
+    assert lib.token_ids_sha256(loaded) == lib.token_ids_sha256(token_ids)
+
+
+def test_token_ids_must_pair_with_their_prompt_ids(tmp_path):
+    with pytest.raises(ValueError, match="2 prompt ids.*1 token"):
+        lib.save_token_ids(tmp_path / "token_ids.npz", ["a", "b"], [[1]])

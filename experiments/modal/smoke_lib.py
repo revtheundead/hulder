@@ -8,6 +8,7 @@ import re
 import shutil
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
+from itertools import pairwise
 from pathlib import Path
 
 import numpy as np
@@ -314,6 +315,28 @@ def token_ids_sha256(token_ids: list) -> str:
             raise ValueError("token ids must fit uint32")
         parts.append(np.array([len(ids)], dtype="<u4").tobytes() + ids.astype("<u4").tobytes())
     return hashlib.sha256(b"".join(parts)).hexdigest()
+
+
+# Each replica's per-prompt token ids, beside its snapshots, so a subset's token hash can be recomputed.
+TOKEN_IDS_FILE = "token_ids.npz"
+
+
+def save_token_ids(path: Path, ids: list[str], token_ids: list) -> None:
+    """The prompts' token ids as one little-endian uint32 array with offsets, keyed by prompt id."""
+    if len(ids) != len(token_ids):
+        raise ValueError(f"{len(ids)} prompt ids against {len(token_ids)} token lists")
+    lengths = [len(t) for t in token_ids]
+    tokens = np.concatenate([np.asarray(t, dtype=np.int64) for t in token_ids]) if ids else np.zeros(0, np.int64)
+    if tokens.size and (tokens.min() < 0 or tokens.max() >= 2**32):
+        raise ValueError("token ids must fit uint32")
+    offsets = np.concatenate([[0], np.cumsum(lengths)]).astype(np.int64)
+    np.savez(path, ids=np.array(ids, dtype=str), offsets=offsets, tokens=tokens.astype("<u4"))
+
+
+def load_token_ids(path: Path) -> tuple[list[str], list[list[int]]]:
+    with np.load(path, allow_pickle=False) as f:
+        ids, offsets, tokens = [str(i) for i in f["ids"]], f["offsets"], f["tokens"]
+    return ids, [tokens[a:b].astype(np.int64).tolist() for a, b in pairwise(offsets)]
 
 
 def check_canary_budget(token_counts: list[int], budget: int) -> None:

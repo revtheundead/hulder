@@ -80,6 +80,8 @@ def main(spec_path: str, out_dir: str) -> None:
                     },
                 ).save(out / name)
                 saved.append(name)
+        # The rows' own token ids, so the hash of any subset of them can be recomputed.
+        smoke_lib.save_token_ids(out / smoke_lib.TOKEN_IDS_FILE, ids, captured.prompt_token_ids[first:])
     # The requested prompts' tokens at each position, in request order, without the canary's.
     requested_tokens = captured.position_tokens[first:]
     worker = {
@@ -91,6 +93,7 @@ def main(spec_path: str, out_dir: str) -> None:
         "canary_prompt_tokens": split.canary_prompt_tokens,
         "prompt_token_ids_sha256": requested_token_hash,
         "canary_token_ids_sha256": smoke_lib.token_ids_sha256(captured.prompt_token_ids[: len(canary)]),
+        "token_ids_file": smoke_lib.TOKEN_IDS_FILE if spec["save"] else None,
         "gpu": captured.gpu,
         **spec.get("extra_metadata", {}),  # gpu_uuid and gpu_driver
         "capture_seconds": round(seconds, 1),  # engine start, load, compile and capture together
