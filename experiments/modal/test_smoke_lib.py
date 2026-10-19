@@ -576,3 +576,58 @@ def test_a_saved_capture_that_does_not_begin_with_the_canary_has_no_canary_hash(
     save_capture(tmp_path / "capture", np.zeros((64, 2, 1, 8), np.float16), ids=SMOKE_IDS[::-1])
     with pytest.raises(ValueError, match="doesn't begin with the canary"):
         lib.recorded_canary_hash(tmp_path / "capture")
+
+
+def test_equal_token_ids_hash_equal_whatever_their_integer_type():
+    ids = [[151644, 8948, 198], [151644, 872]]
+    as_numpy = [np.array(p, dtype=np.int64) for p in ids]
+    assert lib.token_ids_sha256(ids) == lib.token_ids_sha256(as_numpy)
+    assert len(lib.token_ids_sha256(ids)) == 64
+
+
+@pytest.mark.parametrize(
+    "other",
+    [
+        [[151644, 8948, 199], [151644, 872]],  # one id changed
+        [[151644, 8948], [198, 151644, 872]],  # the same ids with a prompt boundary moved
+        [[151644, 872], [151644, 8948, 198]],  # the prompts in another order
+        [[151644, 8948, 198]],  # a prompt missing
+    ],
+)
+def test_any_change_to_the_ids_their_prompts_or_order_changes_the_token_hash(other):
+    assert lib.token_ids_sha256(other) != lib.token_ids_sha256([[151644, 8948, 198], [151644, 872]])
+
+
+def test_compare_batches_names_each_batch_that_differs_anywhere_at_any_layer():
+    rng = np.random.default_rng(2)
+    reference = {layer: rng.normal(size=(20, 4)).astype(np.float16) for layer in lib.LAYERS}
+    rows = {layer: a.copy() for layer, a in reference.items()}
+    rows[27][9, 3] = np.nextafter(rows[27][9, 3], np.float16(np.inf))  # one ulp, row 9: the second batch
+    batches = lib.compare_batches(rows, reference, batch_size=8, first_batch=2)
+    # 20 rows make batches of 8, 8 and 4, numbered from 2 as canary_check's rows are.
+    assert batches == [
+        {"batch": 2, "rows": 8, "identical": True},
+        {"batch": 3, "rows": 8, "identical": False},
+        {"batch": 4, "rows": 4, "identical": True},
+    ]
+
+
+def test_compare_batches_refuses_rows_of_another_shape():
+    a = {layer: np.zeros((16, 4), np.float16) for layer in lib.LAYERS}
+    b = {layer: np.zeros((8, 4), np.float16) for layer in lib.LAYERS}
+    with pytest.raises(ValueError, match="layer 18"):
+        lib.compare_batches(a, b)
+
+
+def test_canary_repeat_runs_three_untraced_and_one_traced_canary_check_in_fresh_containers_for_at_most_67_cents():
+    containers, single_use, timeout_s = lib.EXPERIMENTS["canary_repeat"]
+    assert single_use and timeout_s == 8 * 60
+    # Untraced entries carry no env, so they run under exactly the pilot's engine environment.
+    assert containers == [
+        [("u1_canary_check", "qwen3_4b_bf16_canary_check")],
+        [("u2_canary_check", "qwen3_4b_bf16_canary_check")],
+        [("u3_canary_check", "qwen3_4b_bf16_canary_check")],
+        [("t1_canary_check", "qwen3_4b_bf16_canary_check", {lib.CUBLAS_LOG: "1"})],
+    ]
+    assert [lib.worker_spec(g[0], timeout_s)["env"] for g in containers] == [{}, {}, {}, {lib.CUBLAS_LOG: "1"}]
+    assert sum(lib.worst_case_cost(len(g), timeout_s) for g in containers) == pytest.approx(0.66, abs=0.005)

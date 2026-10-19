@@ -156,6 +156,18 @@ EXPERIMENTS = {
         False,
         CONFIG_TIMEOUT_S,
     ),
+    # Whether the pilot's canary_check result reproduces: it matched the majority bf16 path on
+    # batches 1 to 7 and on no recorded capture on batch 8. Three untraced canary_checks, under the
+    # pilot's engine environment, and one traced, each in its own fresh container, compared batch by
+    # batch. 8 minutes per config, as the census; the timeout never reaches the engine.
+    "canary_repeat": (
+        [
+            *([(f"u{i}_canary_check", "qwen3_4b_bf16_canary_check")] for i in (1, 2, 3)),
+            [("t1_canary_check", "qwen3_4b_bf16_canary_check", {CUBLAS_LOG: "1"})],
+        ],
+        True,
+        8 * 60,
+    ),
 }
 
 
@@ -256,6 +268,19 @@ def recorded_canary_hash(capture: Path) -> str:
         raise ValueError(f"{capture} doesn't begin with the canary")
     acts = np.stack([s.activations[: len(canary)] for s in snapshots], axis=1)[:, :, None]
     return canary_sha256(acts, LAYERS, (-1,))
+
+
+def token_ids_sha256(token_ids: list) -> str:
+    """SHA-256 of prompts' token ids in order, each prompt as its length then its ids, as
+    little-endian uint32 behind a format header, so moving a prompt boundary changes the hash.
+    Equal hashes mean the engine was fed the same tokens in the same prompts."""
+    parts = [b"hulder-token-ids-v1\n"]
+    for prompt in token_ids:
+        ids = np.asarray(prompt, dtype=np.int64)
+        if ids.size and (ids.min() < 0 or ids.max() >= 2**32):
+            raise ValueError("token ids must fit uint32")
+        parts.append(np.array([len(ids)], dtype="<u4").tobytes() + ids.astype("<u4").tobytes())
+    return hashlib.sha256(b"".join(parts)).hexdigest()
 
 
 def check_canary_budget(token_counts: list[int], budget: int) -> None:
@@ -446,6 +471,23 @@ def gpu_metadata(nvidia_smi: str) -> dict:
     snapshot metadata: any difference between runs then warns (docs/design.md §6, metadata rule 2)."""
     _, uuid, driver, _ = (field.strip() for field in nvidia_smi.strip().splitlines()[0].split(","))
     return {"gpu_uuid": uuid, "gpu_driver": driver}
+
+
+def compare_batches(
+    rows: dict[int, np.ndarray], reference: dict[int, np.ndarray], batch_size: int = 8, first_batch: int = 1
+) -> list[dict]:
+    """Per batch of rows, numbered from first_batch, whether it equals the reference bit for bit at
+    every layer. A capture can match its path on most batches and leave it on one."""
+    for layer in LAYERS:
+        if rows[layer].shape != reference[layer].shape:
+            raise ValueError(f"layer {layer}: rows of shape {rows[layer].shape} against {reference[layer].shape}")
+    n = len(rows[LAYERS[0]])
+    out = []
+    for b, start in enumerate(range(0, n, batch_size), first_batch):
+        span = slice(start, min(start + batch_size, n))
+        same = all(np.array_equal(rows[la][span].view(np.uint16), reference[la][span].view(np.uint16)) for la in LAYERS)
+        out.append({"batch": b, "rows": span.stop - span.start, "identical": same})
+    return out
 
 
 def relative_l2(a: np.ndarray, b: np.ndarray) -> np.ndarray:

@@ -60,6 +60,9 @@ class Capture:
     # Each prompt's length in tokens as vLLM tokenized it, templated, in prompt order. With chunked
     # prefill off, a batch whose total exceeds max_num_batched_tokens is prefilled over several steps.
     prompt_token_counts: list[int] = field(default_factory=list)
+    # Each prompt's token ids as vLLM tokenized it, templated, in prompt order, so two captures can
+    # be shown to have fed the engine the same tokens.
+    prompt_token_ids: list[list[int]] = field(default_factory=list)
     # Seconds to construct the LLM: weight loading, profiling, KV-cache allocation, compilation and warmup.
     engine_seconds: float | None = None
     # Wall seconds of each batch's llm.chat call, including reading back its hidden-state files.
@@ -70,7 +73,7 @@ def capture(prompts: list[str], cfg: CaptureConfig) -> Capture:
     convs = [[{"role": "system", "content": cfg.system_prompt}, {"role": "user", "content": p}] for p in prompts]
     params = SamplingParams(max_tokens=1, temperature=0)
     template = {} if cfg.enable_thinking is None else {"chat_template_kwargs": {"enable_thinking": cfg.enable_thinking}}
-    acts, tokens, counts, batch_seconds = [], [], [], []
+    acts, tokens, counts, token_ids, batch_seconds = [], [], [], [], []
     with tempfile.TemporaryDirectory() as tmp:
         started = time.perf_counter()
         llm = LLM(
@@ -110,6 +113,7 @@ def capture(prompts: list[str], cfg: CaptureConfig) -> Capture:
                 acts.append(to_float16(hidden[None], cfg.layers, cfg.positions, first_prompt=len(acts))[0])
                 tokens.append(tok.convert_ids_to_tokens(obj["token_ids"][pos].tolist()))
                 counts.append(len(out.prompt_token_ids))
+                token_ids.append([int(t) for t in out.prompt_token_ids])
                 os.remove(path)
             batch_seconds.append(time.perf_counter() - started)
             if start // cfg.batch_size % 100 == 0:
@@ -120,6 +124,7 @@ def capture(prompts: list[str], cfg: CaptureConfig) -> Capture:
         gpu=torch.cuda.get_device_name(),
         enable_thinking=cfg.enable_thinking,
         prompt_token_counts=counts,
+        prompt_token_ids=token_ids,
         engine_seconds=engine_seconds,
         batch_seconds=batch_seconds,
     )
