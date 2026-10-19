@@ -446,6 +446,68 @@ def test_the_slabs_sample_refuses_more_than_the_train_split_holds(tmp_path):
         lib.slabs_train_prompts(31, 0, slabs_parquet(tmp_path / "splits.parquet"))
 
 
+SPLITS = {
+    "train": 30,
+    "validation": 5,
+    "calibration": 6,
+    "test": 6,
+    "bpairs_train": 4,
+    "bpairs_validation": 2,
+    "bpairs_test": 3,
+}
+
+
+def all_splits_parquet(path, shuffle_seed=None, extra=()):
+    """A splits.parquet stand-in with every split, its rows in shuffled order if asked."""
+    pd = pytest.importorskip("pandas")
+
+    rows = [
+        {"id": f"{split}/{i}", "split": split, "text": f"{split} {i}", "label": i % 2}
+        for split, n in [*SPLITS.items(), *extra]
+        for i in range(n)
+    ]
+    frame = pd.DataFrame(rows)
+    if shuffle_seed is not None:
+        frame = frame.sample(frac=1, random_state=shuffle_seed)
+    frame.to_parquet(path)
+    return path
+
+
+def test_all_splits_put_train_first_in_the_pilots_order_then_each_other_split_whole(tmp_path):
+    path = all_splits_parquet(tmp_path / "splits.parquet")
+    prompts = lib.slabs_all_prompts(0, path)
+    assert len(prompts) == sum(SPLITS.values()) == len({r["id"] for r in prompts})
+    # The pilot's sample is a prefix, so the full capture's first batches have the pilot's composition.
+    assert prompts[:10] == lib.slabs_train_prompts(10, 0, path)
+    assert prompts[:30] == lib.slabs_train_prompts(30, 0, path)
+    # Then validation, calibration, test and the boundary-pairs splits, each in one run.
+    splits = [r["id"].split("/")[0] for r in prompts]
+    assert list(dict.fromkeys(splits)) == list(SPLITS)
+    assert lib.slabs_all_prompts(0, all_splits_parquet(tmp_path / "shuffled.parquet", shuffle_seed=3)) == prompts
+    assert lib.slabs_all_prompts(1, path) != prompts
+
+
+def test_all_splits_refuse_a_split_they_dont_know(tmp_path):
+    with pytest.raises(ValueError, match="holdout"):
+        lib.slabs_all_prompts(0, all_splits_parquet(tmp_path / "splits.parquet", extra=[("holdout", 2)]))
+
+
+def test_all_splits_of_the_real_parquet_are_16332_prompts_with_the_pilots_1000_first():
+    if not lib.SLABS_SPLITS.exists():
+        pytest.skip("needs .cache/probe/splits.parquet")
+    pytest.importorskip("pandas")
+    prompts = lib.prompts_for(("slabs_all", 0))
+    assert len(prompts) == 16332 == len({r["id"] for r in prompts})
+    assert prompts[:1000] == lib.prompts_for(("slabs_train", 1000, 0))
+
+
+def test_the_full_config_is_the_pilots_with_every_split_as_its_source():
+    pilot_fields, _ = lib.CONFIGS["qwen3_4b_bf16_pilot"]
+    fields, source = lib.CONFIGS["qwen3_4b_bf16_full"]
+    assert fields == pilot_fields
+    assert source == ("slabs_all", 0)
+
+
 def test_the_existing_configs_still_request_their_smoke_prompts():
     expected = {"qwen3_4b_bf16": 64, "qwen3_4b_fp8": 64, "qwen3_4b_fp8_online": 64, "qwen3_8b_bf16_load": 1}
     for name, n in expected.items():

@@ -75,6 +75,8 @@ CONFIGS = {
     "qwen3_4b_bf16_canary_check": ({**COMMON, **QWEN3_4B}, ("smoke", 64, 8)),
     # Positions -9 and -10 for the D2 ablation (docs/design.md §5): <|im_end|> and the last content token.
     "qwen3_4b_bf16_pilot": ({**COMMON, **QWEN3_4B, "positions": (-1, -9, -10)}, ("slabs_train", 1000, 0)),
+    # The full capture: the pilot's config on every split's prompts, the pilot's 1,000 first.
+    "qwen3_4b_bf16_full": ({**COMMON, **QWEN3_4B, "positions": (-1, -9, -10)}, ("slabs_all", 0)),
 }
 # config name -> base model, passed to base_model_for as override=. Only for a checkpoint whose
 # base model it can't find; the worker stops with a warning naming the entry to add.
@@ -216,15 +218,39 @@ def slabs_train_prompts(n: int, seed: int, path: Path = SLABS_SPLITS) -> list[di
     return [{"id": str(r.id), "text": str(r.text), "label": int(r.label)} for r in picked.itertuples()]
 
 
+# The splits after train in a full capture, in capture order.
+LATER_SPLITS = ("validation", "calibration", "test", "bpairs_train", "bpairs_validation", "bpairs_test")
+
+
+def slabs_all_prompts(seed: int, path: Path = SLABS_SPLITS) -> list[dict]:
+    """Every row of every split: train first, as slabs_train_prompts orders it, so any sample of it
+    with this seed is a prefix, then each of LATER_SPLITS whole, its rows sorted by id and then in
+    numpy's default_rng(seed) permutation. Raises on a split it doesn't know, so none is dropped."""
+    import pandas as pd
+
+    rows = pd.read_parquet(path, columns=["id", "split", "text", "label"])
+    unknown = sorted(set(rows["split"]) - {"train", *LATER_SPLITS})
+    if unknown:
+        raise ValueError(f"{path} has splits {unknown} that a full capture doesn't place")
+    prompts = slabs_train_prompts(int((rows["split"] == "train").sum()), seed, path)
+    for split in LATER_SPLITS:
+        part = rows[rows["split"] == split].sort_values("id", kind="stable").reset_index(drop=True)
+        picked = part.iloc[np.random.default_rng(seed).permutation(len(part))]
+        prompts += [{"id": str(r.id), "text": str(r.text), "label": int(r.label)} for r in picked.itertuples()]
+    return prompts
+
+
 def prompts_for(source: tuple) -> list[dict]:
-    """The prompts a CONFIGS source names: ("smoke", n[, start]), smoke_prompts(n)[start:], or
-    ("slabs_train", n, seed)."""
+    """The prompts a CONFIGS source names: ("smoke", n[, start]), smoke_prompts(n)[start:],
+    ("slabs_train", n, seed) or ("slabs_all", seed)."""
     kind, *args = source
     if kind == "smoke":
         n, start = (*args, 0)[:2]
         return smoke_prompts(n)[start:]
     if kind == "slabs_train":
         return slabs_train_prompts(*args)
+    if kind == "slabs_all":
+        return slabs_all_prompts(*args)
     raise ValueError(f"unknown prompt source {source!r}")
 
 
