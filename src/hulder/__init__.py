@@ -4,6 +4,7 @@ from hulder.gate.check import Estimate, Recalibration, Report, Verdict, check, c
 from hulder.gate.pairing import PairingError, prompt_ids_sha256
 from hulder.gate.probe import Probe, apply_probe
 from hulder.gate.snapshot import Snapshot
+from hulder.gate.stats import clopper_pearson
 
 __all__ = [
     "Estimate",
@@ -16,6 +17,7 @@ __all__ = [
     "apply_probe",
     "check",
     "check_snapshots",
+    "clopper_pearson",
     "prompt_ids_sha256",
 ]
 

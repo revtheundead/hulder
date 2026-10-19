@@ -139,7 +139,7 @@ control plane (stretch): probe registry (versions, thresholds) · rollout contro
 
 ### Public API (v0.1)
 
-The public API is `hulder check` and `hulder quickstart`, with their arguments, exit codes and `--json` layout, and the names in `hulder.__all__`: `Estimate`, `PairingError`, `Probe`, `Recalibration`, `Report`, `Snapshot`, `Verdict`, `apply_probe`, `check`, `check_snapshots` and `prompt_ids_sha256`. A test keeps `__all__` equal to this list.
+The public API is `hulder check` and `hulder quickstart`, with their arguments, exit codes and `--json` layout, and the names in `hulder.__all__`: `Estimate`, `PairingError`, `Probe`, `Recalibration`, `Report`, `Snapshot`, `Verdict`, `apply_probe`, `check`, `check_snapshots`, `clopper_pearson` and `prompt_ids_sha256`. A test keeps `__all__` equal to this list.
 
 - `hulder.check(reference, candidate, labels, threshold, target_fpr, *, noise_floor=None, ...)` takes plain arrays. `reference` and `candidate` hold the same examples in the same order, as 1-D scores, or as 2-D activations with `probe=`. Everything after `target_fpr` is keyword-only, so a rerun can't bind to the wrong positional argument.
 - `hulder.check_snapshots(reference, candidate, rerun=None, *, threshold, target_fpr, probe=None, seed=0, changes_under_test=())` is `check` on `Snapshot`s. It takes labels from the reference, raises `PairingError` if another snapshot's labels differ, and applies the metadata rules of §6. The CLI calls it.

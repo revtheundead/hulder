@@ -20,6 +20,7 @@ PUBLIC = [
     "apply_probe",
     "check",
     "check_snapshots",
+    "clopper_pearson",
     "prompt_ids_sha256",
 ]
 CAPTURE = ["Capture", "CaptureConfig", "base_model_for", "capture", "snapshot_metadata"]
