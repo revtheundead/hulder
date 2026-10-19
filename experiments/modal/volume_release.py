@@ -6,8 +6,9 @@
 checks them against the container's sha256 and backs them up, but never removes them. This does,
 in a later boot than the run's (the manifest records the boot id), and only for a replica whose
 SHA256SUMS and every backed-up file still match the container's sha256. A replica that fails keeps
-its files and the others go. The outcome is written to <run>/volume_release.json, which
-full_capture_report.py reads.
+its files and the others go. The outcome is written to <run>/volume_release.json after each
+replica, which full_capture_report.py reads. Rerun it after an error: files an earlier run already
+removed count as released.
 """
 
 import json
@@ -25,7 +26,6 @@ def release_run(run_dir: Path, backup_root: Path, remove: Callable[[str], None],
     run = json.loads((run_dir / "manifest.json").read_text())
     path = run_dir / RECORD
     record = json.loads(path.read_text()) if path.exists() else {"boot_id": None, "configs": {}}
-    changed = False
     for label, config in sorted(run["configs"].items()):
         if record["configs"].get(label, {}).get("released"):
             continue
@@ -36,9 +36,8 @@ def release_run(run_dir: Path, backup_root: Path, remove: Callable[[str], None],
             run.get("boot_id"),
             current_boot_id,
         )
-        changed = True
-    if changed:
         record["boot_id"] = current_boot_id
+        # After each replica, so a removal that fails part-way loses no earlier replica's record.
         path.write_text(json.dumps(record, indent=2) + "\n")
     return record
 

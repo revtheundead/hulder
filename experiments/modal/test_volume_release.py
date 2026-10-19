@@ -4,6 +4,7 @@ files leave the Volume. CPU only, no Modal."""
 import hashlib
 import json
 
+import pytest
 import smoke_lib as lib
 import volume_release
 
@@ -58,3 +59,32 @@ def test_a_replica_released_before_isnt_released_again(tmp_path):
     record, removed = release(run_dir, backup, "boot-c")
     assert removed == []
     assert record["configs"]["r1"]["released"] is True and record["boot_id"] == "boot-b"
+
+
+def test_a_removal_that_fails_part_way_keeps_the_record_of_the_replicas_before_it(tmp_path):
+    run_dir, backup = fetched_run(tmp_path)
+    gone = []
+
+    def flaky(path):
+        if path == "R/r2/27_-1.npz":
+            raise ConnectionError("the Volume went away")
+        gone.append(path)
+
+    with pytest.raises(ConnectionError):
+        volume_release.release_run(run_dir, backup, flaky, "boot-b")
+    record = json.loads((run_dir / volume_release.RECORD).read_text())
+    assert record["configs"]["r1"]["released"] is True and "r2" not in record["configs"]
+
+    # Run again: r2's first file is already gone, which counts as released, and its second goes now.
+    def remove(path):
+        if path in gone:
+            raise FileNotFoundError(path)
+        gone.append(path)
+
+    record = volume_release.release_run(run_dir, backup, remove, "boot-c")
+    assert record["configs"]["r2"] == {
+        "released": True,
+        "removed": ["27_-1.npz"],
+        "already_gone": ["18_-1.npz"],
+        "problem": None,
+    }

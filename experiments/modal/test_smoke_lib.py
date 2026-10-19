@@ -772,7 +772,7 @@ def backed_up(tmp_path):
 def test_a_backup_reverified_after_a_reboot_releases_its_files_from_the_volume(tmp_path):
     status, volume = backed_up(tmp_path)
     released = lib.release_volume_files(status, tmp_path / "backup", volume.remove, "boot-a", "boot-b")
-    assert released == {"released": True, "removed": sorted(status["files"]), "problem": None}
+    assert released == {"released": True, "removed": sorted(status["files"]), "already_gone": [], "problem": None}
     assert volume.removed == sorted(status["files"])
 
 

@@ -614,10 +614,12 @@ def release_volume_files(
 ) -> dict:
     """Remove a config's files from the Volume once their backup is verified again after a reboot:
     refused in the boot that fetched them, so a write the disk lost can't pass for one it holds,
-    and refused unless SHA256SUMS and every backed-up file match the container's sha256."""
+    and refused unless SHA256SUMS and every backed-up file match the container's sha256. A file
+    already gone from the Volume (remove raises FileNotFoundError, as modal 1.6.1's
+    Volume.remove_file does) counts as released."""
 
     def refuse(problem: str) -> dict:
-        return {"released": False, "removed": [], "problem": problem}
+        return {"released": False, "removed": [], "already_gone": [], "problem": problem}
 
     expected = status["files"]
     if not status.get("backed_up"):
@@ -635,9 +637,14 @@ def release_volume_files(
     for name, sha in sorted(expected.items()):
         if not (backup_dir / name).exists() or sha256_file(backup_dir / name) != sha:
             return refuse(f"the backup of {name} no longer matches the container's sha256")
+    removed, gone = [], []
     for name in sorted(expected):
-        remove(name)
-    return {"released": True, "removed": sorted(expected), "problem": None}
+        try:
+            remove(name)
+            removed.append(name)
+        except FileNotFoundError:  # removed by an earlier release that stopped part-way
+            gone.append(name)
+    return {"released": True, "removed": removed, "already_gone": gone, "problem": None}
 
 
 def batch_digests(rows: np.ndarray, batch_size: int = 8) -> list[str]:
