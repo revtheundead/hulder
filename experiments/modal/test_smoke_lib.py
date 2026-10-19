@@ -773,3 +773,51 @@ def test_without_a_backup_dir_the_files_are_fetched_and_kept_on_the_volume(tmp_p
     assert (status["fetched"], status["backed_up"], status["deleted_from_volume"]) == (True, False, False)
     assert status["problem"] is None
     assert volume.removed == []
+
+
+def replica_digests(**arrays):
+    """Each replica's per-batch digests of each array, as the report builds them one file at a time."""
+    return {label: {key: lib.batch_digests(a) for key, a in by_key.items()} for label, by_key in arrays.items()}
+
+
+def rows_of(n=20, seed=0):
+    return np.random.default_rng(seed).standard_normal((n, 4)).astype(np.float16)
+
+
+def test_batches_are_classed_as_all_agree_a_2_to_1_split_or_all_different():
+    # 20 rows in batches of 8: batch 2 is rows 0 to 7, batch 3 rows 8 to 15, batch 4 rows 16 to 19.
+    r1 = rows_of()
+    r2, r3 = r1.copy(), r1.copy()
+    r2[9] += np.float16(1)  # batch 3: r2 alone differs
+    r2[18] += np.float16(1)  # batch 4: r2 and r3 differ from r1 and from each other
+    r3[17] += np.float16(1)
+    agreement = lib.batch_agreement(replica_digests(r1={"18_-1": r1}, r2={"18_-1": r2}, r3={"18_-1": r3}))
+    assert agreement == [
+        {"batch": 2, "kind": "agree", "majority": ["r1", "r2", "r3"], "outliers": []},
+        {"batch": 3, "kind": "split", "majority": ["r1", "r3"], "outliers": ["r2"]},
+        {"batch": 4, "kind": "no majority", "majority": [], "outliers": ["r1", "r2", "r3"]},
+    ]
+
+
+def test_a_replica_that_differs_in_one_array_only_is_the_outlier():
+    a, b = rows_of(8, 1), rows_of(8, 2)
+    b3 = b.copy()
+    b3[0, 0] += np.float16(1)
+    digests = replica_digests(r1={"18_-1": a, "27_-1": b}, r2={"18_-1": a, "27_-1": b}, r3={"18_-1": a, "27_-1": b3})
+    [batch] = lib.batch_agreement(digests)
+    assert (batch["kind"], batch["outliers"]) == ("split", ["r3"])
+
+
+def test_negative_zero_is_not_zero():
+    zeros = np.zeros((8, 4), np.float16)
+    negative = zeros.copy()
+    negative[3, 2] = np.float16(-0.0)
+    [batch] = lib.batch_agreement(replica_digests(r1={"k": zeros}, r2={"k": zeros}, r3={"k": negative}))
+    assert batch["outliers"] == ["r3"]
+
+
+def test_replicas_with_other_arrays_or_batch_counts_are_refused():
+    with pytest.raises(ValueError, match="arrays"):
+        lib.batch_agreement(replica_digests(r1={"a": rows_of()}, r2={"a": rows_of()}, r3={"b": rows_of()}))
+    with pytest.raises(ValueError, match="batches"):
+        lib.batch_agreement(replica_digests(r1={"a": rows_of()}, r2={"a": rows_of()}, r3={"a": rows_of(8)}))

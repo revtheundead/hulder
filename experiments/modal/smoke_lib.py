@@ -580,6 +580,45 @@ def settle_volume_files(
     return status
 
 
+def batch_digests(rows: np.ndarray, batch_size: int = 8) -> list[str]:
+    """SHA-256 of each batch of rows' raw bytes, behind its dtype and shape, so equal digests mean
+    bit-identical batches (-0.0 differs from 0.0). The last batch may be short."""
+    out = []
+    for start in range(0, len(rows), batch_size):
+        batch = np.ascontiguousarray(rows[start : start + batch_size])
+        header = f"{batch.dtype.str} {batch.shape}\n".encode()
+        out.append(hashlib.sha256(header + batch.tobytes()).hexdigest())
+    return out
+
+
+def batch_agreement(digests: dict[str, dict[str, list[str]]], first_batch: int = 2) -> list[dict]:
+    """Per batch, numbered from first_batch, which replicas agree bit for bit on every array, from
+    each replica's batch_digests per array. "agree" when all do, "split" when more than half do
+    (the majority) and the rest are outliers, else "no majority"."""
+    labels = sorted(digests)
+    keys = {label: sorted(digests[label]) for label in labels}
+    if any(keys[label] != keys[labels[0]] for label in labels):
+        raise ValueError(f"the replicas hold other arrays: {keys}")
+    counts = {len(d) for label in labels for d in digests[label].values()}
+    if len(counts) != 1:
+        raise ValueError(f"the replicas hold other numbers of batches: {sorted(counts)}")
+    out = []
+    for b in range(counts.pop()):
+        classes: dict[tuple, list[str]] = {}
+        for label in labels:
+            classes.setdefault(tuple(digests[label][k][b] for k in keys[label]), []).append(label)
+        largest = max(classes.values(), key=len)
+        if len(largest) == len(labels):
+            kind, majority = "agree", largest
+        elif 2 * len(largest) > len(labels):
+            kind, majority = "split", largest
+        else:
+            kind, majority = "no majority", []
+        outliers = [label for label in labels if label not in majority]
+        out.append({"batch": b + first_batch, "kind": kind, "majority": majority, "outliers": outliers})
+    return out
+
+
 def relative_l2(a: np.ndarray, b: np.ndarray) -> np.ndarray:
     """Per-example ||a - b|| / ||a|| over the last axis, in float64."""
     a, b = np.asarray(a, np.float64), np.asarray(b, np.float64)
