@@ -300,3 +300,23 @@ def test_the_report_reads_what_volume_release_did(world):
         "on the hulder-runs Volume, backed up and verified; volume_release.py refused: "
         "the backup of 27_-1.npz no longer matches"
     )
+
+
+def test_a_replica_whose_fetch_failed_is_a_stop_and_its_files_are_never_read(world):
+    problem = {**BACKED_UP, "backed_up": False, "problem": "27_-1.npz as fetched doesn't match the container's sha256"}
+    run_dir = make_run(world, volume={"r2": problem})
+    # As a failed fetch leaves it: the mismatched file holds other bytes, and the later ones never came.
+    (run_dir / "r2" / "27_-1.npz").write_bytes(b"not an npz")
+    (run_dir / "r2" / lib.TOKEN_IDS_FILE).unlink()
+    summary = summarise(world, run_dir)
+    assert_stopped(summary, run_dir, "r2's snapshots weren't fetched intact: " + problem["problem"])
+    assert summary["canaries"].keys() == {"r1", "r3"}
+    assert [b["kind"] for b in summary["batches"]] == ["agree"] * 3
+
+
+def test_with_no_replica_left_to_read_the_report_is_still_written(world):
+    problem = {**BACKED_UP, "backed_up": False, "problem": "18_-1.npz as fetched doesn't match the container's sha256"}
+    run_dir = make_run(world, volume={label: problem for label in ("r1", "r2", "r3")})
+    summary = summarise(world, run_dir)
+    assert len(summary["stop_reasons"]) == 3 and summary["kept"] is None
+    assert summary["batches"] == [] and summary["canaries"] == {}

@@ -72,9 +72,35 @@ def summarise(
         manifest = json.loads((run_dir / label / "manifest.json").read_text())
         if failed := pilot.failure_reason(run_dir, label, manifest):
             stops.append(failed)
-        if "worker" in manifest:
+        problem = (run["configs"][label].get("volume") or {}).get("problem")
+        if problem:
+            # Its local files may be partial or wrong, so like a failed replica's they are never read.
+            stops.append(f"{label}'s snapshots weren't fetched intact: {problem}")
+        elif "worker" in manifest:
             workers[label] = manifest["worker"]
     labels = sorted(workers)
+    record = run_dir / "volume_release.json"
+    released = json.loads(record.read_text())["configs"] if record.exists() else {}
+    head = {
+        **{k: run.get(k) for k in ("run_id", "commit", "estimated_usd", "stopped")},
+        "stop_reasons": stops,
+        "volume": {
+            label: _volume(run["configs"][label].get("volume"), released.get(label)) for label in sorted(run["configs"])
+        },
+        "expected": _expected(),
+    }
+    if not labels:
+        return {
+            **head,
+            "findings": [],
+            "kept": None,
+            "batches": [],
+            "counts": {"batches": 0, "agree": 0, "split": 0, "no_majority": 0},
+            "outliers_per_replica": {},
+            "vs_pilot": [],
+            "canaries": {},
+            "majority_canary": None,
+        }
     names = workers[labels[0]]["snapshots"]
 
     # R1: the same prompts and tokens, and the same metadata apart from what is per replica.
@@ -138,8 +164,6 @@ def summarise(
         for label, count in outliers.items()
         if 2 * count > n
     ]
-    record = run_dir / "volume_release.json"
-    released = json.loads(record.read_text())["configs"] if record.exists() else {}
     vs_pilot = _vs_pilot(pilot_dir / "pilot", run_dir / labels[0], names, digests, batches)
     if unlike := [b["batch"] for b in vs_pilot if b["identical"] is False]:
         findings.append(f"the kept batches {unlike} differ from the pilot's")
@@ -148,8 +172,7 @@ def summarise(
         kept = _keep(run_dir, labels, names, batches, workers, majority_canary, splits or {})
 
     return {
-        **{k: run.get(k) for k in ("run_id", "commit", "estimated_usd", "stopped")},
-        "stop_reasons": stops,
+        **head,
         "findings": findings,
         "kept": kept,
         "batches": batches,
@@ -163,10 +186,6 @@ def summarise(
         },
         "outliers_per_replica": outliers,
         "vs_pilot": vs_pilot,
-        "volume": {
-            label: _volume(run["configs"][label].get("volume"), released.get(label)) for label in sorted(run["configs"])
-        },
-        "expected": _expected(),
         "canaries": canaries,
         "majority_canary": majority_canary,
     }
