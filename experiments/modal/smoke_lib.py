@@ -170,6 +170,10 @@ EXPERIMENTS = {
         True,
         8 * 60,
     ),
+    # The full capture as three replicas, each in its own fresh container on its own GPU, untraced,
+    # so the kept dataset can be each batch's majority (full_capture_report.py). 12 minutes per
+    # config is about 3 times the pilot's projection of engine startup and 2,043 batches.
+    "full_capture": ([[(f"r{i}", "qwen3_4b_bf16_full")] for i in (1, 2, 3)], True, 12 * 60),
 }
 
 

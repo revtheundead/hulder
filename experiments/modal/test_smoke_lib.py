@@ -693,3 +693,11 @@ def test_canary_repeat_runs_three_untraced_and_one_traced_canary_check_in_fresh_
     ]
     assert [lib.worker_spec(g[0], timeout_s)["env"] for g in containers] == [{}, {}, {}, {lib.CUBLAS_LOG: "1"}]
     assert sum(lib.worst_case_cost(len(g), timeout_s) for g in containers) == pytest.approx(0.66, abs=0.005)
+
+
+def test_full_capture_runs_three_untraced_replicas_in_fresh_containers_for_at_most_75_cents():
+    containers, single_use, timeout_s = lib.EXPERIMENTS["full_capture"]
+    assert single_use and timeout_s == 12 * 60
+    # No env entry, so each runs under exactly the pilot's engine environment.
+    assert containers == [[(f"r{i}", "qwen3_4b_bf16_full")] for i in (1, 2, 3)]
+    assert sum(lib.worst_case_cost(len(g), timeout_s) for g in containers) == pytest.approx(0.75, abs=0.005)
