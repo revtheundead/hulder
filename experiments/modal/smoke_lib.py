@@ -3,8 +3,12 @@ the configs and experiments, log facts, cost estimates and activation comparison
 
 import hashlib
 import json
+import os
 import re
+import shutil
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
+from itertools import pairwise
 from pathlib import Path
 
 import numpy as np
@@ -75,6 +79,8 @@ CONFIGS = {
     "qwen3_4b_bf16_canary_check": ({**COMMON, **QWEN3_4B}, ("smoke", 64, 8)),
     # Positions -9 and -10 for the D2 ablation (docs/design.md §5): <|im_end|> and the last content token.
     "qwen3_4b_bf16_pilot": ({**COMMON, **QWEN3_4B, "positions": (-1, -9, -10)}, ("slabs_train", 1000, 0)),
+    # The full capture: the pilot's config on every split's prompts, the pilot's 1,000 first.
+    "qwen3_4b_bf16_full": ({**COMMON, **QWEN3_4B, "positions": (-1, -9, -10)}, ("slabs_all", 0)),
 }
 # config name -> base model, passed to base_model_for as override=. Only for a checkpoint whose
 # base model it can't find; the worker stops with a warning naming the entry to add.
@@ -168,6 +174,10 @@ EXPERIMENTS = {
         True,
         8 * 60,
     ),
+    # The full capture as three replicas, each in its own fresh container on its own GPU, untraced,
+    # so the kept dataset can be each batch's majority (full_capture_report.py). 12 minutes per
+    # config is about 3 times the pilot's projection of engine startup and 2,043 batches.
+    "full_capture": ([[(f"r{i}", "qwen3_4b_bf16_full")] for i in (1, 2, 3)], True, 12 * 60),
 }
 
 
@@ -216,15 +226,39 @@ def slabs_train_prompts(n: int, seed: int, path: Path = SLABS_SPLITS) -> list[di
     return [{"id": str(r.id), "text": str(r.text), "label": int(r.label)} for r in picked.itertuples()]
 
 
+# The splits after train in a full capture, in capture order.
+LATER_SPLITS = ("validation", "calibration", "test", "bpairs_train", "bpairs_validation", "bpairs_test")
+
+
+def slabs_all_prompts(seed: int, path: Path = SLABS_SPLITS) -> list[dict]:
+    """Every row of every split: train first, as slabs_train_prompts orders it, so any sample of it
+    with this seed is a prefix, then each of LATER_SPLITS whole, its rows sorted by id and then in
+    numpy's default_rng(seed) permutation. Raises on a split it doesn't know, so none is dropped."""
+    import pandas as pd
+
+    rows = pd.read_parquet(path, columns=["id", "split", "text", "label"])
+    unknown = sorted(set(rows["split"]) - {"train", *LATER_SPLITS})
+    if unknown:
+        raise ValueError(f"{path} has splits {unknown} that a full capture doesn't place")
+    prompts = slabs_train_prompts(int((rows["split"] == "train").sum()), seed, path)
+    for split in LATER_SPLITS:
+        part = rows[rows["split"] == split].sort_values("id", kind="stable").reset_index(drop=True)
+        picked = part.iloc[np.random.default_rng(seed).permutation(len(part))]
+        prompts += [{"id": str(r.id), "text": str(r.text), "label": int(r.label)} for r in picked.itertuples()]
+    return prompts
+
+
 def prompts_for(source: tuple) -> list[dict]:
-    """The prompts a CONFIGS source names: ("smoke", n[, start]), smoke_prompts(n)[start:], or
-    ("slabs_train", n, seed)."""
+    """The prompts a CONFIGS source names: ("smoke", n[, start]), smoke_prompts(n)[start:],
+    ("slabs_train", n, seed) or ("slabs_all", seed)."""
     kind, *args = source
     if kind == "smoke":
         n, start = (*args, 0)[:2]
         return smoke_prompts(n)[start:]
     if kind == "slabs_train":
         return slabs_train_prompts(*args)
+    if kind == "slabs_all":
+        return slabs_all_prompts(*args)
     raise ValueError(f"unknown prompt source {source!r}")
 
 
@@ -281,6 +315,28 @@ def token_ids_sha256(token_ids: list) -> str:
             raise ValueError("token ids must fit uint32")
         parts.append(np.array([len(ids)], dtype="<u4").tobytes() + ids.astype("<u4").tobytes())
     return hashlib.sha256(b"".join(parts)).hexdigest()
+
+
+# Each replica's per-prompt token ids, beside its snapshots, so a subset's token hash can be recomputed.
+TOKEN_IDS_FILE = "token_ids.npz"
+
+
+def save_token_ids(path: Path, ids: list[str], token_ids: list) -> None:
+    """The prompts' token ids as one little-endian uint32 array with offsets, keyed by prompt id."""
+    if len(ids) != len(token_ids):
+        raise ValueError(f"{len(ids)} prompt ids against {len(token_ids)} token lists")
+    lengths = [len(t) for t in token_ids]
+    tokens = np.concatenate([np.asarray(t, dtype=np.int64) for t in token_ids]) if ids else np.zeros(0, np.int64)
+    if tokens.size and (tokens.min() < 0 or tokens.max() >= 2**32):
+        raise ValueError("token ids must fit uint32")
+    offsets = np.concatenate([[0], np.cumsum(lengths)]).astype(np.int64)
+    np.savez(path, ids=np.array(ids, dtype=str), offsets=offsets, tokens=tokens.astype("<u4"))
+
+
+def load_token_ids(path: Path) -> tuple[list[str], list[list[int]]]:
+    with np.load(path, allow_pickle=False) as f:
+        ids, offsets, tokens = [str(i) for i in f["ids"]], f["offsets"], f["tokens"]
+    return ids, [tokens[a:b].astype(np.int64).tolist() for a, b in pairwise(offsets)]
 
 
 def check_canary_budget(token_counts: list[int], budget: int) -> None:
@@ -488,6 +544,169 @@ def compare_batches(
         same = all(np.array_equal(rows[la][span].view(np.uint16), reference[la][span].view(np.uint16)) for la in LAYERS)
         out.append({"batch": b, "rows": span.stop - span.start, "identical": same})
     return out
+
+
+def sha256_file(path: Path) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for block in iter(lambda: f.read(1 << 24), b""):
+            h.update(block)
+    return h.hexdigest()
+
+
+def _write_synced(path: Path, chunks: Iterable[bytes]) -> None:
+    """Write through a .part file, fsynced, then rename, so a crash leaves no half-written file."""
+    part = path.with_name(path.name + ".part")
+    with open(part, "wb") as f:
+        f.writelines(chunks)
+        f.flush()
+        os.fsync(f.fileno())
+    part.replace(path)
+
+
+def settle_volume_files(
+    expected: dict[str, str],
+    read: Callable[[str], Iterable[bytes]],
+    local_dir: Path,
+    backup_dir: Path | None,
+    copy: Callable[[Path, Path], object] = shutil.copyfile,
+) -> dict:
+    """Fetch a config's files from the Volume into local_dir and check each against the sha256 the
+    container recorded, then copy them to backup_dir with a SHA256SUMS and check the copies. Any
+    mismatch stops before the next step. Nothing is removed from the Volume here: that is
+    release_volume_files, run later. Re-reading a copy can be served from the page cache, so it
+    shows the copy as written, not as stored."""
+    status = {"files": expected, "fetched": False, "backed_up": False, "problem": None}
+    local_dir.mkdir(parents=True, exist_ok=True)
+    for name, sha in sorted(expected.items()):
+        _write_synced(local_dir / name, read(name))
+        if sha256_file(local_dir / name) != sha:
+            status["problem"] = f"{name} as fetched doesn't match the container's sha256"
+            return status
+    status["fetched"] = True
+    if backup_dir is None:
+        return status
+    backup_dir.mkdir(parents=True, exist_ok=True)
+    for name, sha in sorted(expected.items()):
+        copy(local_dir / name, backup_dir / name)
+        with open(backup_dir / name, "rb+") as f:
+            os.fsync(f.fileno())
+        if sha256_file(backup_dir / name) != sha:
+            status["problem"] = f"the backup of {name} doesn't match the container's sha256"
+            return status
+    _write_synced(backup_dir / "SHA256SUMS", [f"{expected[n]}  {n}\n".encode() for n in sorted(expected)])
+    status["backed_up"] = True
+    return status
+
+
+def boot_id() -> str | None:
+    """This kernel boot's id, which changes on every reboot (and on wsl --shutdown)."""
+    path = Path("/proc/sys/kernel/random/boot_id")
+    return path.read_text().strip() if path.exists() else None
+
+
+def release_volume_files(
+    status: dict,
+    backup_dir: Path,
+    remove: Callable[[str], None],
+    fetched_boot_id: str | None,
+    current_boot_id: str | None,
+) -> dict:
+    """Remove a config's files from the Volume once their backup is verified again after a reboot:
+    refused in the boot that fetched them, so a write the disk lost can't pass for one it holds,
+    and refused unless SHA256SUMS and every backed-up file match the container's sha256. A file
+    already gone from the Volume (remove raises FileNotFoundError, as modal 1.6.1's
+    Volume.remove_file does) counts as released."""
+
+    def refuse(problem: str) -> dict:
+        return {"released": False, "removed": [], "already_gone": [], "problem": problem}
+
+    expected = status["files"]
+    if not status.get("backed_up"):
+        return refuse("the files were never backed up and verified")
+    if fetched_boot_id is None or current_boot_id is None or fetched_boot_id == current_boot_id:
+        return refuse("the files were fetched in this boot; reboot, then verify the backup again")
+    sums = backup_dir / "SHA256SUMS"
+    listed = {}
+    if sums.exists():
+        for line in sums.read_text().splitlines():
+            sha, _, name = line.partition("  ")
+            listed[name] = sha
+    if listed != expected:
+        return refuse(f"{sums} doesn't list the container's sha256 for each file")
+    for name, sha in sorted(expected.items()):
+        if not (backup_dir / name).exists() or sha256_file(backup_dir / name) != sha:
+            return refuse(f"the backup of {name} no longer matches the container's sha256")
+    removed, gone = [], []
+    for name in sorted(expected):
+        try:
+            remove(name)
+            removed.append(name)
+        except FileNotFoundError:  # removed by an earlier release that stopped part-way
+            gone.append(name)
+    return {"released": True, "removed": removed, "already_gone": gone, "problem": None}
+
+
+def batch_digests(rows: np.ndarray, batch_size: int = 8) -> list[str]:
+    """SHA-256 of each batch of rows' raw bytes, behind its dtype and shape, so equal digests mean
+    bit-identical batches (-0.0 differs from 0.0). The last batch may be short."""
+    out = []
+    for start in range(0, len(rows), batch_size):
+        batch = np.ascontiguousarray(rows[start : start + batch_size])
+        header = f"{batch.dtype.str} {batch.shape}\n".encode()
+        out.append(hashlib.sha256(header + batch.tobytes()).hexdigest())
+    return out
+
+
+def batch_agreement(digests: dict[str, dict[str, list[str]]], first_batch: int = 2) -> list[dict]:
+    """Per batch, numbered from first_batch, which replicas agree bit for bit on every array, from
+    each replica's batch_digests per array. "agree" when all do, "split" when more than half do
+    (the majority) and the rest are outliers, else "no majority"."""
+    labels = sorted(digests)
+    keys = {label: sorted(digests[label]) for label in labels}
+    if any(keys[label] != keys[labels[0]] for label in labels):
+        raise ValueError(f"the replicas hold other arrays: {keys}")
+    counts = {len(d) for label in labels for d in digests[label].values()}
+    if len(counts) != 1:
+        raise ValueError(f"the replicas hold other numbers of batches: {sorted(counts)}")
+    out = []
+    for b in range(counts.pop()):
+        classes: dict[tuple, list[str]] = {}
+        for label in labels:
+            classes.setdefault(tuple(digests[label][k][b] for k in keys[label]), []).append(label)
+        largest = max(classes.values(), key=len)
+        if len(largest) == len(labels):
+            kind, majority = "agree", largest
+        elif 2 * len(largest) > len(labels):
+            kind, majority = "split", largest
+        else:
+            kind, majority = "no majority", []
+        outliers = [label for label in labels if label not in majority]
+        out.append({"batch": b + first_batch, "kind": kind, "majority": majority, "outliers": outliers})
+    return out
+
+
+def majority_rows(
+    arrays: dict[str, np.ndarray], agreement: list[dict], batch_size: int = 8, first_batch: int = 2
+) -> np.ndarray:
+    """Each batch's rows from a member of its majority, in capture order, leaving out the batches
+    with no majority. arrays holds one array per replica, laid out as batch_agreement saw them."""
+    parts = []
+    for entry in agreement:
+        if entry["majority"]:
+            start = (entry["batch"] - first_batch) * batch_size
+            parts.append(arrays[entry["majority"][0]][start : start + batch_size])
+    first = next(iter(arrays.values()))
+    return np.concatenate(parts) if parts else first[:0]
+
+
+def expected_split_rates(p: float) -> dict[str, float]:
+    """For three replicas that each leave the kept path on a batch with probability p,
+    independently: the share of batches where exactly one does, a 2-to-1 split, and where two or
+    more do. The second is an upper bound on batches with no majority, and also covers two
+    replicas deviating alike, which would give an off-path majority nothing can detect."""
+    split = 3 * p * (1 - p) ** 2
+    return {"split": split, "two_or_more_deviate": 1 - (1 - p) ** 3 - split}
 
 
 def relative_l2(a: np.ndarray, b: np.ndarray) -> np.ndarray:

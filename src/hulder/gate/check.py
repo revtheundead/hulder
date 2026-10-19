@@ -6,12 +6,13 @@ from enum import Enum
 
 import numpy as np
 from scipy.special import expit
-from scipy.stats import beta, binomtest, rankdata
+from scipy.stats import binomtest, rankdata
 
 from hulder.gate.pairing import PROMPT_IDS_KEY, PairingError, check_pairing
 from hulder.gate.probe import Probe, probe_logits
 from hulder.gate.recalibrate import CONFIDENCE, binomial_tail_threshold
 from hulder.gate.snapshot import Snapshot
+from hulder.gate.stats import clopper_pearson
 from hulder.gate.validate import example_ids, require_binary_labels
 
 N_BOOTSTRAP = 1000
@@ -536,9 +537,7 @@ def _more_needed_to_decide(rate: float, n: int, line: float, max_n: int = MORE_B
 def _decided(rate: float, sizes: np.ndarray, line: float, rounded: bool = False) -> np.ndarray:
     """Whether the 95% Clopper-Pearson CI of rate * size successes lies on one side of line."""
     k = np.round(rate * sizes) if rounded else rate * sizes
-    with np.errstate(all="ignore"):
-        low = np.where(k > 0, beta.ppf(0.025, k, sizes - k + 1), 0.0)
-        high = np.where(k < sizes, beta.ppf(0.975, k + 1, sizes - k), 1.0)
+    low, high = clopper_pearson(k, sizes)
     return (high <= line) | (low > line)
 
 

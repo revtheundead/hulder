@@ -23,7 +23,11 @@ published rates (smoke_lib.py) and have run high against the actual charge on th
 
 Writes, per run, the snapshots (one per layer), the full log and a manifest to
 --out/<run id>/<label>/, and the run's manifest to --out/<run id>/manifest.json. The tracked tree
-must be clean, so the manifest's commit is what ran.
+must be clean, so the manifest's commit is what ran. Snapshots come back from the hulder-runs
+Volume, checked against the sha256 the container recorded. With --backup-dir they are also copied
+to <backup-dir>/<run id>/<label>/ with a SHA256SUMS and checked again. Each config's manifest entry
+says which of those steps happened under "volume". Nothing is removed from the Volume here:
+volume_release.py does that after a reboot, once the backup verifies again.
 """
 
 import json
@@ -167,9 +171,14 @@ def run_group(group: list[tuple[str, dict]], run_id: str) -> dict:
         (out / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
         runs.commit()
         hf.commit()  # compile caches, for the next engine
+        # Logs and manifests come back inline. Snapshots stay on the Volume, named with their sha256,
+        # for the local entrypoint to fetch, check, back up and remove (smoke_lib.settle_volume_files).
         names = ("capture.log", "manifest.json", "cublas_fingerprint.txt")
-        keep = [p for p in out.iterdir() if p.suffix == ".npz" or p.name in names]
-        results[label] = {"manifest": manifest, "files": {p.name: p.read_bytes() for p in keep}}
+        results[label] = {
+            "manifest": manifest,
+            "files": {p.name: p.read_bytes() for p in out.iterdir() if p.name in names},
+            "volume_files": {p.name: lib.sha256_file(p) for p in sorted(out.glob("*.npz"))},
+        }
         if returncode != 0:
             break
     return results
@@ -201,7 +210,7 @@ def git(*args: str) -> str:
 
 
 @app.local_entrypoint()
-def main(experiment: str, spent_usd: float, out: str = ".cache/modal-runs") -> None:
+def main(experiment: str, spent_usd: float, out: str = ".cache/modal-runs", backup_dir: str = "") -> None:
     if experiment not in lib.EXPERIMENTS:
         raise SystemExit(f"unknown experiment {experiment!r}; known: {list(lib.EXPERIMENTS)}")
     if git("status", "--porcelain", "--untracked-files=no"):
@@ -219,11 +228,13 @@ def main(experiment: str, spent_usd: float, out: str = ".cache/modal-runs") -> N
         "commit": git("rev-parse", "HEAD"),
         "command": (
             "uv run --with modal==1.6.1 modal run experiments/modal/capture.py "
-            f"--experiment {experiment} --spent-usd {spent_usd}"
+            f"--experiment {experiment} --spent-usd {spent_usd}" + (f" --backup-dir {backup_dir}" if backup_dir else "")
         ),
         "modal": modal.__version__,
         "rates_usd_per_s": {"L4": lib.L4_PER_S, "cpu_core": lib.CPU_CORE_PER_S, "memory_gib": lib.MEMORY_GIB_PER_S},
         "spent_before_usd": spent_usd,
+        # volume_release.py removes the snapshots from the Volume only in a later boot than this one.
+        "boot_id": lib.boot_id(),
         "containers": [],
         "configs": {},
     }
@@ -258,8 +269,19 @@ def main(experiment: str, spent_usd: float, out: str = ".cache/modal-runs") -> N
             for filename, data in results[label]["files"].items():
                 (run_dir / label / filename).write_bytes(data)
             m = results[label]["manifest"]
-            manifest["configs"][label] = {"container": i, "config": config, "returncode": m["returncode"]}
-            ok = ok and m["returncode"] == 0
+            volume = lib.settle_volume_files(
+                results[label]["volume_files"],
+                lambda name, label=label: runs.read_file(f"{run_id}/{label}/{name}"),
+                run_dir / label,
+                Path(backup_dir) / run_id / label if backup_dir else None,
+            )
+            manifest["configs"][label] = {
+                "container": i,
+                "config": config,
+                "returncode": m["returncode"],
+                "volume": volume,
+            }
+            ok = ok and m["returncode"] == 0 and volume["problem"] is None
         record()
         return ok
 

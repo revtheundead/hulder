@@ -1,6 +1,8 @@
 """The Modal runner's pure helpers. CPU only, no Modal."""
 
+import hashlib
 import json
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -446,6 +448,68 @@ def test_the_slabs_sample_refuses_more_than_the_train_split_holds(tmp_path):
         lib.slabs_train_prompts(31, 0, slabs_parquet(tmp_path / "splits.parquet"))
 
 
+SPLITS = {
+    "train": 30,
+    "validation": 5,
+    "calibration": 6,
+    "test": 6,
+    "bpairs_train": 4,
+    "bpairs_validation": 2,
+    "bpairs_test": 3,
+}
+
+
+def all_splits_parquet(path, shuffle_seed=None, extra=()):
+    """A splits.parquet stand-in with every split, its rows in shuffled order if asked."""
+    pd = pytest.importorskip("pandas")
+
+    rows = [
+        {"id": f"{split}/{i}", "split": split, "text": f"{split} {i}", "label": i % 2}
+        for split, n in [*SPLITS.items(), *extra]
+        for i in range(n)
+    ]
+    frame = pd.DataFrame(rows)
+    if shuffle_seed is not None:
+        frame = frame.sample(frac=1, random_state=shuffle_seed)
+    frame.to_parquet(path)
+    return path
+
+
+def test_all_splits_put_train_first_in_the_pilots_order_then_each_other_split_whole(tmp_path):
+    path = all_splits_parquet(tmp_path / "splits.parquet")
+    prompts = lib.slabs_all_prompts(0, path)
+    assert len(prompts) == sum(SPLITS.values()) == len({r["id"] for r in prompts})
+    # The pilot's sample is a prefix, so the full capture's first batches have the pilot's composition.
+    assert prompts[:10] == lib.slabs_train_prompts(10, 0, path)
+    assert prompts[:30] == lib.slabs_train_prompts(30, 0, path)
+    # Then validation, calibration, test and the boundary-pairs splits, each in one run.
+    splits = [r["id"].split("/")[0] for r in prompts]
+    assert list(dict.fromkeys(splits)) == list(SPLITS)
+    assert lib.slabs_all_prompts(0, all_splits_parquet(tmp_path / "shuffled.parquet", shuffle_seed=3)) == prompts
+    assert lib.slabs_all_prompts(1, path) != prompts
+
+
+def test_all_splits_refuse_a_split_they_dont_know(tmp_path):
+    with pytest.raises(ValueError, match="holdout"):
+        lib.slabs_all_prompts(0, all_splits_parquet(tmp_path / "splits.parquet", extra=[("holdout", 2)]))
+
+
+def test_all_splits_of_the_real_parquet_are_16332_prompts_with_the_pilots_1000_first():
+    if not lib.SLABS_SPLITS.exists():
+        pytest.skip("needs .cache/probe/splits.parquet")
+    pytest.importorskip("pandas")
+    prompts = lib.prompts_for(("slabs_all", 0))
+    assert len(prompts) == 16332 == len({r["id"] for r in prompts})
+    assert prompts[:1000] == lib.prompts_for(("slabs_train", 1000, 0))
+
+
+def test_the_full_config_is_the_pilots_with_every_split_as_its_source():
+    pilot_fields, _ = lib.CONFIGS["qwen3_4b_bf16_pilot"]
+    fields, source = lib.CONFIGS["qwen3_4b_bf16_full"]
+    assert fields == pilot_fields
+    assert source == ("slabs_all", 0)
+
+
 def test_the_existing_configs_still_request_their_smoke_prompts():
     expected = {"qwen3_4b_bf16": 64, "qwen3_4b_fp8": 64, "qwen3_4b_fp8_online": 64, "qwen3_8b_bf16_load": 1}
     for name, n in expected.items():
@@ -631,3 +695,198 @@ def test_canary_repeat_runs_three_untraced_and_one_traced_canary_check_in_fresh_
     ]
     assert [lib.worker_spec(g[0], timeout_s)["env"] for g in containers] == [{}, {}, {}, {lib.CUBLAS_LOG: "1"}]
     assert sum(lib.worst_case_cost(len(g), timeout_s) for g in containers) == pytest.approx(0.66, abs=0.005)
+
+
+def test_full_capture_runs_three_untraced_replicas_in_fresh_containers_for_at_most_75_cents():
+    containers, single_use, timeout_s = lib.EXPERIMENTS["full_capture"]
+    assert single_use and timeout_s == 12 * 60
+    # No env entry, so each runs under exactly the pilot's engine environment.
+    assert containers == [[(f"r{i}", "qwen3_4b_bf16_full")] for i in (1, 2, 3)]
+    assert sum(lib.worst_case_cost(len(g), timeout_s) for g in containers) == pytest.approx(0.75, abs=0.005)
+
+
+class FakeVolume:
+    """The Volume as capture.py and volume_release.py use it: read a file in chunks, remove one."""
+
+    def __init__(self, files):
+        self.files, self.removed = dict(files), []
+
+    def read(self, name):
+        data = self.files[name]
+        yield data[:3]
+        yield data[3:]
+
+    def remove(self, name):
+        self.removed.append(name)
+
+
+def volume_files():
+    files = {"18_-1.npz": b"layer 18 rows", "27_-1.npz": b"layer 27 rows"}
+    return files, {name: hashlib.sha256(data).hexdigest() for name, data in files.items()}
+
+
+def test_volume_files_are_fetched_and_backed_up_matching_their_hashes(tmp_path):
+    files, expected = volume_files()
+    status = lib.settle_volume_files(expected, FakeVolume(files).read, tmp_path / "run", tmp_path / "backup")
+    assert status == {"files": expected, "fetched": True, "backed_up": True, "problem": None}
+    for name, data in files.items():
+        assert (tmp_path / "run" / name).read_bytes() == data == (tmp_path / "backup" / name).read_bytes()
+    assert (tmp_path / "backup" / "SHA256SUMS").read_text() == "".join(f"{expected[n]}  {n}\n" for n in sorted(files))
+
+
+def test_a_fetched_file_that_doesnt_match_its_hash_is_not_backed_up(tmp_path):
+    files, expected = volume_files()
+    volume = FakeVolume({**files, "27_-1.npz": b"layer 27 rowz"})
+    status = lib.settle_volume_files(expected, volume.read, tmp_path / "run", tmp_path / "backup")
+    assert (status["fetched"], status["backed_up"]) == (False, False)
+    assert "27_-1.npz" in status["problem"]
+    assert not (tmp_path / "backup").exists()
+
+
+def test_a_backup_that_doesnt_match_its_hash_is_not_counted_as_backed_up(tmp_path):
+    files, expected = volume_files()
+
+    def corrupting_copy(src, dst):
+        Path(dst).write_bytes(Path(src).read_bytes()[:-1])
+
+    status = lib.settle_volume_files(
+        expected, FakeVolume(files).read, tmp_path / "run", tmp_path / "backup", copy=corrupting_copy
+    )
+    assert (status["fetched"], status["backed_up"]) == (True, False)
+    assert "backup" in status["problem"]
+    assert not (tmp_path / "backup" / "SHA256SUMS").exists()
+
+
+def test_without_a_backup_dir_the_files_are_only_fetched(tmp_path):
+    files, expected = volume_files()
+    status = lib.settle_volume_files(expected, FakeVolume(files).read, tmp_path / "run", None)
+    assert (status["fetched"], status["backed_up"], status["problem"]) == (True, False, None)
+
+
+def backed_up(tmp_path):
+    files, expected = volume_files()
+    status = lib.settle_volume_files(expected, FakeVolume(files).read, tmp_path / "run", tmp_path / "backup")
+    return status, FakeVolume(files)
+
+
+def test_a_backup_reverified_after_a_reboot_releases_its_files_from_the_volume(tmp_path):
+    status, volume = backed_up(tmp_path)
+    released = lib.release_volume_files(status, tmp_path / "backup", volume.remove, "boot-a", "boot-b")
+    assert released == {"released": True, "removed": sorted(status["files"]), "already_gone": [], "problem": None}
+    assert volume.removed == sorted(status["files"])
+
+
+def test_nothing_is_released_in_the_boot_that_fetched_the_files(tmp_path):
+    status, volume = backed_up(tmp_path)
+    released = lib.release_volume_files(status, tmp_path / "backup", volume.remove, "boot-a", "boot-a")
+    assert (released["released"], volume.removed) == (False, [])
+    assert "reboot" in released["problem"]
+
+
+def test_nothing_is_released_when_a_backed_up_file_no_longer_matches(tmp_path):
+    status, volume = backed_up(tmp_path)
+    (tmp_path / "backup" / "27_-1.npz").write_bytes(b"layer 27 rowz")
+    released = lib.release_volume_files(status, tmp_path / "backup", volume.remove, "boot-a", "boot-b")
+    assert (released["released"], volume.removed) == (False, [])
+    assert "27_-1.npz" in released["problem"]
+
+
+def test_nothing_is_released_when_sha256sums_disagrees_with_the_containers_hashes(tmp_path):
+    status, volume = backed_up(tmp_path)
+    (tmp_path / "backup" / "SHA256SUMS").write_text(f"{'0' * 64}  18_-1.npz\n")
+    released = lib.release_volume_files(status, tmp_path / "backup", volume.remove, "boot-a", "boot-b")
+    assert (released["released"], volume.removed) == (False, [])
+    assert "SHA256SUMS" in released["problem"]
+
+
+def test_nothing_is_released_that_was_never_backed_up(tmp_path):
+    files, expected = volume_files()
+    status = lib.settle_volume_files(expected, FakeVolume(files).read, tmp_path / "run", None)
+    volume = FakeVolume(files)
+    released = lib.release_volume_files(status, tmp_path / "backup", volume.remove, "boot-a", "boot-b")
+    assert (released["released"], volume.removed) == (False, [])
+    assert "backed up" in released["problem"]
+
+
+def replica_digests(**arrays):
+    """Each replica's per-batch digests of each array, as the report builds them one file at a time."""
+    return {label: {key: lib.batch_digests(a) for key, a in by_key.items()} for label, by_key in arrays.items()}
+
+
+def rows_of(n=20, seed=0):
+    return np.random.default_rng(seed).standard_normal((n, 4)).astype(np.float16)
+
+
+def test_batches_are_classed_as_all_agree_a_2_to_1_split_or_all_different():
+    # 20 rows in batches of 8: batch 2 is rows 0 to 7, batch 3 rows 8 to 15, batch 4 rows 16 to 19.
+    r1 = rows_of()
+    r2, r3 = r1.copy(), r1.copy()
+    r2[9] += np.float16(1)  # batch 3: r2 alone differs
+    r2[18] += np.float16(1)  # batch 4: r2 and r3 differ from r1 and from each other
+    r3[17] += np.float16(1)
+    agreement = lib.batch_agreement(replica_digests(r1={"18_-1": r1}, r2={"18_-1": r2}, r3={"18_-1": r3}))
+    assert agreement == [
+        {"batch": 2, "kind": "agree", "majority": ["r1", "r2", "r3"], "outliers": []},
+        {"batch": 3, "kind": "split", "majority": ["r1", "r3"], "outliers": ["r2"]},
+        {"batch": 4, "kind": "no majority", "majority": [], "outliers": ["r1", "r2", "r3"]},
+    ]
+
+
+def test_a_replica_that_differs_in_one_array_only_is_the_outlier():
+    a, b = rows_of(8, 1), rows_of(8, 2)
+    b3 = b.copy()
+    b3[0, 0] += np.float16(1)
+    digests = replica_digests(r1={"18_-1": a, "27_-1": b}, r2={"18_-1": a, "27_-1": b}, r3={"18_-1": a, "27_-1": b3})
+    [batch] = lib.batch_agreement(digests)
+    assert (batch["kind"], batch["outliers"]) == ("split", ["r3"])
+
+
+def test_negative_zero_is_not_zero():
+    zeros = np.zeros((8, 4), np.float16)
+    negative = zeros.copy()
+    negative[3, 2] = np.float16(-0.0)
+    [batch] = lib.batch_agreement(replica_digests(r1={"k": zeros}, r2={"k": zeros}, r3={"k": negative}))
+    assert batch["outliers"] == ["r3"]
+
+
+def test_replicas_with_other_arrays_or_batch_counts_are_refused():
+    with pytest.raises(ValueError, match="arrays"):
+        lib.batch_agreement(replica_digests(r1={"a": rows_of()}, r2={"a": rows_of()}, r3={"b": rows_of()}))
+    with pytest.raises(ValueError, match="batches"):
+        lib.batch_agreement(replica_digests(r1={"a": rows_of()}, r2={"a": rows_of()}, r3={"a": rows_of(8)}))
+
+
+def test_the_kept_rows_are_each_batchs_majority_in_capture_order_without_the_no_majority_batches():
+    r1 = rows_of()
+    r2, r3 = r1.copy(), r1.copy()
+    r1[2] += np.float16(1)  # batch 2: r1 is the outlier, so r2's rows are kept
+    r2[18] += np.float16(1)  # batch 4: no majority, so rows 16 to 19 are dropped
+    r3[17] += np.float16(1)
+    arrays = {"r1": r1, "r2": r2, "r3": r3}
+    agreement = lib.batch_agreement(replica_digests(**{label: {"k": a} for label, a in arrays.items()}))
+    kept = lib.majority_rows(arrays, agreement)
+    assert kept.tobytes() == r2[:16].tobytes()
+    # The same selection applied to the prompt ids gives the kept ids.
+    ids = np.array([f"p{i}" for i in range(20)])
+    assert list(lib.majority_rows({label: ids for label in arrays}, agreement)) == [f"p{i}" for i in range(16)]
+
+
+def test_the_expected_split_rates_for_three_independent_replicas():
+    # At p = 1/35: exactly one of three deviates with 3 * 34**2 / 35**3 = 3468/42875, and two or
+    # more with 1 - (34**3 + 3468) / 35**3 = 103/42875.
+    rates = lib.expected_split_rates(1 / 35)
+    assert rates == pytest.approx({"split": 3468 / 42875, "two_or_more_deviate": 103 / 42875}, rel=1e-12)
+    assert lib.expected_split_rates(0.0) == {"split": 0.0, "two_or_more_deviate": 0.0}
+
+
+def test_saved_token_ids_load_back_as_they_were_and_hash_as_the_worker_hashed_them(tmp_path):
+    ids, token_ids = ["a", "b", "c"], [[151644, 8948, 198], [], [2**32 - 1]]
+    lib.save_token_ids(tmp_path / "token_ids.npz", ids, token_ids)
+    loaded_ids, loaded = lib.load_token_ids(tmp_path / "token_ids.npz")
+    assert (loaded_ids, loaded) == (ids, token_ids)
+    assert lib.token_ids_sha256(loaded) == lib.token_ids_sha256(token_ids)
+
+
+def test_token_ids_must_pair_with_their_prompt_ids(tmp_path):
+    with pytest.raises(ValueError, match="2 prompt ids.*1 token"):
+        lib.save_token_ids(tmp_path / "token_ids.npz", ["a", "b"], [[1]])
