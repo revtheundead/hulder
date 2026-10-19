@@ -619,6 +619,20 @@ def batch_agreement(digests: dict[str, dict[str, list[str]]], first_batch: int =
     return out
 
 
+def majority_rows(
+    arrays: dict[str, np.ndarray], agreement: list[dict], batch_size: int = 8, first_batch: int = 2
+) -> np.ndarray:
+    """Each batch's rows from a member of its majority, in capture order, leaving out the batches
+    with no majority. arrays holds one array per replica, laid out as batch_agreement saw them."""
+    parts = []
+    for entry in agreement:
+        if entry["majority"]:
+            start = (entry["batch"] - first_batch) * batch_size
+            parts.append(arrays[entry["majority"][0]][start : start + batch_size])
+    first = next(iter(arrays.values()))
+    return np.concatenate(parts) if parts else first[:0]
+
+
 def relative_l2(a: np.ndarray, b: np.ndarray) -> np.ndarray:
     """Per-example ||a - b|| / ||a|| over the last axis, in float64."""
     a, b = np.asarray(a, np.float64), np.asarray(b, np.float64)

@@ -821,3 +821,18 @@ def test_replicas_with_other_arrays_or_batch_counts_are_refused():
         lib.batch_agreement(replica_digests(r1={"a": rows_of()}, r2={"a": rows_of()}, r3={"b": rows_of()}))
     with pytest.raises(ValueError, match="batches"):
         lib.batch_agreement(replica_digests(r1={"a": rows_of()}, r2={"a": rows_of()}, r3={"a": rows_of(8)}))
+
+
+def test_the_kept_rows_are_each_batchs_majority_in_capture_order_without_the_no_majority_batches():
+    r1 = rows_of()
+    r2, r3 = r1.copy(), r1.copy()
+    r1[2] += np.float16(1)  # batch 2: r1 is the outlier, so r2's rows are kept
+    r2[18] += np.float16(1)  # batch 4: no majority, so rows 16 to 19 are dropped
+    r3[17] += np.float16(1)
+    arrays = {"r1": r1, "r2": r2, "r3": r3}
+    agreement = lib.batch_agreement(replica_digests(**{label: {"k": a} for label, a in arrays.items()}))
+    kept = lib.majority_rows(arrays, agreement)
+    assert kept.tobytes() == r2[:16].tobytes()
+    # The same selection applied to the prompt ids gives the kept ids.
+    ids = np.array([f"p{i}" for i in range(20)])
+    assert list(lib.majority_rows({label: ids for label in arrays}, agreement)) == [f"p{i}" for i in range(16)]
