@@ -52,7 +52,7 @@ def save_snapshot(path, ids, acts, metadata):
     hulder.Snapshot(ids=np.array(ids), labels=np.arange(len(ids)) % 2, activations=acts, metadata=meta).save(path)
 
 
-def make_run(world, changes=None, *, canary=None, workers=None, failed=None, volume=None):
+def make_run(world, changes=None, *, canary=None, workers=None, failed=None, volume=None, batch_size=8):
     """Three replicas r1 to r3 holding the shared rows, changed where changes says:
     {label: [(key, row, delta)]}."""
     run_dir = world["tmp"] / "run"
@@ -68,6 +68,7 @@ def make_run(world, changes=None, *, canary=None, workers=None, failed=None, vol
             "gpu_uuid": f"GPU-{3 - i}",
             "gpu_driver": "610.57.04",
             "snapshots": [f"{key}.npz" for key in KEYS],
+            "capture_config": {"batch_size": batch_size},
             **(workers or {}).get(label, {}),
         }
         manifest = {"returncode": 0, "worker": worker}
@@ -328,3 +329,20 @@ def test_r1_a_token_ids_file_for_other_prompts_than_the_snapshots_stops_before_k
     lib.save_token_ids(run_dir / "r3" / lib.TOKEN_IDS_FILE, [f"other/{i}" for i in range(len(IDS))], TOKENS)
     summary = summarise(world, run_dir)
     assert_stopped(summary, run_dir, "R1: r3's token_ids.npz holds other prompt ids than its snapshots")
+
+
+def test_batches_and_dropped_ids_follow_the_runs_batch_size(world, monkeypatch):
+    # At batch size 4 the 8-prompt canary fills batches 1 and 2, so the saved rows are batches 3 to 7.
+    monkeypatch.setattr(report, "NO_MAJORITY_LIMIT", 0.5)
+    run_dir = make_run(world, {"r2": [("18_-1", 9, 1)], "r3": [("18_-1", 10, 1)]}, batch_size=4)  # rows 8 to 11
+    summary = summarise(world, run_dir, splits={i: i.split("/")[1] for i in IDS})
+    assert [(b["batch"], b["kind"]) for b in summary["batches"]] == [
+        (3, "agree"),
+        (4, "agree"),
+        (5, "no majority"),
+        (6, "agree"),
+        (7, "agree"),
+    ]
+    assert summary["kept"]["dropped_batches"] == [5]
+    assert [d["id"] for d in summary["kept"]["dropped"]] == IDS[8:12]
+    assert list(hulder.Snapshot.load(run_dir / "kept" / "18_-1.npz").ids) == IDS[:8] + IDS[12:]

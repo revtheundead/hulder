@@ -102,6 +102,10 @@ def summarise(
             "majority_canary": None,
         }
     names = workers[labels[0]]["snapshots"]
+    # The run's batches: the canary fills the first, and the saved rows start in the batch after it.
+    # R1 below checks every replica's batch_size, which snapshot metadata records, against the others.
+    batch_size = workers[labels[0]]["capture_config"]["batch_size"]
+    first_batch = -(-len(lib.canary_prompts()) // batch_size) + 1
 
     # R1: the same prompts and tokens, and the same metadata apart from what is per replica.
     for key in ("prompt_token_ids_sha256", "canary_token_ids_sha256"):
@@ -122,7 +126,7 @@ def summarise(
         if differing:
             stops.append(f"R1: the replicas' {name} metadata differs in {differing}")
         for label, snapshot in snapshots.items():
-            digests[label][name] = lib.batch_digests(snapshot.activations)
+            digests[label][name] = lib.batch_digests(snapshot.activations, batch_size)
         del snapshots
     # R1 on each replica's token ids: their hash as recorded, and filed under its snapshots' prompts.
     for label in labels:
@@ -135,7 +139,7 @@ def summarise(
             stops.append(f"R1: {label}'s {lib.TOKEN_IDS_FILE} doesn't match its prompt_token_ids_sha256")
         if ids != snapshot_ids[label]:
             stops.append(f"R1: {label}'s {lib.TOKEN_IDS_FILE} holds other prompt ids than its snapshots")
-    batches = lib.batch_agreement(digests)
+    batches = lib.batch_agreement(digests, first_batch)
     n = len(batches)
     kinds = [b["kind"] for b in batches]
     not_unanimous = n - kinds.count("agree")
@@ -174,12 +178,12 @@ def summarise(
         for label, count in outliers.items()
         if 2 * count > n
     ]
-    vs_pilot = _vs_pilot(pilot_dir / "pilot", run_dir / labels[0], names, digests, batches)
+    vs_pilot = _vs_pilot(pilot_dir / "pilot", run_dir / labels[0], names, digests, batches, batch_size)
     if unlike := [b["batch"] for b in vs_pilot if b["identical"] is False]:
         findings.append(f"the kept batches {unlike} differ from the pilot's")
     kept = None
     if not stops:
-        kept = _keep(run_dir, labels, names, batches, workers, majority_canary, splits or {})
+        kept = _keep(run_dir, labels, names, batches, workers, majority_canary, splits or {}, batch_size, first_batch)
 
     return {
         **head,
@@ -201,7 +205,9 @@ def summarise(
     }
 
 
-def _vs_pilot(pilot_capture: Path, replica: Path, names: list[str], digests: dict, batches: list[dict]) -> list:
+def _vs_pilot(
+    pilot_capture: Path, replica: Path, names: list[str], digests: dict, batches: list[dict], batch_size: int
+) -> list:
     """The kept batches against the pilot's, which holds the first of the same prompts in the same
     batches. None for a batch with no majority, which isn't kept."""
     out = []
@@ -211,7 +217,7 @@ def _vs_pilot(pilot_capture: Path, replica: Path, names: list[str], digests: dic
         ids = [str(i) for i in hulder.Snapshot.load(replica / name).ids]
         if [str(i) for i in snapshot.ids] != ids[: len(snapshot.ids)]:
             raise ValueError(f"the pilot's {name} holds other prompts than the replicas' first {len(snapshot.ids)}")
-        pilot_digests[name] = lib.batch_digests(snapshot.activations)
+        pilot_digests[name] = lib.batch_digests(snapshot.activations, batch_size)
     for b, entry in enumerate(batches[: len(pilot_digests[names[0]])]):
         same = None
         if entry["majority"]:
@@ -235,7 +241,7 @@ def _volume(status: dict | None, release: dict | None) -> str:
     return "on the hulder-runs Volume, backed up and verified; volume_release.py removes it after a reboot"
 
 
-def _keep(run_dir, labels, names, batches, workers, majority_canary, splits) -> dict:
+def _keep(run_dir, labels, names, batches, workers, majority_canary, splits, batch_size, first_batch) -> dict:
     """Write each array's per-batch majority to kept/, and say what was dropped."""
     contributing = sorted({label for b in batches for label in b["majority"]})
     drivers = sorted({workers[label]["gpu_driver"] for label in contributing})
@@ -246,7 +252,7 @@ def _keep(run_dir, labels, names, batches, workers, majority_canary, splits) -> 
     for name in names:
         snapshots = {label: hulder.Snapshot.load(run_dir / label / name) for label in labels}
         first = snapshots[contributing[0]]
-        ids = lib.majority_rows({label: s.ids for label, s in snapshots.items()}, batches)
+        ids = lib.majority_rows({label: s.ids for label, s in snapshots.items()}, batches, batch_size, first_batch)
         metadata = {
             **first.metadata,
             "gpu_uuid": sorted(workers[label]["gpu_uuid"] for label in contributing),
@@ -257,15 +263,23 @@ def _keep(run_dir, labels, names, batches, workers, majority_canary, splits) -> 
         }
         hulder.Snapshot(
             ids=ids,
-            labels=lib.majority_rows({label: s.labels for label, s in snapshots.items()}, batches),
-            activations=lib.majority_rows({label: s.activations for label, s in snapshots.items()}, batches),
+            labels=lib.majority_rows(
+                {label: s.labels for label, s in snapshots.items()}, batches, batch_size, first_batch
+            ),
+            activations=lib.majority_rows(
+                {label: s.activations for label, s in snapshots.items()}, batches, batch_size, first_batch
+            ),
             metadata=metadata,
         ).save(out / name)
         all_ids = [str(i) for i in first.ids]
     kept_ids = [str(i) for i in ids]
     lib.save_token_ids(out / lib.TOKEN_IDS_FILE, kept_ids, [token_ids[i] for i in kept_ids])
     dropped_batches = [b["batch"] for b in batches if not b["majority"]]
-    dropped = [{"id": i, "split": splits.get(i)} for b in dropped_batches for i in all_ids[(b - 2) * 8 : (b - 1) * 8]]
+    dropped = [
+        {"id": i, "split": splits.get(i)}
+        for b in dropped_batches
+        for i in all_ids[(b - first_batch) * batch_size : (b - first_batch + 1) * batch_size]
+    ]
     return {
         "dir": "kept",
         "prompts": len(all_ids) - len(dropped),
