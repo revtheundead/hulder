@@ -107,13 +107,12 @@ def summarise(
     for key in ("prompt_token_ids_sha256", "canary_token_ids_sha256"):
         if len({workers[label].get(key) for label in labels}) != 1 or workers[labels[0]].get(key) is None:
             stops.append(f"R1: the replicas' {key} differ")
-    for label in labels:
-        token_ids, recorded_hash = run_dir / label / lib.TOKEN_IDS_FILE, workers[label].get("prompt_token_ids_sha256")
-        if not token_ids.exists() or lib.token_ids_sha256(lib.load_token_ids(token_ids)[1]) != recorded_hash:
-            stops.append(f"R1: {label}'s {lib.TOKEN_IDS_FILE} doesn't match its prompt_token_ids_sha256")
     digests: dict[str, dict[str, list[str]]] = {label: {} for label in labels}
+    snapshot_ids: dict[str, list[str]] = {}
     for name in names:
         snapshots = {label: hulder.Snapshot.load(run_dir / label / name) for label in labels}
+        for label, snapshot in snapshots.items():
+            snapshot_ids.setdefault(label, [str(i) for i in snapshot.ids])
         if any(list(s.ids) != list(snapshots[labels[0]].ids) for s in snapshots.values()):
             stops.append(f"R1: the replicas' {name} prompt ids differ")
         keys = {k for snapshot in snapshots.values() for k in snapshot.metadata} - set(CHECKED_APART)
@@ -125,6 +124,17 @@ def summarise(
         for label, snapshot in snapshots.items():
             digests[label][name] = lib.batch_digests(snapshot.activations)
         del snapshots
+    # R1 on each replica's token ids: their hash as recorded, and filed under its snapshots' prompts.
+    for label in labels:
+        token_ids, recorded_hash = run_dir / label / lib.TOKEN_IDS_FILE, workers[label].get("prompt_token_ids_sha256")
+        if not token_ids.exists():
+            stops.append(f"R1: {label} has no {lib.TOKEN_IDS_FILE}")
+            continue
+        ids, tokens = lib.load_token_ids(token_ids)
+        if lib.token_ids_sha256(tokens) != recorded_hash:
+            stops.append(f"R1: {label}'s {lib.TOKEN_IDS_FILE} doesn't match its prompt_token_ids_sha256")
+        if ids != snapshot_ids[label]:
+            stops.append(f"R1: {label}'s {lib.TOKEN_IDS_FILE} holds other prompt ids than its snapshots")
     batches = lib.batch_agreement(digests)
     n = len(batches)
     kinds = [b["kind"] for b in batches]

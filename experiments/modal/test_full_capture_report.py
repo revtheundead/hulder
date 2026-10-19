@@ -320,3 +320,11 @@ def test_with_no_replica_left_to_read_the_report_is_still_written(world):
     summary = summarise(world, run_dir)
     assert len(summary["stop_reasons"]) == 3 and summary["kept"] is None
     assert summary["batches"] == [] and summary["canaries"] == {}
+
+
+def test_r1_a_token_ids_file_for_other_prompts_than_the_snapshots_stops_before_keeping(world):
+    run_dir = make_run(world)
+    # The same tokens in the same order, so the hash still matches, filed under other prompt ids.
+    lib.save_token_ids(run_dir / "r3" / lib.TOKEN_IDS_FILE, [f"other/{i}" for i in range(len(IDS))], TOKENS)
+    summary = summarise(world, run_dir)
+    assert_stopped(summary, run_dir, "R1: r3's token_ids.npz holds other prompt ids than its snapshots")
