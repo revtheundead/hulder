@@ -14,6 +14,8 @@ SMOKE_IDS = [r["id"] for r in lib.smoke_prompts(64)]
 # 20 prompts: batches 2 (rows 0 to 7), 3 (rows 8 to 15) and 4 (rows 16 to 19, short).
 IDS = [f"slabs/train/{i}" for i in range(16)] + [f"slabs/test/{i}" for i in range(4)]
 KEYS = ("18_-1", "27_-1")
+# Prompt i was fed the token ids [i, i + 1000].
+TOKENS = [[i, i + 1000] for i in range(len(IDS))]
 DELETED = {"files": {}, "fetched": True, "backed_up": True, "deleted_from_volume": True, "problem": None}
 
 
@@ -61,7 +63,7 @@ def make_run(world, changes=None, *, canary=None, workers=None, failed=None, vol
         (out / "capture.log").write_text("captured\n")
         worker = {
             "canary_sha256": (canary or {}).get(label, world["canary"]),
-            "prompt_token_ids_sha256": "t" * 64,
+            "prompt_token_ids_sha256": lib.token_ids_sha256(TOKENS),
             "canary_token_ids_sha256": "c" * 64,
             "gpu_uuid": f"GPU-{3 - i}",
             "gpu_driver": "610.57.04",
@@ -72,6 +74,7 @@ def make_run(world, changes=None, *, canary=None, workers=None, failed=None, vol
         if failed == label:
             manifest = {"returncode": -9, "error": "timed out after 720 s"}
         else:
+            lib.save_token_ids(out / lib.TOKEN_IDS_FILE, IDS, TOKENS)
             for key, a in world["rows"].items():
                 a = a.copy()
                 for k, row, delta in (changes or {}).get(label, []):
@@ -171,7 +174,7 @@ def test_a_replica_in_no_majority_contributes_no_gpu(world):
     assert summary["findings"] == ["r3 is the outlier on 3 of 3 batches, a path switch rather than sporadic batches"]
 
 
-def test_dropped_batches_are_listed_with_their_splits_and_their_tokens_hash_is_left_out(world, monkeypatch):
+def test_dropped_batches_are_listed_with_their_splits_and_the_kept_token_hash_is_recomputed(world, monkeypatch):
     monkeypatch.setattr(report, "NO_MAJORITY_LIMIT", 0.5)  # so 1 of 3 batches dropped doesn't stop it
     run_dir = make_run(world, {"r2": [("18_-1", 17, 1)], "r3": [("18_-1", 18, 1)]})  # batch 4
     splits = {i: i.split("/")[1] for i in IDS}
@@ -185,8 +188,16 @@ def test_dropped_batches_are_listed_with_their_splits_and_their_tokens_hash_is_l
     kept = hulder.Snapshot.load(run_dir / "kept" / "18_-1.npz")
     assert list(kept.ids) == IDS[:16]
     assert kept.metadata["prompt_ids_sha256"] == hulder.prompt_ids_sha256(IDS[:16])
-    # The engine's tokens were hashed over all 20 prompts, so the hash doesn't describe the kept 16.
-    assert "prompt_token_ids_sha256" not in kept.metadata
+    # Recomputed from the replicas' token ids for the kept 16, and saved with them.
+    assert kept.metadata["prompt_token_ids_sha256"] == lib.token_ids_sha256(TOKENS[:16])
+    assert lib.load_token_ids(run_dir / "kept" / lib.TOKEN_IDS_FILE) == (IDS[:16], TOKENS[:16])
+
+
+def test_r1_a_token_ids_file_unlike_its_recorded_hash_stops_before_keeping(world):
+    run_dir = make_run(world)
+    lib.save_token_ids(run_dir / "r2" / lib.TOKEN_IDS_FILE, IDS, [[0, 1], *TOKENS[1:]])
+    summary = summarise(world, run_dir)
+    assert_stopped(summary, run_dir, "R1: r2's token_ids.npz doesn't match its prompt_token_ids_sha256")
 
 
 def assert_stopped(summary, run_dir, *reasons):
@@ -204,7 +215,11 @@ def test_r2_more_than_1_percent_of_batches_without_a_majority_stops_before_keepi
 def test_r1_replicas_fed_other_tokens_stop_before_keeping(world, key):
     run_dir = make_run(world, workers={"r3": {key: "x" * 64}})
     summary = summarise(world, run_dir)
-    assert_stopped(summary, run_dir, f"R1: the replicas' {key} differ")
+    # r3's own token ids no longer match the hash it recorded for them, either.
+    also = (
+        ["R1: r3's token_ids.npz doesn't match its prompt_token_ids_sha256"] if key == "prompt_token_ids_sha256" else []
+    )
+    assert_stopped(summary, run_dir, f"R1: the replicas' {key} differ", *also)
 
 
 def test_r1_replicas_whose_snapshot_metadata_differs_beyond_the_gpu_and_canary_stop(world):

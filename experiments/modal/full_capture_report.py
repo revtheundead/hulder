@@ -81,6 +81,10 @@ def summarise(
     for key in ("prompt_token_ids_sha256", "canary_token_ids_sha256"):
         if len({workers[label].get(key) for label in labels}) != 1 or workers[labels[0]].get(key) is None:
             stops.append(f"R1: the replicas' {key} differ")
+    for label in labels:
+        token_ids, recorded_hash = run_dir / label / lib.TOKEN_IDS_FILE, workers[label].get("prompt_token_ids_sha256")
+        if not token_ids.exists() or lib.token_ids_sha256(lib.load_token_ids(token_ids)[1]) != recorded_hash:
+            stops.append(f"R1: {label}'s {lib.TOKEN_IDS_FILE} doesn't match its prompt_token_ids_sha256")
     digests: dict[str, dict[str, list[str]]] = {label: {} for label in labels}
     for name in names:
         snapshots = {label: hulder.Snapshot.load(run_dir / label / name) for label in labels}
@@ -199,6 +203,8 @@ def _keep(run_dir, labels, names, batches, workers, majority_canary, splits) -> 
     drivers = sorted({workers[label]["gpu_driver"] for label in contributing})
     out = run_dir / "kept"
     out.mkdir(exist_ok=True)
+    # R1 checked every replica's token ids against its hash, and the hashes against each other.
+    token_ids = dict(zip(*lib.load_token_ids(run_dir / contributing[0] / lib.TOKEN_IDS_FILE), strict=True))
     for name in names:
         snapshots = {label: hulder.Snapshot.load(run_dir / label / name) for label in labels}
         first = snapshots[contributing[0]]
@@ -209,10 +215,8 @@ def _keep(run_dir, labels, names, batches, workers, majority_canary, splits) -> 
             "gpu_driver": drivers[0] if len(drivers) == 1 else drivers,
             "canary_sha256": majority_canary["canary_sha256"],
             "prompt_ids_sha256": hulder.prompt_ids_sha256([str(i) for i in ids]),
+            "prompt_token_ids_sha256": lib.token_ids_sha256([token_ids[str(i)] for i in ids]),
         }
-        if len(ids) < len(first.ids):
-            # Hashed by the worker over every prompt, so it doesn't describe the kept ones.
-            metadata.pop("prompt_token_ids_sha256", None)
         hulder.Snapshot(
             ids=ids,
             labels=lib.majority_rows({label: s.labels for label, s in snapshots.items()}, batches),
@@ -220,6 +224,8 @@ def _keep(run_dir, labels, names, batches, workers, majority_canary, splits) -> 
             metadata=metadata,
         ).save(out / name)
         all_ids = [str(i) for i in first.ids]
+    kept_ids = [str(i) for i in ids]
+    lib.save_token_ids(out / lib.TOKEN_IDS_FILE, kept_ids, [token_ids[i] for i in kept_ids])
     dropped_batches = [b["batch"] for b in batches if not b["majority"]]
     dropped = [{"id": i, "split": splits.get(i)} for b in dropped_batches for i in all_ids[(b - 2) * 8 : (b - 1) * 8]]
     return {
