@@ -503,19 +503,79 @@ def test_all_splits_of_the_real_parquet_are_16332_prompts_with_the_pilots_1000_f
     assert prompts[:1000] == lib.prompts_for(("slabs_train", 1000, 0))
 
 
-def test_the_full_config_is_the_pilots_with_every_split_as_its_source():
+def test_the_full_config_is_the_pilots_with_every_split_behind_the_canary_as_its_source():
     pilot_fields, _ = lib.CONFIGS["qwen3_4b_bf16_pilot"]
     fields, source = lib.CONFIGS["qwen3_4b_bf16_full"]
     assert fields == pilot_fields
-    assert source == ("slabs_all", 0)
+    assert source == ("canary_first", ("slabs_all", 0))
+
+
+def needs_the_real_parquet(source: tuple) -> bool:
+    return source[0] != "smoke" and not (source[0] == "canary_first" and source[1][0] == "smoke")
+
+
+@pytest.mark.parametrize(
+    "entry",
+    [(name, e) for name, (containers, _, _) in lib.EXPERIMENTS.items() for group in containers for e in group],
+    ids=lambda x: f"{x[0]}-{x[1][0]}",
+)
+def test_every_experiments_worker_spec_passes_capture_order(entry):
+    # What the worker does first, so a request it would refuse fails here rather than on Modal.
+    name, e = entry
+    if needs_the_real_parquet(lib.CONFIGS[e[1]][1]):
+        if not lib.SLABS_SPLITS.exists():
+            pytest.skip("needs .cache/probe/splits.parquet")
+        pytest.importorskip("pandas")
+    spec = lib.worker_spec(e, lib.EXPERIMENTS[name][2])
+    ids = [r["id"] for r in spec["prompts"]]
+    order = lib.capture_order(ids, [r["id"] for r in spec["canary"]], spec["config"]["batch_size"])
+    assert len(order) == len(set(order))
+
+
+def test_the_full_request_is_the_canary_then_train_in_the_pilots_order_then_the_later_splits_without_it():
+    if not lib.SLABS_SPLITS.exists():
+        pytest.skip("needs .cache/probe/splits.parquet")
+    pytest.importorskip("pandas")
+    ids = [r["id"] for r in lib.worker_spec(("r1", "qwen3_4b_bf16_full"), 720)["prompts"]]
+    canary = [r["id"] for r in lib.canary_prompts()]
+    every = [r["id"] for r in lib.prompts_for(("slabs_all", 0))]
+    n_train = 8945
+    assert ids[:8] == canary
+    assert ids[8 : 8 + n_train] == [r["id"] for r in lib.slabs_train_prompts(n_train, 0)]
+    assert ids[8 : 8 + 1000] == [r["id"] for r in lib.prompts_for(("slabs_train", 1000, 0))]  # the pilot's
+    assert ids[8 + n_train :] == [i for i in every[n_train:] if i not in canary]
+    # All 8 are boundary-pairs train prompts, so they were in the later splits until moved forward.
+    assert len([i for i in every[n_train:] if i in canary]) == 8
+    assert len(ids) == 16332 == len(set(ids)) and set(ids) == set(every)
+
+
+def test_canary_first_moves_the_canary_to_the_front_and_keeps_the_rest_in_order():
+    canary = lib.canary_prompts()
+    rest = [{"id": f"x/{i}", "text": f"x {i}", "label": i % 2} for i in range(5)]
+    prompts = [rest[0], canary[3], rest[1], canary[0], rest[2], rest[3], rest[4]]
+    assert lib.canary_first(prompts) == canary + rest
+
+
+def test_canary_first_refuses_a_request_whose_copy_of_a_canary_prompt_differs():
+    canary = lib.canary_prompts()
+    changed = {**canary[2], "text": canary[2]["text"] + " "}
+    with pytest.raises(ValueError, match=canary[2]["id"]):
+        lib.canary_first([changed])
 
 
 def test_the_existing_configs_still_request_their_smoke_prompts():
-    expected = {"qwen3_4b_bf16": 64, "qwen3_4b_fp8": 64, "qwen3_4b_fp8_online": 64, "qwen3_8b_bf16_load": 1}
+    expected = {"qwen3_4b_bf16": 64, "qwen3_4b_fp8": 64, "qwen3_4b_fp8_online": 64}
     for name, n in expected.items():
         spec = lib.worker_spec(("x", name), 300)
         assert spec["prompts"] == lib.smoke_prompts(n)
-        assert spec["save"] is (n > 1)
+        assert spec["save"] is True
+
+
+def test_the_8b_load_only_config_requests_one_prompt_outside_the_canary():
+    spec = lib.worker_spec(("x", "qwen3_8b_bf16_load"), 300)
+    assert spec["prompts"] == lib.smoke_prompts(64)[63:]
+    assert spec["prompts"][0]["id"] not in {r["id"] for r in lib.canary_prompts()}
+    assert spec["save"] is False
 
 
 def test_importing_smoke_lib_needs_no_pandas():

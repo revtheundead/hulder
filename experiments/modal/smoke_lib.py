@@ -73,14 +73,20 @@ CONFIGS = {
     "qwen3_4b_fp8": ({**COMMON, **QWEN3_4B_FP8}, ("smoke", 64)),
     # vLLM's online FP8: bf16 weights quantized at load, per-tensor scales.
     "qwen3_4b_fp8_online": ({**COMMON, **QWEN3_4B, "quantization": "fp8"}, ("smoke", 64)),
-    "qwen3_8b_bf16_load": ({**COMMON, **QWEN3_8B}, ("smoke", 1)),
+    # Load only, so any one prompt will do: the last smoke prompt, since the first is the canary's.
+    "qwen3_8b_bf16_load": ({**COMMON, **QWEN3_8B}, ("smoke", 64, 63)),
     # The timing pilot. With the canary in front, canary_check's batches are exactly the historical
     # 64-prompt captures', so its rows compare bit for bit with the recorded cluster its hash names.
     "qwen3_4b_bf16_canary_check": ({**COMMON, **QWEN3_4B}, ("smoke", 64, 8)),
     # Positions -9 and -10 for the D2 ablation (docs/design.md §5): <|im_end|> and the last content token.
     "qwen3_4b_bf16_pilot": ({**COMMON, **QWEN3_4B, "positions": (-1, -9, -10)}, ("slabs_train", 1000, 0)),
-    # The full capture: the pilot's config on every split's prompts, the pilot's 1,000 first.
-    "qwen3_4b_bf16_full": ({**COMMON, **QWEN3_4B, "positions": (-1, -9, -10)}, ("slabs_all", 0)),
+    # The full capture: the pilot's config on every split's prompts. The canary's 8 are boundary-pairs
+    # train prompts, so the request begins with them and they are saved as batch 1; the pilot's
+    # 1,000 follow as batches 2 to 126.
+    "qwen3_4b_bf16_full": (
+        {**COMMON, **QWEN3_4B, "positions": (-1, -9, -10)},
+        ("canary_first", ("slabs_all", 0)),
+    ),
 }
 # config name -> base model, passed to base_model_for as override=. Only for a checkpoint whose
 # base model it can't find; the worker stops with a warning naming the entry to add.
@@ -250,8 +256,11 @@ def slabs_all_prompts(seed: int, path: Path = SLABS_SPLITS) -> list[dict]:
 
 def prompts_for(source: tuple) -> list[dict]:
     """The prompts a CONFIGS source names: ("smoke", n[, start]), smoke_prompts(n)[start:],
-    ("slabs_train", n, seed) or ("slabs_all", seed)."""
+    ("slabs_train", n, seed), ("slabs_all", seed) or ("canary_first", source), canary_first of
+    another source's prompts."""
     kind, *args = source
+    if kind == "canary_first":
+        return canary_first(prompts_for(*args))
     if kind == "smoke":
         n, start = (*args, 0)[:2]
         return smoke_prompts(n)[start:]
@@ -267,6 +276,17 @@ def canary_prompts() -> list[dict]:
     capture since 2026-10-13, so a new capture's canary hash compares with the historical ones. It
     runs as the first batch of each engine, with the captured prompts after it."""
     return smoke_prompts(64)[: COMMON["batch_size"]]
+
+
+def canary_first(prompts: list[dict]) -> list[dict]:
+    """The canary, then prompts without it in their own order: a request that holds the canary's
+    prompts, which capture_order accepts only at its front. Raises if the request's copy of a
+    canary prompt has another text or label, since its row would then stand for another prompt."""
+    canary = {r["id"]: r for r in canary_prompts()}
+    for r in prompts:
+        if r["id"] in canary and r != canary[r["id"]]:
+            raise ValueError(f"the request's {r['id']} differs from the canary's prompt of that id")
+    return list(canary.values()) + [r for r in prompts if r["id"] not in canary]
 
 
 def canary_sha256(activations: np.ndarray, layers: tuple[int, ...], positions: tuple[int, ...]) -> str:
