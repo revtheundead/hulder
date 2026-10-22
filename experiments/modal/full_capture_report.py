@@ -5,8 +5,9 @@
 Writes full_capture_report.json next to the run's manifest.json and prints it.
 
 The three replicas are compared batch by batch, bit for bit on every saved array together, from
-batch 2 on. Batch 1 is the canary, whose rows aren't saved, so it is compared by hash. Each batch is
-"agree", "split" (2 to 1, the outlier recorded) or "no majority". The kept dataset, under kept/, is
+batch 1 on. Batch 1 is the canary: the request begins with its 8 boundary-pairs prompts, so their
+rows are saved like any other batch's, and each replica's canary hash is listed as well. Each batch
+is "agree", "split" (2 to 1, the outlier recorded) or "no majority". The kept dataset, under kept/, is
 each batch's majority without the no-majority batches. It is written only if no stop rule fires:
 R1, the replicas weren't fed the same prompts and tokens; R2, more than 1% of batches have no
 majority; R3, the replicas' majority canary isn't the majority bf16 path's. A failed or timed-out
@@ -102,10 +103,10 @@ def summarise(
             "majority_canary": None,
         }
     names = workers[labels[0]]["snapshots"]
-    # The run's batches: the canary fills the first, and the saved rows start in the batch after it.
+    # The request begins with the canary, so the saved rows start at batch 1 (smoke_lib.canary_first).
     # R1 below checks every replica's batch_size, which snapshot metadata records, against the others.
     batch_size = workers[labels[0]]["capture_config"]["batch_size"]
-    first_batch = -(-len(lib.canary_prompts()) // batch_size) + 1
+    first_batch = 1
 
     # R1: the same prompts and tokens, and the same metadata apart from what is per replica.
     for key in ("prompt_token_ids_sha256", "canary_token_ids_sha256"):
@@ -208,21 +209,25 @@ def summarise(
 def _vs_pilot(
     pilot_capture: Path, replica: Path, names: list[str], digests: dict, batches: list[dict], batch_size: int
 ) -> list:
-    """The kept batches against the pilot's, which holds the first of the same prompts in the same
-    batches. None for a batch with no majority, which isn't kept."""
+    """The kept batches against the pilot's. The pilot ran the canary in front of its request
+    without saving its rows, so its saved rows are the replicas' from the batch after the canary
+    on, in the same batches. None for a batch with no majority, which isn't kept."""
     out = []
     pilot_digests = {}
+    skip = len(lib.canary_prompts())
     for name in names:
         snapshot = hulder.Snapshot.load(pilot_capture / name)
         ids = [str(i) for i in hulder.Snapshot.load(replica / name).ids]
-        if [str(i) for i in snapshot.ids] != ids[: len(snapshot.ids)]:
-            raise ValueError(f"the pilot's {name} holds other prompts than the replicas' first {len(snapshot.ids)}")
+        if [str(i) for i in snapshot.ids] != ids[skip : skip + len(snapshot.ids)]:
+            raise ValueError(
+                f"the pilot's {name} holds other prompts than the replicas' {len(snapshot.ids)} after the canary"
+            )
         pilot_digests[name] = lib.batch_digests(snapshot.activations, batch_size)
-    for b, entry in enumerate(batches[: len(pilot_digests[names[0]])]):
+    for b, entry in enumerate(batches[skip // batch_size :][: len(pilot_digests[names[0]])]):
         same = None
         if entry["majority"]:
             member = digests[entry["majority"][0]]
-            same = all(member[name][b] == pilot_digests[name][b] for name in names)
+            same = all(member[name][b + skip // batch_size] == pilot_digests[name][b] for name in names)
         out.append({"batch": entry["batch"], "identical": same})
     return out
 

@@ -11,9 +11,12 @@ import smoke_lib as lib
 import hulder
 
 SMOKE_IDS = [r["id"] for r in lib.smoke_prompts(64)]
-# 20 prompts: batches 2 (rows 0 to 7), 3 (rows 8 to 15) and 4 (rows 16 to 19, short).
-IDS = [f"slabs/train/{i}" for i in range(16)] + [f"slabs/test/{i}" for i in range(4)]
-KEYS = ("18_-1", "27_-1")
+CANARY = [r["id"] for r in lib.canary_prompts()]
+# 28 prompts, the canary first as in the real request: batches 1 (the canary, rows 0 to 7), 2 (rows
+# 8 to 15), 3 (rows 16 to 23) and 4 (rows 24 to 27, short).
+IDS = CANARY + [f"slabs/train/{i}" for i in range(16)] + [f"slabs/test/{i}" for i in range(4)]
+# All 6 arrays the real run saves: layers 18 and 27 at positions -1, -9 and -10.
+KEYS = tuple(f"{layer}_{position}" for layer in lib.LAYERS for position in (-1, -9, -10))
 # Prompt i was fed the token ids [i, i + 1000].
 TOKENS = [[i, i + 1000] for i in range(len(IDS))]
 BACKED_UP = {"files": {}, "fetched": True, "backed_up": True, "problem": None}
@@ -22,21 +25,25 @@ BACKED_UP = {"files": {}, "fetched": True, "backed_up": True, "problem": None}
 @pytest.fixture
 def world(tmp_path):
     """A recorded capture whose canary is cluster 0.0, the replicas' shared rows, and a pilot run
-    holding the first batch of them, as the real pilot holds the first 125."""
+    holding the batch after the canary, as the real pilot holds batches 2 to 126. The replicas'
+    canary rows at position -1 are the recorded capture's, so their hash is cluster 0.0's."""
     rng = np.random.default_rng(0)
     runs = tmp_path / "runs"
     (runs / "r0" / "a").mkdir(parents=True)
+    recorded = {}
     for layer in lib.LAYERS:
-        acts = rng.normal(size=(64, 8)).astype(np.float16)
-        hulder.Snapshot(ids=np.array(SMOKE_IDS), labels=np.arange(64) % 2, activations=acts).save(
+        recorded[layer] = rng.normal(size=(64, 8)).astype(np.float16)
+        hulder.Snapshot(ids=np.array(SMOKE_IDS), labels=np.arange(64) % 2, activations=recorded[layer]).save(
             runs / "r0" / "a" / f"{layer}"
         )
     clusters = tmp_path / "clusters.json"
     clusters.write_text(json.dumps([{"identity": [{}, {}], "clusters": [[{"name": "r0/a"}]]}]))
     rows = {key: rng.normal(size=(len(IDS), 8)).astype(np.float16) for key in KEYS}
+    for layer in lib.LAYERS:
+        rows[f"{layer}_-1"][:8] = recorded[layer][:8]
     pilot = tmp_path / "pilot" / "pilot"
     for key, a in rows.items():
-        save_snapshot(pilot / f"{key}.npz", IDS[:8], a[:8], {"gpu_uuid": "GPU-p"})
+        save_snapshot(pilot / f"{key}.npz", IDS[8:16], a[8:16], {"gpu_uuid": "GPU-p"})
     return {
         "tmp": tmp_path,
         "runs": runs,
@@ -110,18 +117,19 @@ def summarise(world, run_dir, splits=None):
 
 def test_each_batch_is_classed_across_the_replicas_with_the_disagreement_rate_and_its_interval(world):
     # Batch 3: r2 alone differs, at one array. Batch 4: r2 and r3 differ, from r1 and each other.
-    changes = {"r2": [("27_-1", 9, 1), ("18_-1", 17, 1)], "r3": [("18_-1", 18, 1)]}
+    changes = {"r2": [("27_-1", 17, 1), ("18_-1", 25, 1)], "r3": [("18_-1", 26, 1)]}
     summary = summarise(world, make_run(world, changes))
     assert [(b["batch"], b["kind"], b["outliers"]) for b in summary["batches"]] == [
+        (1, "agree", []),
         (2, "agree", []),
         (3, "split", ["r2"]),
         (4, "no majority", ["r1", "r2", "r3"]),
     ]
     counts = summary["counts"]
-    assert (counts["batches"], counts["agree"], counts["split"], counts["no_majority"]) == (3, 1, 1, 1)
-    # 2 of 3 batches not unanimous: R's binom.test(2, 3) gives [0.0943, 0.9916].
-    assert counts["disagreement_rate"] == pytest.approx(2 / 3)
-    assert counts["disagreement_interval"] == pytest.approx([0.09429932, 0.99159624], abs=1e-7)
+    assert (counts["batches"], counts["agree"], counts["split"], counts["no_majority"]) == (4, 2, 1, 1)
+    # 2 of 4 batches not unanimous: R's binom.test(2, 4) gives [0.0676, 0.9324].
+    assert counts["disagreement_rate"] == pytest.approx(2 / 4)
+    assert counts["disagreement_interval"] == pytest.approx([0.06758599, 0.93241401], abs=1e-7)
     assert summary["outliers_per_replica"] == {"r1": 1, "r2": 2, "r3": 1}
 
 
@@ -149,10 +157,10 @@ def test_each_replicas_canary_hash_is_listed_with_its_recorded_cluster(world):
 
 
 def test_the_kept_dataset_is_each_batchs_majority_with_the_contributing_gpus(world):
-    run_dir = make_run(world, {"r2": [("18_-1", 9, 1)]})  # batch 3: r2 is the outlier
+    run_dir = make_run(world, {"r2": [("18_-1", 17, 1)]})  # batch 3: r2 is the outlier
     summary = summarise(world, run_dir)
     assert summary["stop_reasons"] == []
-    assert summary["kept"] == {"dir": "kept", "prompts": 20, "dropped_batches": [], "dropped": []}
+    assert summary["kept"] == {"dir": "kept", "prompts": 28, "dropped_batches": [], "dropped": []}
     for key in KEYS:
         kept = hulder.Snapshot.load(run_dir / "kept" / f"{key}.npz")
         r1 = hulder.Snapshot.load(run_dir / "r1" / f"{key}.npz")
@@ -168,30 +176,30 @@ def test_the_kept_dataset_is_each_batchs_majority_with_the_contributing_gpus(wor
 
 
 def test_a_replica_in_no_majority_contributes_no_gpu(world):
-    changes = {"r3": [("18_-1", row, 1) for row in (0, 8, 16)]}  # r3 is the outlier on every batch
+    changes = {"r3": [("18_-10", row, 1) for row in (0, 8, 16, 24)]}  # r3 is the outlier on every batch
     run_dir = make_run(world, changes)
     summary = summarise(world, run_dir)
     assert hulder.Snapshot.load(run_dir / "kept" / "18_-1.npz").metadata["gpu_uuid"] == ["GPU-2", "GPU-3"]
-    assert summary["findings"] == ["r3 is the outlier on 3 of 3 batches, a path switch rather than sporadic batches"]
+    assert summary["findings"] == ["r3 is the outlier on 4 of 4 batches, a path switch rather than sporadic batches"]
 
 
 def test_dropped_batches_are_listed_with_their_splits_and_the_kept_token_hash_is_recomputed(world, monkeypatch):
-    monkeypatch.setattr(report, "NO_MAJORITY_LIMIT", 0.5)  # so 1 of 3 batches dropped doesn't stop it
-    run_dir = make_run(world, {"r2": [("18_-1", 17, 1)], "r3": [("18_-1", 18, 1)]})  # batch 4
+    monkeypatch.setattr(report, "NO_MAJORITY_LIMIT", 0.5)  # so 1 of 4 batches dropped doesn't stop it
+    run_dir = make_run(world, {"r2": [("18_-1", 25, 1)], "r3": [("18_-1", 26, 1)]})  # batch 4
     splits = {i: i.split("/")[1] for i in IDS}
     summary = summarise(world, run_dir, splits=splits)
     assert summary["kept"] == {
         "dir": "kept",
-        "prompts": 16,
+        "prompts": 24,
         "dropped_batches": [4],
-        "dropped": [{"id": i, "split": "test"} for i in IDS[16:]],
+        "dropped": [{"id": i, "split": "test"} for i in IDS[24:]],
     }
     kept = hulder.Snapshot.load(run_dir / "kept" / "18_-1.npz")
-    assert list(kept.ids) == IDS[:16]
-    assert kept.metadata["prompt_ids_sha256"] == hulder.prompt_ids_sha256(IDS[:16])
-    # Recomputed from the replicas' token ids for the kept 16, and saved with them.
-    assert kept.metadata["prompt_token_ids_sha256"] == lib.token_ids_sha256(TOKENS[:16])
-    assert lib.load_token_ids(run_dir / "kept" / lib.TOKEN_IDS_FILE) == (IDS[:16], TOKENS[:16])
+    assert list(kept.ids) == IDS[:24]
+    assert kept.metadata["prompt_ids_sha256"] == hulder.prompt_ids_sha256(IDS[:24])
+    # Recomputed from the replicas' token ids for the kept 24, and saved with them.
+    assert kept.metadata["prompt_token_ids_sha256"] == lib.token_ids_sha256(TOKENS[:24])
+    assert lib.load_token_ids(run_dir / "kept" / lib.TOKEN_IDS_FILE) == (IDS[:24], TOKENS[:24])
 
 
 def test_r1_a_token_ids_file_unlike_its_recorded_hash_stops_before_keeping(world):
@@ -207,9 +215,9 @@ def assert_stopped(summary, run_dir, *reasons):
 
 
 def test_r2_more_than_1_percent_of_batches_without_a_majority_stops_before_keeping(world):
-    run_dir = make_run(world, {"r2": [("18_-1", 17, 1)], "r3": [("18_-1", 18, 1)]})
+    run_dir = make_run(world, {"r2": [("18_-1", 25, 1)], "r3": [("18_-1", 26, 1)]})
     summary = summarise(world, run_dir)
-    assert_stopped(summary, run_dir, "R2: 1 of 3 batches (33.3%) have no majority, over the 1% limit")
+    assert_stopped(summary, run_dir, "R2: 1 of 4 batches (25.0%) have no majority, over the 1% limit")
 
 
 @pytest.mark.parametrize("key", ["prompt_token_ids_sha256", "canary_token_ids_sha256"])
@@ -259,7 +267,7 @@ def test_the_kept_batches_are_compared_with_the_pilots(world):
 
 
 def test_kept_batches_unlike_the_pilots_are_a_finding_not_a_stop(world):
-    shift = [("18_-1", 3, 1)]
+    shift = [("27_-9", 8, 1)]  # the first row of batch 2, which is the pilot's first row
     summary = summarise(world, make_run(world, {"r1": shift, "r2": shift, "r3": shift}))
     assert summary["vs_pilot"] == [{"batch": 2, "identical": False}]
     assert summary["findings"] == ["the kept batches [2] differ from the pilot's"]
@@ -269,7 +277,7 @@ def test_kept_batches_unlike_the_pilots_are_a_finding_not_a_stop(world):
 def test_a_pilot_of_other_prompts_is_refused(world):
     pilot = world["tmp"] / "pilot" / "pilot"
     for key, a in world["rows"].items():
-        save_snapshot(pilot / f"{key}.npz", IDS[1:9], a[:8], {})
+        save_snapshot(pilot / f"{key}.npz", IDS[9:17], a[8:16], {})
     with pytest.raises(ValueError, match="pilot"):
         summarise(world, make_run(world))
 
@@ -312,7 +320,7 @@ def test_a_replica_whose_fetch_failed_is_a_stop_and_its_files_are_never_read(wor
     summary = summarise(world, run_dir)
     assert_stopped(summary, run_dir, "r2's snapshots weren't fetched intact: " + problem["problem"])
     assert summary["canaries"].keys() == {"r1", "r3"}
-    assert [b["kind"] for b in summary["batches"]] == ["agree"] * 3
+    assert [b["kind"] for b in summary["batches"]] == ["agree"] * 4
 
 
 def test_with_no_replica_left_to_read_the_report_is_still_written(world):
@@ -332,17 +340,60 @@ def test_r1_a_token_ids_file_for_other_prompts_than_the_snapshots_stops_before_k
 
 
 def test_batches_and_dropped_ids_follow_the_runs_batch_size(world, monkeypatch):
-    # At batch size 4 the 8-prompt canary fills batches 1 and 2, so the saved rows are batches 3 to 7.
+    # At batch size 4 the 8-prompt canary fills batches 1 and 2, and the pilot's rows are batches 3 and 4.
     monkeypatch.setattr(report, "NO_MAJORITY_LIMIT", 0.5)
-    run_dir = make_run(world, {"r2": [("18_-1", 9, 1)], "r3": [("18_-1", 10, 1)]}, batch_size=4)  # rows 8 to 11
+    run_dir = make_run(world, {"r2": [("18_-1", 17, 1)], "r3": [("18_-1", 18, 1)]}, batch_size=4)  # rows 16 to 19
     summary = summarise(world, run_dir, splits={i: i.split("/")[1] for i in IDS})
     assert [(b["batch"], b["kind"]) for b in summary["batches"]] == [
+        (1, "agree"),
+        (2, "agree"),
         (3, "agree"),
         (4, "agree"),
         (5, "no majority"),
         (6, "agree"),
         (7, "agree"),
     ]
+    assert summary["vs_pilot"] == [{"batch": 3, "identical": True}, {"batch": 4, "identical": True}]
     assert summary["kept"]["dropped_batches"] == [5]
-    assert [d["id"] for d in summary["kept"]["dropped"]] == IDS[8:12]
-    assert list(hulder.Snapshot.load(run_dir / "kept" / "18_-1.npz").ids) == IDS[:8] + IDS[12:]
+    assert [d["id"] for d in summary["kept"]["dropped"]] == IDS[16:20]
+    assert list(hulder.Snapshot.load(run_dir / "kept" / "18_-1.npz").ids) == IDS[:16] + IDS[20:]
+
+
+@pytest.mark.parametrize("key", KEYS)
+def test_batch_1_is_classed_like_any_batch_on_each_of_the_6_arrays(world, key):
+    # A change at position -1 also changes the canary's hash, as the worker would record it.
+    canary = {"r2": "f" * 64} if key.endswith("_-1") else None
+    summary = summarise(world, make_run(world, {"r2": [(key, 5, 1)]}, canary=canary))
+    assert [(b["batch"], b["kind"], b["outliers"]) for b in summary["batches"]] == [
+        (1, "split", ["r2"]),
+        (2, "agree", []),
+        (3, "agree", []),
+        (4, "agree", []),
+    ]
+
+
+def test_a_replica_differing_only_in_batch_1_away_from_the_canarys_hash_is_caught(world):
+    # Position -10 isn't in the canary's hash, so every replica records the same one.
+    run_dir = make_run(world, {"r3": [("27_-10", 7, 1)]})
+    summary = summarise(world, run_dir)
+    assert {c["canary_sha256"] for c in summary["canaries"].values()} == {world["canary"]}
+    assert summary["batches"][0] == {"batch": 1, "kind": "split", "majority": ["r1", "r2"], "outliers": ["r3"]}
+    assert summary["outliers_per_replica"] == {"r1": 0, "r2": 0, "r3": 1}
+    kept = hulder.Snapshot.load(run_dir / "kept" / "27_-10.npz")
+    assert kept.activations.tobytes() == hulder.Snapshot.load(run_dir / "r1" / "27_-10.npz").activations.tobytes()
+
+
+def test_the_pilot_comparison_starts_at_the_replicas_second_saved_batch(world):
+    # A shift in batch 1 shared by all three is unanimous, and the pilot never held the canary's rows.
+    shift = [("18_-9", 2, 1)]
+    summary = summarise(world, make_run(world, {"r1": shift, "r2": shift, "r3": shift}))
+    assert summary["batches"][0]["kind"] == "agree"
+    assert summary["vs_pilot"] == [{"batch": 2, "identical": True}]
+
+
+def test_a_pilot_holding_the_canarys_rows_is_refused(world):
+    pilot = world["tmp"] / "pilot" / "pilot"
+    for key, a in world["rows"].items():
+        save_snapshot(pilot / f"{key}.npz", IDS[:8], a[:8], {})
+    with pytest.raises(ValueError, match="pilot"):
+        summarise(world, make_run(world))
