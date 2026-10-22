@@ -73,7 +73,8 @@ CONFIGS = {
     "qwen3_4b_fp8": ({**COMMON, **QWEN3_4B_FP8}, ("smoke", 64)),
     # vLLM's online FP8: bf16 weights quantized at load, per-tensor scales.
     "qwen3_4b_fp8_online": ({**COMMON, **QWEN3_4B, "quantization": "fp8"}, ("smoke", 64)),
-    "qwen3_8b_bf16_load": ({**COMMON, **QWEN3_8B}, ("smoke", 1)),
+    # Load only, so any one prompt will do: the last smoke prompt, since the first is the canary's.
+    "qwen3_8b_bf16_load": ({**COMMON, **QWEN3_8B}, ("smoke", 64, 63)),
     # The timing pilot. With the canary in front, canary_check's batches are exactly the historical
     # 64-prompt captures', so its rows compare bit for bit with the recorded cluster its hash names.
     "qwen3_4b_bf16_canary_check": ({**COMMON, **QWEN3_4B}, ("smoke", 64, 8)),

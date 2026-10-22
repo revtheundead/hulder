@@ -516,21 +516,7 @@ def needs_the_real_parquet(source: tuple) -> bool:
 
 @pytest.mark.parametrize(
     "entry",
-    [
-        pytest.param(
-            (name, e),
-            marks=pytest.mark.xfail(
-                strict=True,
-                raises=ValueError,
-                reason="its one prompt is the canary's first, and it predates the canary; not rerun since",
-            ),
-        )
-        if e[1] == "qwen3_8b_bf16_load"
-        else (name, e)
-        for name, (containers, _, _) in lib.EXPERIMENTS.items()
-        for group in containers
-        for e in group
-    ],
+    [(name, e) for name, (containers, _, _) in lib.EXPERIMENTS.items() for group in containers for e in group],
     ids=lambda x: f"{x[0]}-{x[1][0]}",
 )
 def test_every_experiments_worker_spec_passes_capture_order(entry):
@@ -578,11 +564,18 @@ def test_canary_first_refuses_a_request_whose_copy_of_a_canary_prompt_differs():
 
 
 def test_the_existing_configs_still_request_their_smoke_prompts():
-    expected = {"qwen3_4b_bf16": 64, "qwen3_4b_fp8": 64, "qwen3_4b_fp8_online": 64, "qwen3_8b_bf16_load": 1}
+    expected = {"qwen3_4b_bf16": 64, "qwen3_4b_fp8": 64, "qwen3_4b_fp8_online": 64}
     for name, n in expected.items():
         spec = lib.worker_spec(("x", name), 300)
         assert spec["prompts"] == lib.smoke_prompts(n)
-        assert spec["save"] is (n > 1)
+        assert spec["save"] is True
+
+
+def test_the_8b_load_only_config_requests_one_prompt_outside_the_canary():
+    spec = lib.worker_spec(("x", "qwen3_8b_bf16_load"), 300)
+    assert spec["prompts"] == lib.smoke_prompts(64)[63:]
+    assert spec["prompts"][0]["id"] not in {r["id"] for r in lib.canary_prompts()}
+    assert spec["save"] is False
 
 
 def test_importing_smoke_lib_needs_no_pandas():
