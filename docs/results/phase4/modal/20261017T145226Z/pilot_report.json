@@ -1,0 +1,167 @@
+{
+  "run_id": "20261017T145226Z",
+  "commit": "3309187eaff3a35f4a6b2c8f06b47b3781c4f015",
+  "estimated_usd": 0.0403,
+  "stopped": null,
+  "stop_reasons": [
+    "canary_check hashes like recorded cluster 2.0 but its rows differ from 20261013T141533Z/qwen3_4b_bf16"
+  ],
+  "findings": [],
+  "configs": {
+    "canary_check": {
+      "returncode": 0,
+      "seconds": 47.3,
+      "engine_seconds": 23.518580888999995,
+      "vllm_init_engine_seconds": 9.95,
+      "canary_sha256": "b9dfd9d5ad6358b4697ec835e0fa2e4e8e5659e9f673aa4ffa473e402829292d",
+      "canary_match": {
+        "cluster": "2.0",
+        "members": [
+          "20261013T141533Z/qwen3_4b_bf16",
+          "20261013T145138Z/bf16_a",
+          "20261013T145138Z/bf16_b",
+          "20261013T150939Z/default_1",
+          "20261013T150939Z/default_2",
+          "20261013T150939Z/default_3",
+          "20261015T114213Z/a_default_1",
+          "20261015T114213Z/a_default_2",
+          "20261015T114213Z/a_default_3",
+          "20261015T114213Z/a_default_4",
+          "20261015T114213Z/a_default_5",
+          "20261015T114213Z/b_default_1",
+          "20261015T114213Z/b_default_2",
+          "20261015T114213Z/b_default_3",
+          "20261015T114213Z/b_default_4",
+          "20261015T114213Z/b_default_5"
+        ]
+      },
+      "gpu_uuid": "GPU-0c4c4bb9-6863-8857-e12f-c1c9679734fb",
+      "gpu_driver": "610.57.04",
+      "container": "20261017T145226Z#0"
+    },
+    "pilot": {
+      "returncode": 0,
+      "seconds": 49.3,
+      "engine_seconds": 19.184627882,
+      "vllm_init_engine_seconds": 8.64,
+      "canary_sha256": "b9dfd9d5ad6358b4697ec835e0fa2e4e8e5659e9f673aa4ffa473e402829292d",
+      "canary_match": {
+        "cluster": "2.0",
+        "members": [
+          "20261013T141533Z/qwen3_4b_bf16",
+          "20261013T145138Z/bf16_a",
+          "20261013T145138Z/bf16_b",
+          "20261013T150939Z/default_1",
+          "20261013T150939Z/default_2",
+          "20261013T150939Z/default_3",
+          "20261015T114213Z/a_default_1",
+          "20261015T114213Z/a_default_2",
+          "20261015T114213Z/a_default_3",
+          "20261015T114213Z/a_default_4",
+          "20261015T114213Z/a_default_5",
+          "20261015T114213Z/b_default_1",
+          "20261015T114213Z/b_default_2",
+          "20261015T114213Z/b_default_3",
+          "20261015T114213Z/b_default_4",
+          "20261015T114213Z/b_default_5"
+        ]
+      },
+      "gpu_uuid": "GPU-0c4c4bb9-6863-8857-e12f-c1c9679734fb",
+      "gpu_driver": "610.57.04",
+      "container": "20261017T145226Z#0"
+    }
+  },
+  "canary_check_rows": {
+    "status": "differs",
+    "layers": {
+      "18": "48/56 identical",
+      "27": "48/56 identical"
+    },
+    "against": "20261013T141533Z/qwen3_4b_bf16"
+  },
+  "pilot": {
+    "prompt_ids_sha256": "1be77eb6ff8ad66c0d77c21c3b2da33260575ca1dc6e8aa66ff43fadada33f38",
+    "canary_hash_vs_canary_check": "same",
+    "canary_batch_seconds": 0.14655866600000422,
+    "engine_seconds": {
+      "canary_check": 23.518580888999995,
+      "pilot": 19.184627882
+    },
+    "timing": {
+      "batches": 125,
+      "total_seconds": 12.27624398900005,
+      "mean_batch_seconds": 0.09820995191200041,
+      "mean_band": [
+        0.09762692968439955,
+        0.09882744122780086
+      ],
+      "per_prompt_seconds": {
+        "median": 0.012113889500000141,
+        "p5": 0.011872853675000527,
+        "p95": 0.01320956050000035,
+        "max": 0.013632322500001237
+      },
+      "engine_seconds": 23.518580888999995,
+      "n_batches": 2040,
+      "projection_seconds": 223.86688278948083,
+      "projection_band": [
+        222.67751744517508,
+        225.12656099371375
+      ],
+      "timeout_s": 1200,
+      "fits_timeout": true,
+      "bootstrap": {
+        "seed": 0,
+        "resamples": 10000,
+        "confidence": 0.95
+      }
+    },
+    "positions": {
+      "-1": {
+        "distinct": 1,
+        "commonest": [
+          [
+            "ĊĊ",
+            1000
+          ]
+        ]
+      },
+      "-9": {
+        "distinct": 1,
+        "commonest": [
+          [
+            "<|im_end|>",
+            1000
+          ]
+        ],
+        "im_end_on_every_prompt": true,
+        "not_im_end": []
+      },
+      "-10": {
+        "distinct": 504,
+        "commonest": [
+          [
+            "?",
+            195
+          ],
+          [
+            ".",
+            77
+          ],
+          [
+            "Ġrestrictions",
+            26
+          ],
+          [
+            "Ġprompt",
+            15
+          ],
+          [
+            "Ġinstructions",
+            12
+          ]
+        ]
+      }
+    }
+  }
+}

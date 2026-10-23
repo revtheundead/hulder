@@ -1,0 +1,47 @@
+{
+  "boot_id": "31260018-c95d-41c6-809b-c62d2ee10b0a",
+  "configs": {
+    "r1": {
+      "released": true,
+      "removed": [
+        "18_-1.npz",
+        "18_-10.npz",
+        "18_-9.npz",
+        "27_-1.npz",
+        "27_-10.npz",
+        "27_-9.npz",
+        "token_ids.npz"
+      ],
+      "already_gone": [],
+      "problem": null
+    },
+    "r2": {
+      "released": true,
+      "removed": [
+        "18_-1.npz",
+        "18_-10.npz",
+        "18_-9.npz",
+        "27_-1.npz",
+        "27_-10.npz",
+        "27_-9.npz",
+        "token_ids.npz"
+      ],
+      "already_gone": [],
+      "problem": null
+    },
+    "r3": {
+      "released": true,
+      "removed": [
+        "18_-1.npz",
+        "18_-10.npz",
+        "18_-9.npz",
+        "27_-1.npz",
+        "27_-10.npz",
+        "27_-9.npz",
+        "token_ids.npz"
+      ],
+      "already_gone": [],
+      "problem": null
+    }
+  }
+}

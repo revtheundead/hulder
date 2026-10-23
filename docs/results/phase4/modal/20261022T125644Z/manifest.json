@@ -1,0 +1,103 @@
+{
+  "run_id": "20261022T125644Z",
+  "experiment": "full_capture",
+  "single_use": true,
+  "commit": "84c25c5f09ace4ed877c6800845ae8d448dbc954",
+  "command": "uv run --with modal==1.6.1 modal run experiments/modal/capture.py --experiment full_capture --spent-usd 0.04 --backup-dir /mnt/d/hulder-backup/verified-2026-10-22/.cache/modal-runs",
+  "modal": "1.6.1",
+  "rates_usd_per_s": {
+    "L4": 0.000222,
+    "cpu_core": 1.31e-05,
+    "memory_gib": 2.22e-06
+  },
+  "spent_before_usd": 0.04,
+  "boot_id": "e12224dc-33b1-4f58-87c5-4519be880510",
+  "containers": [
+    {
+      "labels": [
+        "r1"
+      ],
+      "wall_seconds": 447.0,
+      "estimated_usd": 0.1544
+    },
+    {
+      "labels": [
+        "r2"
+      ],
+      "wall_seconds": 526.4,
+      "estimated_usd": 0.1818
+    },
+    {
+      "labels": [
+        "r3"
+      ],
+      "wall_seconds": 585.1,
+      "estimated_usd": 0.2021
+    }
+  ],
+  "configs": {
+    "r1": {
+      "container": 0,
+      "config": "qwen3_4b_bf16_full",
+      "returncode": 0,
+      "volume": {
+        "files": {
+          "18_-1.npz": "a32fadbb0a07fbbed69e1181cdeb5e4800b0ace55729a2038949adba3c179084",
+          "18_-10.npz": "ad7df1372340b94929af67e403ac1a758f1b06e29dd2ebc82190bc1de3e5d6c0",
+          "18_-9.npz": "b73d3cd7260b8eef03db76ee40688e1619f60c54ad0255a53e580cdd2b1b0f68",
+          "27_-1.npz": "a4b74e59cba635c3b1add77fc66a7e5f09c6c6de004c1bfc706ddb237fdfdd6b",
+          "27_-10.npz": "0ba7dadba31ecd34d7f4f6bcb37d3215d8d27cd612c54bb6dc658411709edb45",
+          "27_-9.npz": "92212eb98b6c473b6d4d78d812b4b51293a0ffbdc0d7ffa141cfc8f6ee93587d",
+          "token_ids.npz": "e46e5d1d3d194002bd29b802e4e2c6bc40f588f73682aec4caaf5d499446c17d"
+        },
+        "fetched": true,
+        "backed_up": true,
+        "problem": null
+      }
+    },
+    "r2": {
+      "container": 1,
+      "config": "qwen3_4b_bf16_full",
+      "returncode": 0,
+      "volume": {
+        "files": {
+          "18_-1.npz": "a6dc4ca692179cbb912f3c638ed9adfb37f386f7f8f22706975594cbee153600",
+          "18_-10.npz": "a53fb89845124e152437f4aec1d3c30d24fe155841dbafd4d59d66fb7df88497",
+          "18_-9.npz": "901fb64d5509999492204fb75953e236df923296f97fbe5e0dfb86f3ec13f535",
+          "27_-1.npz": "4b179e2de4c45bc5bf75c8cc73b5a7ba14c24296f7d613f64f428ac4a4b67eea",
+          "27_-10.npz": "4644319e6e07435013c2cca484a98c55243b2c875382d4c8c710a1e60e736ac3",
+          "27_-9.npz": "05a3f4d9c33a2732235a985b583d44857e8ebbd7f842c904d5f89315bcb2e214",
+          "token_ids.npz": "e46e5d1d3d194002bd29b802e4e2c6bc40f588f73682aec4caaf5d499446c17d"
+        },
+        "fetched": true,
+        "backed_up": true,
+        "problem": null
+      }
+    },
+    "r3": {
+      "container": 2,
+      "config": "qwen3_4b_bf16_full",
+      "returncode": 0,
+      "volume": {
+        "files": {
+          "18_-1.npz": "e32811e599aed677bf54348be74ffcb77a5d8f6c463c5c064ea5a7a53b3b9cae",
+          "18_-10.npz": "a86545e50d85e51290faaf37f999dc5d565a66a9e8ba21d3aca996dbc2b5415f",
+          "18_-9.npz": "7becfb43783170dac19df1cdd37559be2f2f608148082846821b56ed504ee72a",
+          "27_-1.npz": "30d5f6df937bb7c52509e8a5116cdfb0c53d69c581fa0448a142c6bc11d7a727",
+          "27_-10.npz": "b46273238786a32428065e36797cdceea3dc62e165d94e80cdcdb30772c59e51",
+          "27_-9.npz": "641d8b05cfb106cf85914ec4d160beda007338bebf1b0568d9e6e6b382769e98",
+          "token_ids.npz": "e46e5d1d3d194002bd29b802e4e2c6bc40f588f73682aec4caaf5d499446c17d"
+        },
+        "fetched": true,
+        "backed_up": true,
+        "problem": null
+      }
+    }
+  },
+  "download": {
+    "seconds": 0.0,
+    "wall_seconds": 5.6,
+    "estimated_usd": 0.0002
+  },
+  "estimated_usd": 0.5385
+}

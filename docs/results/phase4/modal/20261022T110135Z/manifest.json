@@ -1,0 +1,80 @@
+{
+  "run_id": "20261022T110135Z",
+  "experiment": "full_capture",
+  "single_use": true,
+  "commit": "50fe051ccdd6b87ca5ca4c1617c053826c40c9e0",
+  "command": "uv run --with modal==1.6.1 modal run experiments/modal/capture.py --experiment full_capture --spent-usd 0.0 --backup-dir /mnt/d/hulder-backup/verified-2026-10-22/.cache/modal-runs",
+  "modal": "1.6.1",
+  "rates_usd_per_s": {
+    "L4": 0.000222,
+    "cpu_core": 1.31e-05,
+    "memory_gib": 2.22e-06
+  },
+  "spent_before_usd": 0.0,
+  "boot_id": "e12224dc-33b1-4f58-87c5-4519be880510",
+  "containers": [
+    {
+      "labels": [
+        "r1"
+      ],
+      "wall_seconds": 38.4,
+      "estimated_usd": 0.0133
+    },
+    {
+      "labels": [
+        "r2"
+      ],
+      "wall_seconds": 39.3,
+      "estimated_usd": 0.0136
+    },
+    {
+      "labels": [
+        "r3"
+      ],
+      "wall_seconds": 40.5,
+      "estimated_usd": 0.014
+    }
+  ],
+  "configs": {
+    "r1": {
+      "container": 0,
+      "config": "qwen3_4b_bf16_full",
+      "returncode": 1,
+      "volume": {
+        "files": {},
+        "fetched": true,
+        "backed_up": true,
+        "problem": null
+      }
+    },
+    "r2": {
+      "container": 1,
+      "config": "qwen3_4b_bf16_full",
+      "returncode": 1,
+      "volume": {
+        "files": {},
+        "fetched": true,
+        "backed_up": true,
+        "problem": null
+      }
+    },
+    "r3": {
+      "container": 2,
+      "config": "qwen3_4b_bf16_full",
+      "returncode": 1,
+      "volume": {
+        "files": {},
+        "fetched": true,
+        "backed_up": true,
+        "problem": null
+      }
+    }
+  },
+  "download": {
+    "seconds": 0.8,
+    "wall_seconds": 5.4,
+    "estimated_usd": 0.0002
+  },
+  "estimated_usd": 0.0411,
+  "stopped": "container 2 failed; its logs are in /home/rev/hulder/.cache/modal-runs/20261022T110135Z"
+}

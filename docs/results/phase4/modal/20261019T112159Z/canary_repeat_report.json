@@ -1,0 +1,674 @@
+{
+  "run_id": "20261019T112159Z",
+  "commit": "0688b6b286f3b5c79973273c1c669a67ff9d67a1",
+  "estimated_usd": 0.1154,
+  "stopped": null,
+  "stop_reasons": [],
+  "findings": [],
+  "reference": {
+    "cluster": "2.0",
+    "member": "20261013T141533Z/qwen3_4b_bf16",
+    "traced": [
+      "20261013T150939Z/default_1",
+      "20261013T150939Z/default_2",
+      "20261013T150939Z/default_3",
+      "20261015T114213Z/b_default_1",
+      "20261015T114213Z/b_default_2",
+      "20261015T114213Z/b_default_3",
+      "20261015T114213Z/b_default_4",
+      "20261015T114213Z/b_default_5"
+    ]
+  },
+  "configs": {
+    "u1_canary_check": {
+      "container": "20261019T112159Z#0",
+      "traced": false,
+      "gpu_uuid": "GPU-9930544a-1fe8-a9ea-b206-3b2ac662795c",
+      "gpu_driver": "610.57.04",
+      "modal": {
+        "image_id": "im-ruAyoVWb6XnzAgHBOD6EkH",
+        "task_id": "ta-01M59YBEEAW4TYCPAWR2MXFK3R",
+        "region": "us-east"
+      },
+      "nvidia_cublas": "13.1.1.3",
+      "engine_seconds": 30.848864889,
+      "canary_sha256": "b9dfd9d5ad6358b4697ec835e0fa2e4e8e5659e9f673aa4ffa473e402829292d",
+      "prompt_token_ids_sha256": "79ab554a1d21d0ebdaae4ca02a72b76e64f180d5190a91d7d88db5dc71a0397f",
+      "canary_token_ids_sha256": "1ae044fbc661cfc3df56cfa40369f73860b8e81d4db40a85370130ac9d2b77ae",
+      "vs_majority": [
+        {
+          "batch": 1,
+          "rows": 8,
+          "identical": true,
+          "by": "canary hash"
+        },
+        {
+          "batch": 2,
+          "rows": 8,
+          "identical": true
+        },
+        {
+          "batch": 3,
+          "rows": 8,
+          "identical": true
+        },
+        {
+          "batch": 4,
+          "rows": 8,
+          "identical": true
+        },
+        {
+          "batch": 5,
+          "rows": 8,
+          "identical": true
+        },
+        {
+          "batch": 6,
+          "rows": 8,
+          "identical": true
+        },
+        {
+          "batch": 7,
+          "rows": 8,
+          "identical": true
+        },
+        {
+          "batch": 8,
+          "rows": 8,
+          "identical": true
+        }
+      ],
+      "vs_pilot": [
+        {
+          "batch": 2,
+          "rows": 8,
+          "identical": true
+        },
+        {
+          "batch": 3,
+          "rows": 8,
+          "identical": true
+        },
+        {
+          "batch": 4,
+          "rows": 8,
+          "identical": true
+        },
+        {
+          "batch": 5,
+          "rows": 8,
+          "identical": true
+        },
+        {
+          "batch": 6,
+          "rows": 8,
+          "identical": true
+        },
+        {
+          "batch": 7,
+          "rows": 8,
+          "identical": true
+        },
+        {
+          "batch": 8,
+          "rows": 8,
+          "identical": false
+        }
+      ],
+      "cublas_same_as": null,
+      "cublas_signatures": null
+    },
+    "u2_canary_check": {
+      "container": "20261019T112159Z#1",
+      "traced": false,
+      "gpu_uuid": "GPU-45716459-44e2-83f4-9d95-7d25e0ef7101",
+      "gpu_driver": "610.57.04",
+      "modal": {
+        "image_id": "im-ruAyoVWb6XnzAgHBOD6EkH",
+        "task_id": "ta-01M59YBEYMP11NNZTVAETG3M8R",
+        "region": "ap-south"
+      },
+      "nvidia_cublas": "13.1.1.3",
+      "engine_seconds": 32.197326258000004,
+      "canary_sha256": "b9dfd9d5ad6358b4697ec835e0fa2e4e8e5659e9f673aa4ffa473e402829292d",
+      "prompt_token_ids_sha256": "79ab554a1d21d0ebdaae4ca02a72b76e64f180d5190a91d7d88db5dc71a0397f",
+      "canary_token_ids_sha256": "1ae044fbc661cfc3df56cfa40369f73860b8e81d4db40a85370130ac9d2b77ae",
+      "vs_majority": [
+        {
+          "batch": 1,
+          "rows": 8,
+          "identical": true,
+          "by": "canary hash"
+        },
+        {
+          "batch": 2,
+          "rows": 8,
+          "identical": true
+        },
+        {
+          "batch": 3,
+          "rows": 8,
+          "identical": true
+        },
+        {
+          "batch": 4,
+          "rows": 8,
+          "identical": true
+        },
+        {
+          "batch": 5,
+          "rows": 8,
+          "identical": true
+        },
+        {
+          "batch": 6,
+          "rows": 8,
+          "identical": true
+        },
+        {
+          "batch": 7,
+          "rows": 8,
+          "identical": true
+        },
+        {
+          "batch": 8,
+          "rows": 8,
+          "identical": true
+        }
+      ],
+      "vs_pilot": [
+        {
+          "batch": 2,
+          "rows": 8,
+          "identical": true
+        },
+        {
+          "batch": 3,
+          "rows": 8,
+          "identical": true
+        },
+        {
+          "batch": 4,
+          "rows": 8,
+          "identical": true
+        },
+        {
+          "batch": 5,
+          "rows": 8,
+          "identical": true
+        },
+        {
+          "batch": 6,
+          "rows": 8,
+          "identical": true
+        },
+        {
+          "batch": 7,
+          "rows": 8,
+          "identical": true
+        },
+        {
+          "batch": 8,
+          "rows": 8,
+          "identical": false
+        }
+      ],
+      "cublas_same_as": null,
+      "cublas_signatures": null
+    },
+    "u3_canary_check": {
+      "container": "20261019T112159Z#2",
+      "traced": false,
+      "gpu_uuid": "GPU-3f84c869-98eb-f79f-c7e4-f4b76457f66c",
+      "gpu_driver": "610.57.04",
+      "modal": {
+        "image_id": "im-ruAyoVWb6XnzAgHBOD6EkH",
+        "task_id": "ta-01M59YBFK9EGHR086KGC42VDXR",
+        "region": "us-east"
+      },
+      "nvidia_cublas": "13.1.1.3",
+      "engine_seconds": 23.168935199999996,
+      "canary_sha256": "b9dfd9d5ad6358b4697ec835e0fa2e4e8e5659e9f673aa4ffa473e402829292d",
+      "prompt_token_ids_sha256": "79ab554a1d21d0ebdaae4ca02a72b76e64f180d5190a91d7d88db5dc71a0397f",
+      "canary_token_ids_sha256": "1ae044fbc661cfc3df56cfa40369f73860b8e81d4db40a85370130ac9d2b77ae",
+      "vs_majority": [
+        {
+          "batch": 1,
+          "rows": 8,
+          "identical": true,
+          "by": "canary hash"
+        },
+        {
+          "batch": 2,
+          "rows": 8,
+          "identical": true
+        },
+        {
+          "batch": 3,
+          "rows": 8,
+          "identical": true
+        },
+        {
+          "batch": 4,
+          "rows": 8,
+          "identical": true
+        },
+        {
+          "batch": 5,
+          "rows": 8,
+          "identical": true
+        },
+        {
+          "batch": 6,
+          "rows": 8,
+          "identical": true
+        },
+        {
+          "batch": 7,
+          "rows": 8,
+          "identical": true
+        },
+        {
+          "batch": 8,
+          "rows": 8,
+          "identical": true
+        }
+      ],
+      "vs_pilot": [
+        {
+          "batch": 2,
+          "rows": 8,
+          "identical": true
+        },
+        {
+          "batch": 3,
+          "rows": 8,
+          "identical": true
+        },
+        {
+          "batch": 4,
+          "rows": 8,
+          "identical": true
+        },
+        {
+          "batch": 5,
+          "rows": 8,
+          "identical": true
+        },
+        {
+          "batch": 6,
+          "rows": 8,
+          "identical": true
+        },
+        {
+          "batch": 7,
+          "rows": 8,
+          "identical": true
+        },
+        {
+          "batch": 8,
+          "rows": 8,
+          "identical": false
+        }
+      ],
+      "cublas_same_as": null,
+      "cublas_signatures": null
+    },
+    "t1_canary_check": {
+      "container": "20261019T112159Z#3",
+      "traced": true,
+      "gpu_uuid": "GPU-62344978-ffd2-1cea-0feb-a613a770e493",
+      "gpu_driver": "610.57.04",
+      "modal": {
+        "image_id": "im-ruAyoVWb6XnzAgHBOD6EkH",
+        "task_id": "ta-01M59YBG26G3ZTZAA090K6F9ZR",
+        "region": "us-east"
+      },
+      "nvidia_cublas": "13.1.1.3",
+      "engine_seconds": 33.677367202,
+      "canary_sha256": "b9dfd9d5ad6358b4697ec835e0fa2e4e8e5659e9f673aa4ffa473e402829292d",
+      "prompt_token_ids_sha256": "79ab554a1d21d0ebdaae4ca02a72b76e64f180d5190a91d7d88db5dc71a0397f",
+      "canary_token_ids_sha256": "1ae044fbc661cfc3df56cfa40369f73860b8e81d4db40a85370130ac9d2b77ae",
+      "vs_majority": [
+        {
+          "batch": 1,
+          "rows": 8,
+          "identical": true,
+          "by": "canary hash"
+        },
+        {
+          "batch": 2,
+          "rows": 8,
+          "identical": true
+        },
+        {
+          "batch": 3,
+          "rows": 8,
+          "identical": true
+        },
+        {
+          "batch": 4,
+          "rows": 8,
+          "identical": true
+        },
+        {
+          "batch": 5,
+          "rows": 8,
+          "identical": true
+        },
+        {
+          "batch": 6,
+          "rows": 8,
+          "identical": true
+        },
+        {
+          "batch": 7,
+          "rows": 8,
+          "identical": true
+        },
+        {
+          "batch": 8,
+          "rows": 8,
+          "identical": true
+        }
+      ],
+      "vs_pilot": [
+        {
+          "batch": 2,
+          "rows": 8,
+          "identical": true
+        },
+        {
+          "batch": 3,
+          "rows": 8,
+          "identical": true
+        },
+        {
+          "batch": 4,
+          "rows": 8,
+          "identical": true
+        },
+        {
+          "batch": 5,
+          "rows": 8,
+          "identical": true
+        },
+        {
+          "batch": 6,
+          "rows": 8,
+          "identical": true
+        },
+        {
+          "batch": 7,
+          "rows": 8,
+          "identical": true
+        },
+        {
+          "batch": 8,
+          "rows": 8,
+          "identical": false
+        }
+      ],
+      "cublas_same_as": [
+        "20261013T150939Z/default_1",
+        "20261013T150939Z/default_2",
+        "20261013T150939Z/default_3",
+        "20261015T114213Z/b_default_1",
+        "20261015T114213Z/b_default_2",
+        "20261015T114213Z/b_default_3",
+        "20261015T114213Z/b_default_4",
+        "20261015T114213Z/b_default_5"
+      ],
+      "cublas_signatures": 99
+    }
+  },
+  "groups": {
+    "untraced": [
+      "u1_canary_check",
+      "u2_canary_check",
+      "u3_canary_check"
+    ],
+    "traced": [
+      "t1_canary_check"
+    ]
+  },
+  "batch_8": {
+    "untraced": {
+      "containers": 3,
+      "like_pilot": 0,
+      "like_majority": 3,
+      "neither": 0
+    },
+    "traced": {
+      "containers": 1,
+      "like_pilot": 0,
+      "like_majority": 1,
+      "neither": 0
+    }
+  },
+  "between_containers": {
+    "u1_canary_check vs u2_canary_check": [
+      {
+        "batch": 2,
+        "rows": 8,
+        "identical": true
+      },
+      {
+        "batch": 3,
+        "rows": 8,
+        "identical": true
+      },
+      {
+        "batch": 4,
+        "rows": 8,
+        "identical": true
+      },
+      {
+        "batch": 5,
+        "rows": 8,
+        "identical": true
+      },
+      {
+        "batch": 6,
+        "rows": 8,
+        "identical": true
+      },
+      {
+        "batch": 7,
+        "rows": 8,
+        "identical": true
+      },
+      {
+        "batch": 8,
+        "rows": 8,
+        "identical": true
+      }
+    ],
+    "u1_canary_check vs u3_canary_check": [
+      {
+        "batch": 2,
+        "rows": 8,
+        "identical": true
+      },
+      {
+        "batch": 3,
+        "rows": 8,
+        "identical": true
+      },
+      {
+        "batch": 4,
+        "rows": 8,
+        "identical": true
+      },
+      {
+        "batch": 5,
+        "rows": 8,
+        "identical": true
+      },
+      {
+        "batch": 6,
+        "rows": 8,
+        "identical": true
+      },
+      {
+        "batch": 7,
+        "rows": 8,
+        "identical": true
+      },
+      {
+        "batch": 8,
+        "rows": 8,
+        "identical": true
+      }
+    ],
+    "u1_canary_check vs t1_canary_check": [
+      {
+        "batch": 2,
+        "rows": 8,
+        "identical": true
+      },
+      {
+        "batch": 3,
+        "rows": 8,
+        "identical": true
+      },
+      {
+        "batch": 4,
+        "rows": 8,
+        "identical": true
+      },
+      {
+        "batch": 5,
+        "rows": 8,
+        "identical": true
+      },
+      {
+        "batch": 6,
+        "rows": 8,
+        "identical": true
+      },
+      {
+        "batch": 7,
+        "rows": 8,
+        "identical": true
+      },
+      {
+        "batch": 8,
+        "rows": 8,
+        "identical": true
+      }
+    ],
+    "u2_canary_check vs u3_canary_check": [
+      {
+        "batch": 2,
+        "rows": 8,
+        "identical": true
+      },
+      {
+        "batch": 3,
+        "rows": 8,
+        "identical": true
+      },
+      {
+        "batch": 4,
+        "rows": 8,
+        "identical": true
+      },
+      {
+        "batch": 5,
+        "rows": 8,
+        "identical": true
+      },
+      {
+        "batch": 6,
+        "rows": 8,
+        "identical": true
+      },
+      {
+        "batch": 7,
+        "rows": 8,
+        "identical": true
+      },
+      {
+        "batch": 8,
+        "rows": 8,
+        "identical": true
+      }
+    ],
+    "u2_canary_check vs t1_canary_check": [
+      {
+        "batch": 2,
+        "rows": 8,
+        "identical": true
+      },
+      {
+        "batch": 3,
+        "rows": 8,
+        "identical": true
+      },
+      {
+        "batch": 4,
+        "rows": 8,
+        "identical": true
+      },
+      {
+        "batch": 5,
+        "rows": 8,
+        "identical": true
+      },
+      {
+        "batch": 6,
+        "rows": 8,
+        "identical": true
+      },
+      {
+        "batch": 7,
+        "rows": 8,
+        "identical": true
+      },
+      {
+        "batch": 8,
+        "rows": 8,
+        "identical": true
+      }
+    ],
+    "u3_canary_check vs t1_canary_check": [
+      {
+        "batch": 2,
+        "rows": 8,
+        "identical": true
+      },
+      {
+        "batch": 3,
+        "rows": 8,
+        "identical": true
+      },
+      {
+        "batch": 4,
+        "rows": 8,
+        "identical": true
+      },
+      {
+        "batch": 5,
+        "rows": 8,
+        "identical": true
+      },
+      {
+        "batch": 6,
+        "rows": 8,
+        "identical": true
+      },
+      {
+        "batch": 7,
+        "rows": 8,
+        "identical": true
+      },
+      {
+        "batch": 8,
+        "rows": 8,
+        "identical": true
+      }
+    ]
+  },
+  "token_hashes_agree": true
+}
