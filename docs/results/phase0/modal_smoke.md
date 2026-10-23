@@ -83,6 +83,8 @@ source scripts/dev-env.sh && uv run pytest experiments/modal/test_canary_history
 
 It needs the snapshots under `.cache/modal-runs`, which aren't committed, and skips without them.
 
+The canary's first runs, the timing pilot, canary_repeat and the Phase 4 capture, are in [`../phase4/full_capture.md`](../phase4/full_capture.md). They showed that an engine whose canary matches can still leave the path later, on one batch or a single prompt, so a canary can't label a whole capture.
+
 ## Timing and cost
 
 - **Cold start dominates the first run.** On a freshly built image the first config took 572 s of wall time, of which the worker ran 116 s. Later configs in a warm image took 60 to 130 s of wall time.
