@@ -109,9 +109,15 @@ def make_run(world, changes=None, *, canary=None, workers=None, failed=None, vol
     return run_dir
 
 
-def summarise(world, run_dir, splits=None):
+def summarise(world, run_dir, splits=None, **kwargs):
     return report.summarise(
-        run_dir, world["tmp"] / "pilot", world["clusters"], world["runs"], splits=splits, reference_cluster="0.0"
+        run_dir,
+        world["tmp"] / "pilot",
+        world["clusters"],
+        world["runs"],
+        splits=splits,
+        reference_cluster="0.0",
+        **kwargs,
     )
 
 
@@ -173,6 +179,25 @@ def test_the_kept_dataset_is_each_batchs_majority_with_the_contributing_gpus(wor
             "canary_sha256": world["canary"],
             "prompt_ids_sha256": hulder.prompt_ids_sha256(IDS),
         }
+
+
+def test_an_existing_kept_dataset_is_refused_before_anything_is_read_or_written(world):
+    run_dir = make_run(world)
+    summarise(world, run_dir)
+    before = {p.name: p.read_bytes() for p in (run_dir / "kept").iterdir()}
+    with pytest.raises(FileExistsError, match="--force"):
+        summarise(world, run_dir)
+    assert {p.name: p.read_bytes() for p in (run_dir / "kept").iterdir()} == before
+
+
+def test_with_force_an_existing_kept_dataset_is_rewritten(world):
+    run_dir = make_run(world)
+    (run_dir / "kept").mkdir()
+    (run_dir / "kept" / "18_-1.npz").write_bytes(b"stale")
+    summary = summarise(world, run_dir, force=True)
+    assert summary["kept"]["prompts"] == 28
+    kept = hulder.Snapshot.load(run_dir / "kept" / "18_-1.npz")
+    assert kept.activations.tobytes() == hulder.Snapshot.load(run_dir / "r1" / "18_-1.npz").activations.tobytes()
 
 
 def test_a_replica_in_no_majority_contributes_no_gpu(world):

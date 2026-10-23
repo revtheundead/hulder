@@ -2,7 +2,8 @@
 
     uv run python experiments/modal/full_capture_report.py .cache/modal-runs/<run id> .cache/modal-runs/<pilot run id>
 
-Writes full_capture_report.json next to the run's manifest.json and prints it.
+Writes full_capture_report.json next to the run's manifest.json and prints it. A run that already
+has kept/ is refused before anything is read or written, unless --force is passed.
 
 The three replicas are compared batch by batch, bit for bit on every saved array together, from
 batch 1 on. Batch 1 is the canary: the request begins with its 8 boundary-pairs prompts, so their
@@ -64,7 +65,10 @@ def summarise(
     *,
     splits: dict[str, str] | None = None,
     reference_cluster: str = MAJORITY,
+    force: bool = False,
 ) -> dict:
+    if (run_dir / "kept").exists() and not force:
+        raise FileExistsError(f"{run_dir / 'kept'} exists, and a rerun would rewrite it; pass --force to allow that")
     run = json.loads((run_dir / "manifest.json").read_text())
     recorded = pilot.recorded_hashes(clusters_path, runs_dir)
     stops = [f"the run stopped: {run['stopped']}"] if run.get("stopped") else []
@@ -302,7 +306,11 @@ def splits_by_id(path: Path = lib.SLABS_SPLITS) -> dict[str, str]:
 
 
 if __name__ == "__main__":
-    run_dir = Path(sys.argv[1])
-    summary = summarise(run_dir, Path(sys.argv[2]), splits=splits_by_id())
+    args = [a for a in sys.argv[1:] if a != "--force"]
+    run_dir = Path(args[0])
+    try:
+        summary = summarise(run_dir, Path(args[1]), splits=splits_by_id(), force="--force" in sys.argv[1:])
+    except FileExistsError as e:
+        sys.exit(str(e))
     (run_dir / "full_capture_report.json").write_text(json.dumps(summary, indent=2, ensure_ascii=False) + "\n")
     print(json.dumps(summary, indent=2, ensure_ascii=False))
