@@ -58,8 +58,14 @@ The two smoke captures on the second path are bit-identical to each other, so th
 - **Single-prompt deviations are negligible.** One prompt moved by at most 0.057 in logit and 0.001 in score.
 - **A whole-capture path switch can matter at the threshold.**
   - **Observed:** none of the 64 rows flipped, because none was near the threshold. The closest sat 0.25 logits away for the primary and 0.11 for layer 27 at −1.
-  - **What's in reach:** on calibration, 26 of 2,101 rows (1.2%) lie within the largest observed shift, 0.104 logits, of the primary's threshold, and 8 (0.4%) within 0.085 of layer 27's.
-  - **The worst case:** if a capture switched path and every such row flipped, the flag rate would move by up to about 1 point. With a mean shift of 0.02 to 0.04 logits, the typical effect is far smaller.
+  - **What's in reach.** These are the calibration rows within the largest observed shift of each threshold: 0.104 logits for the primary, 0.085 for layer 27 at −1.
+
+    | Probe | Benign within reach (bounds the FPR) | Attacks within reach (bounds the FNR) |
+    |---|---|---|
+    | Primary (18, −1) | 5 of 1,191, **0.42 points** | 21 of 910, **2.31 points** |
+    | Secondary (27, −1) | 1 of 1,191, 0.08 points | 7 of 910, 0.77 points |
+
+  - **The worst case:** if a capture switched path and every row within reach flipped, the primary's FPR would move by at most 0.42 points and its FNR by at most 2.31 points. The FNR bound is the larger, because more attacks than benign prompts sit near the threshold. With a mean shift of 0.02 to 0.04 logits, the typical effect is far smaller.
 - **What this means for a gate check.** A shift of that size would read as a serving-config change at the threshold, not as noise. So replication stays the check for captures (docs/design.md §10).
 
 ## Next
