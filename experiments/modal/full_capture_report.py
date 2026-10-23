@@ -3,7 +3,9 @@
     uv run python experiments/modal/full_capture_report.py .cache/modal-runs/<run id> .cache/modal-runs/<pilot run id>
 
 Writes full_capture_report.json next to the run's manifest.json and prints it. A run that already
-has kept/ is refused before anything is read or written, unless --force is passed.
+has kept/ is refused before anything is read or written, unless --force is passed. With it, the new
+kept dataset is written to kept.new/ and swapped in only once every rule has passed, so a rerun that
+stops, or fails part way, leaves the earlier kept/ as it was and the report says so.
 
 The three replicas are compared batch by batch, bit for bit on every saved array together, from
 batch 1 on. Batch 1 is the canary: the request begins with its 8 boundary-pairs prompts, so their
@@ -16,6 +18,7 @@ replica stops it too. The report reads one array file at a time.
 """
 
 import json
+import shutil
 import sys
 from pathlib import Path
 
@@ -68,7 +71,7 @@ def summarise(
     force: bool = False,
 ) -> dict:
     if (run_dir / "kept").exists() and not force:
-        raise FileExistsError(f"{run_dir / 'kept'} exists, and a rerun would rewrite it; pass --force to allow that")
+        raise FileExistsError(f"{run_dir / 'kept'} exists, and a rerun would replace it; pass --force to allow that")
     run = json.loads((run_dir / "manifest.json").read_text())
     recorded = pilot.recorded_hashes(clusters_path, runs_dir)
     stops = [f"the run stopped: {run['stopped']}"] if run.get("stopped") else []
@@ -105,6 +108,7 @@ def summarise(
             "vs_pilot": [],
             "canaries": {},
             "majority_canary": None,
+            "kept_note": _earlier_kept(run_dir),
         }
     names = workers[labels[0]]["snapshots"]
     # The request begins with the canary, so the saved rows start at batch 1 (smoke_lib.canary_first).
@@ -207,7 +211,15 @@ def summarise(
         "vs_pilot": vs_pilot,
         "canaries": canaries,
         "majority_canary": majority_canary,
+        "kept_note": None if kept else _earlier_kept(run_dir),
     }
+
+
+def _earlier_kept(run_dir: Path) -> str | None:
+    """Why a kept/ is there when this run kept nothing: only a forced rerun that stopped leaves one."""
+    if not (run_dir / "kept").exists():
+        return None
+    return "kept/ is from an earlier report, left untouched because this run stopped; it is not this run's majority"
 
 
 def _vs_pilot(
@@ -251,11 +263,15 @@ def _volume(status: dict | None, release: dict | None) -> str:
 
 
 def _keep(run_dir, labels, names, batches, workers, majority_canary, splits, batch_size, first_batch) -> dict:
-    """Write each array's per-batch majority to kept/, and say what was dropped."""
+    """Write each array's per-batch majority to kept.new/, swap it in as kept/, and say what was
+    dropped. A failure part way leaves kept.new/ behind and any earlier kept/ as it was."""
     contributing = sorted({label for b in batches for label in b["majority"]})
     drivers = sorted({workers[label]["gpu_driver"] for label in contributing})
-    out = run_dir / "kept"
-    out.mkdir(exist_ok=True)
+    out, kept, old = run_dir / "kept.new", run_dir / "kept", run_dir / "kept.old"
+    for leftover in (out, old):
+        if leftover.exists():
+            shutil.rmtree(leftover)
+    out.mkdir()
     # R1 checked every replica's token ids against its hash, and the hashes against each other.
     token_ids = dict(zip(*lib.load_token_ids(run_dir / contributing[0] / lib.TOKEN_IDS_FILE), strict=True))
     for name in names:
@@ -283,6 +299,11 @@ def _keep(run_dir, labels, names, batches, workers, majority_canary, splits, bat
         all_ids = [str(i) for i in first.ids]
     kept_ids = [str(i) for i in ids]
     lib.save_token_ids(out / lib.TOKEN_IDS_FILE, kept_ids, [token_ids[i] for i in kept_ids])
+    if kept.exists():
+        kept.rename(old)
+    out.rename(kept)
+    if old.exists():
+        shutil.rmtree(old)
     dropped_batches = [b["batch"] for b in batches if not b["majority"]]
     dropped = [
         {"id": i, "split": splits.get(i)}

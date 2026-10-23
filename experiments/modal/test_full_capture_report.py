@@ -190,14 +190,51 @@ def test_an_existing_kept_dataset_is_refused_before_anything_is_read_or_written(
     assert {p.name: p.read_bytes() for p in (run_dir / "kept").iterdir()} == before
 
 
-def test_with_force_an_existing_kept_dataset_is_rewritten(world):
-    run_dir = make_run(world)
+def earlier_kept(run_dir):
+    """A kept/ an earlier report wrote, with a file no rerun writes, so a swap shows as its loss."""
     (run_dir / "kept").mkdir()
-    (run_dir / "kept" / "18_-1.npz").write_bytes(b"stale")
+    (run_dir / "kept" / "18_-1.npz").write_bytes(b"earlier")
+    (run_dir / "kept" / "earlier.txt").write_bytes(b"earlier")
+    return {p.name: p.read_bytes() for p in (run_dir / "kept").iterdir()}
+
+
+def test_with_force_a_run_that_passes_swaps_a_new_kept_dataset_in_whole(world):
+    run_dir = make_run(world)
+    earlier_kept(run_dir)
     summary = summarise(world, run_dir, force=True)
-    assert summary["kept"]["prompts"] == 28
+    assert summary["kept"]["prompts"] == 28 and summary["kept_note"] is None
+    assert sorted(p.name for p in (run_dir / "kept").iterdir()) == sorted(
+        [*(f"{k}.npz" for k in KEYS), lib.TOKEN_IDS_FILE]
+    )
     kept = hulder.Snapshot.load(run_dir / "kept" / "18_-1.npz")
     assert kept.activations.tobytes() == hulder.Snapshot.load(run_dir / "r1" / "18_-1.npz").activations.tobytes()
+    assert not (run_dir / "kept.new").exists() and not (run_dir / "kept.old").exists()
+
+
+def test_with_force_a_run_that_stops_leaves_the_earlier_kept_dataset_and_says_so(world):
+    run_dir = make_run(world, canary={"r2": "f" * 64, "r3": "f" * 64})  # R3
+    before = earlier_kept(run_dir)
+    summary = summarise(world, run_dir, force=True)
+    assert summary["stop_reasons"] == ["R3: the replicas' majority canary is unknown path, not cluster 0.0"]
+    assert summary["kept"] is None
+    assert summary["kept_note"] == (
+        "kept/ is from an earlier report, left untouched because this run stopped; it is not this run's majority"
+    )
+    assert {p.name: p.read_bytes() for p in (run_dir / "kept").iterdir()} == before
+    assert not (run_dir / "kept.new").exists()
+
+
+def test_with_force_a_keep_that_fails_part_way_leaves_the_earlier_kept_dataset(world, monkeypatch):
+    run_dir = make_run(world)
+    before = earlier_kept(run_dir)
+
+    def fail(*args):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(lib, "save_token_ids", fail)  # after every snapshot is written to kept.new/
+    with pytest.raises(OSError, match="disk full"):
+        summarise(world, run_dir, force=True)
+    assert {p.name: p.read_bytes() for p in (run_dir / "kept").iterdir()} == before
 
 
 def test_a_replica_in_no_majority_contributes_no_gpu(world):
@@ -237,6 +274,7 @@ def test_r1_a_token_ids_file_unlike_its_recorded_hash_stops_before_keeping(world
 def assert_stopped(summary, run_dir, *reasons):
     assert summary["stop_reasons"] == list(reasons)
     assert summary["kept"] is None and not (run_dir / "kept").exists()
+    assert summary["kept_note"] is None
 
 
 def test_r2_more_than_1_percent_of_batches_without_a_majority_stops_before_keeping(world):
