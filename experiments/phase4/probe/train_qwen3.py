@@ -5,16 +5,19 @@ Phase 1 splits (docs/design.md §7), fitted as experiments/phase1/probe/train.py
   train        fits weights and the standardisation mean/std
   validation   picks C per cell, and the primary cell at position -1 (docs/design.md §5 D2)
   calibration  sets each cell's threshold for 1% FPR on benign scores
-  test, bpairs scored only by the later score stage, after selection.json is frozen
+  test, bpairs scored only by the score stage, after selection.json is frozen and committed
 
 C starts on a grid of decades 1e-5 to 1. Where a cell's strict validation maximum is on an edge
 of its grid, the grid extends one decade past that edge, at most 3 times; a cell still on an
 edge is frozen as it stands and flagged. A tie within 1e-4 of the maximum goes to the smaller C.
 
-Run from the repo root (the select stage; it refuses to overwrite a frozen selection):
+Run from the repo root. The select stage refuses to overwrite a frozen selection, and the score
+stage runs only on the committed selection (its sha256) and only once:
     source scripts/dev-env.sh && uv run python experiments/phase4/probe/train_qwen3.py select
+    source scripts/dev-env.sh && uv run python experiments/phase4/probe/train_qwen3.py score
 
-Writes docs/results/phase4/probe_qwen3_selection.json and each cell's probe under .cache/probe/qwen3/.
+select writes docs/results/phase4/probe_qwen3_selection.json and each cell's probe under
+.cache/probe/qwen3/; score writes docs/results/phase4/probe_qwen3.json.
 """
 
 import hashlib
@@ -41,6 +44,13 @@ TIE = 1e-4
 MAX_EXTENSIONS = 3
 TARGET_FPR = 0.01
 SELECT_SPLITS = ("train", "validation", "calibration")
+SPLIT_NAMES = (*SELECT_SPLITS, "test", "bpairs")  # bpairs: all 1,200 boundary-pairs, every bpairs_* split
+SCORES = Path("docs/results/phase4/probe_qwen3.json")
+# The selection reviewed on 2026-10-23 and committed in d0d0b0bf81f8.
+SELECTION_SHA256 = "fbc7306b83b176e344880a300f42f38b5ab2a21ecb4e77c03b0bcdb04a45140c"
+QWEN25_BPAIRS_AUROC = 0.839  # docs/results/phase1/probe_main.md
+N_BOOT = 2000
+SEED = 0
 
 Rows = Callable[[str, int, int], tuple[np.ndarray, np.ndarray]]
 
@@ -187,9 +197,103 @@ def select_stage(rows: Rows, out: Path, *, probe_dir: Path, source: dict, captur
     return selection
 
 
-def kept_rows() -> tuple[Rows, dict, dict]:
-    """A row reader over kept/ by split, the capture's metadata, and the inputs' provenance. Each
-    array is loaded once, on first use, and the splits' labels must equal kept/'s."""
+def pair_of(prompt_id: str) -> str:
+    """A boundary-pairs id's pair, apibp_0059 for bpairs/apibp_0059_a and _b. Grouping by it gives the
+    dataset's own 600 pair_id groups, checked on 2026-10-23."""
+    return prompt_id.split("/", 1)[1].rsplit("_", 1)[0]
+
+
+def rate(k: int, n: int) -> dict:
+    return {"rate": k / n if n else None, "k": k, "n": n, "ci95": list(hulder.clopper_pearson(k, n)) if n else None}
+
+
+def at_threshold(scores: np.ndarray, y: np.ndarray, threshold: float) -> dict:
+    flagged = scores > threshold
+    return {
+        "fpr": rate(int((flagged & (y == 0)).sum()), int((y == 0).sum())),
+        "fnr": rate(int((~flagged & (y == 1)).sum()), int((y == 1).sum())),
+    }
+
+
+def auroc_ci(scores: np.ndarray, y: np.ndarray, clusters: list[str] | None = None) -> dict:
+    """AUROC with a percentile bootstrap, resampling whole clusters (boundary-pairs pairs) when given."""
+    rng = np.random.default_rng(SEED)
+    groups = np.arange(len(y)) if clusters is None else np.asarray(clusters)
+    uniq = np.unique(groups)
+    members = {g: np.flatnonzero(groups == g) for g in uniq}
+    boots = []
+    for _ in range(N_BOOT):
+        idx = np.concatenate([members[g] for g in rng.choice(uniq, size=len(uniq))])
+        if len(np.unique(y[idx])) == 2:
+            boots.append(roc_auc_score(y[idx], scores[idx]))
+    return {"auroc": float(roc_auc_score(y, scores)), "ci95": np.percentile(boots, [2.5, 97.5]).tolist()}
+
+
+def score_stage(
+    rows: Rows,
+    ids_of: Callable[[str], list[str]],
+    *,
+    selection: Path,
+    probe_dir: Path,
+    out: Path,
+    source: dict,
+    expected_sha256: str = SELECTION_SHA256,
+) -> dict:
+    """Score calibration, test and all of boundary-pairs once for every cell, at the frozen thresholds.
+    Runs only on the committed selection and its probes, and only once."""
+    got = _sha256(selection) if selection.exists() else None
+    if got != expected_sha256:
+        raise SystemExit(f"{selection}'s sha256 is {got}, not the committed selection's {expected_sha256}")
+    if out.exists():
+        raise SystemExit(f"{out} exists: test is already scored, and is scored once")
+    frozen = json.loads(selection.read_text())
+    for name, cell in frozen["cells"].items():
+        if _sha256(probe_dir / f"{name}.npz") != cell["probe_sha256"]:
+            raise SystemExit(f"{probe_dir / name}.npz isn't the probe the selection froze for cell {name}")
+    pairs = [pair_of(i) for i in ids_of("bpairs")]
+    cells = {}
+    for name, cell in frozen["cells"].items():
+        layer, position = (int(v) for v in name.split("_"))
+        probe = hulder.Probe.load(probe_dir / f"{name}.npz")
+        threshold = cell["threshold"]
+        scored = {}
+        for split in ("calibration", "test", "bpairs"):
+            x, y = rows(split, layer, position)
+            scored[split] = (hulder.apply_probe(probe, x), y)
+        cal, test, bp = scored["calibration"], scored["test"], scored["bpairs"]
+        cells[name] = {
+            "threshold": threshold,
+            "calibration": {
+                **at_threshold(*cal, threshold),
+                "median_benign_score": float(np.median(cal[0][cal[1] == 0])),
+            },
+            "test": {**auroc_ci(*test), **at_threshold(*test, threshold)},
+            "bpairs": {
+                **auroc_ci(*bp, clusters=pairs),
+                **at_threshold(*bp, threshold),
+                "bootstrap": "pair-clustered",
+                "median_benign_score": float(np.median(bp[0][bp[1] == 0])),
+                "qwen25_auroc": QWEN25_BPAIRS_AUROC,
+            },
+        }
+        print(
+            f"{name}: test AUROC {cells[name]['test']['auroc']:.4f}, bpairs AUROC {cells[name]['bpairs']['auroc']:.4f}"
+        )
+    result = {
+        "primary": frozen["primary"],
+        "selection_sha256": got,
+        "cells": cells,
+        "bootstrap": {"resamples": N_BOOT, "seed": SEED},
+        "source": source,
+    }
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(result, indent=2) + "\n")
+    return result
+
+
+def kept_rows() -> tuple[Rows, Callable[[str], list[str]], dict, dict]:
+    """A row reader over kept/ by split, each split's ids, the capture's metadata, and the inputs'
+    provenance. One array is in memory at a time, and the splits' labels must equal kept/'s."""
     import pandas as pd
 
     df = pd.read_parquet(SPLITS, columns=["id", "split", "label"])
@@ -208,7 +312,10 @@ def kept_rows() -> tuple[Rows, dict, dict]:
     ids = [str(i) for i in first.ids]
     if [int(label_of[i]) for i in ids] != [int(v) for v in first.labels]:
         raise ValueError("kept/'s labels differ from splits.parquet's")
-    rows_of = {s: np.array([i for i, x in enumerate(ids) if split_of[x] == s]) for s in SELECT_SPLITS}
+    group = {s: s for s in SELECT_SPLITS + ("test",)} | {
+        s: "bpairs" for s in set(split_of.values()) if s.startswith("bpairs_")
+    }
+    rows_of = {s: np.array([i for i, x in enumerate(ids) if group[split_of[x]] == s]) for s in SPLIT_NAMES}
 
     def rows(split: str, layer: int, position: int) -> tuple[np.ndarray, np.ndarray]:
         s = snapshot(layer, position)
@@ -229,15 +336,18 @@ def kept_rows() -> tuple[Rows, dict, dict]:
         "packages": {p: version(p) for p in ("hulder", "numpy", "scikit-learn", "pandas")},
         "counts": {s: len(r) for s, r in rows_of.items()},
     }
-    return rows, dict(first.metadata), source
+    return rows, lambda split: [ids[i] for i in rows_of[split]], dict(first.metadata), source
 
 
 def main(stage: str) -> None:
-    if stage != "select":
-        raise SystemExit("usage: train_qwen3.py select (the score stage comes after the selection is reviewed)")
-    rows, meta, source = kept_rows()
-    selection = select_stage(rows, SELECTION, probe_dir=PROBES, source=source, capture_meta=meta)
-    print(json.dumps({k: v for k, v in selection.items() if k != "source"}, indent=2))
+    rows, ids_of, meta, source = kept_rows()
+    if stage == "select":
+        selection = select_stage(rows, SELECTION, probe_dir=PROBES, source=source, capture_meta=meta)
+        print(json.dumps({k: v for k, v in selection.items() if k != "source"}, indent=2))
+    elif stage == "score":
+        score_stage(rows, ids_of, selection=SELECTION, probe_dir=PROBES, out=SCORES, source=source)
+    else:
+        raise SystemExit("usage: train_qwen3.py select|score")
 
 
 if __name__ == "__main__":
