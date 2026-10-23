@@ -224,6 +224,16 @@ def test_with_force_a_run_that_stops_leaves_the_earlier_kept_dataset_and_says_so
     assert not (run_dir / "kept.new").exists()
 
 
+@pytest.mark.parametrize("force", [False, True])
+def test_a_kept_old_left_by_an_interrupted_swap_is_refused_even_with_force(world, force):
+    run_dir = make_run(world)
+    (run_dir / "kept.old").mkdir()
+    (run_dir / "kept.old" / "18_-1.npz").write_bytes(b"earlier")
+    with pytest.raises(FileExistsError, match="kept.old"):
+        summarise(world, run_dir, force=force)
+    assert (run_dir / "kept.old" / "18_-1.npz").read_bytes() == b"earlier"
+
+
 def test_with_force_a_keep_that_fails_part_way_leaves_the_earlier_kept_dataset(world, monkeypatch):
     run_dir = make_run(world)
     before = earlier_kept(run_dir)

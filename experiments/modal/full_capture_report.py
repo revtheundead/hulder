@@ -70,6 +70,9 @@ def summarise(
     reference_cluster: str = MAJORITY,
     force: bool = False,
 ) -> dict:
+    if (run_dir / "kept.old").exists():
+        # An interrupted swap: it may hold the only copy of the earlier kept dataset, so a person decides.
+        raise FileExistsError(f"{run_dir / 'kept.old'} is left from an interrupted swap; restore or remove it first")
     if (run_dir / "kept").exists() and not force:
         raise FileExistsError(f"{run_dir / 'kept'} exists, and a rerun would replace it; pass --force to allow that")
     run = json.loads((run_dir / "manifest.json").read_text())
@@ -268,9 +271,8 @@ def _keep(run_dir, labels, names, batches, workers, majority_canary, splits, bat
     contributing = sorted({label for b in batches for label in b["majority"]})
     drivers = sorted({workers[label]["gpu_driver"] for label in contributing})
     out, kept, old = run_dir / "kept.new", run_dir / "kept", run_dir / "kept.old"
-    for leftover in (out, old):
-        if leftover.exists():
-            shutil.rmtree(leftover)
+    if out.exists():  # a partial write from a run that failed part way
+        shutil.rmtree(out)
     out.mkdir()
     # R1 checked every replica's token ids against its hash, and the hashes against each other.
     token_ids = dict(zip(*lib.load_token_ids(run_dir / contributing[0] / lib.TOKEN_IDS_FILE), strict=True))
