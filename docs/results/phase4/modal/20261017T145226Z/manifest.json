@@ -1,0 +1,42 @@
+{
+  "run_id": "20261017T145226Z",
+  "experiment": "pilot",
+  "single_use": false,
+  "commit": "3309187eaff3a35f4a6b2c8f06b47b3781c4f015",
+  "command": "uv run --with modal==1.6.1 modal run experiments/modal/capture.py --experiment pilot --spent-usd 0.0",
+  "modal": "1.6.1",
+  "rates_usd_per_s": {
+    "L4": 0.000222,
+    "cpu_core": 1.31e-05,
+    "memory_gib": 2.22e-06
+  },
+  "spent_before_usd": 0.0,
+  "containers": [
+    {
+      "labels": [
+        "canary_check",
+        "pilot"
+      ],
+      "wall_seconds": 116.0,
+      "estimated_usd": 0.0401
+    }
+  ],
+  "configs": {
+    "canary_check": {
+      "container": 0,
+      "config": "qwen3_4b_bf16_canary_check",
+      "returncode": 0
+    },
+    "pilot": {
+      "container": 0,
+      "config": "qwen3_4b_bf16_pilot",
+      "returncode": 0
+    }
+  },
+  "download": {
+    "seconds": 0.5,
+    "wall_seconds": 5.8,
+    "estimated_usd": 0.0002
+  },
+  "estimated_usd": 0.0403
+}
