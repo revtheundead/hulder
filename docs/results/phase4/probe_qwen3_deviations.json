@@ -1,0 +1,2679 @@
+{
+  "selection_sha256": "fbc7306b83b176e344880a300f42f38b5ab2a21ecb4e77c03b0bcdb04a45140c",
+  "pairs": [
+    {
+      "name": "whole-capture, 20261013T141533Z rerun",
+      "deviated": "20261013T141533Z/qwen3_4b_bf16_rerun",
+      "twin": "20261013T141533Z/qwen3_4b_bf16",
+      "cells": {
+        "18_-1": {
+          "threshold": 0.8025219440460205,
+          "compared": 64,
+          "deviated": 64,
+          "flips": 0,
+          "mean_abs_delta_score": 0.0013667619787156582,
+          "max_abs_delta_score": 0.011926859617233276,
+          "mean_abs_delta_logit": 0.02786969719454646,
+          "max_abs_delta_logit": 0.10432672500610352,
+          "rows": [
+            {
+              "id": "bpairs/apibp_0059_a",
+              "label": 1,
+              "twin_score": 0.9998705387115479,
+              "score": 0.999872088432312,
+              "delta_score": 1.5497207641601562e-06,
+              "delta_logit": 0.011961936950683594,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0112_a",
+              "label": 1,
+              "twin_score": 0.861434280872345,
+              "score": 0.858852744102478,
+              "delta_score": -0.0025815367698669434,
+              "delta_logit": -0.02146005630493164,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0079_b",
+              "label": 0,
+              "twin_score": 0.8592715263366699,
+              "score": 0.8568766117095947,
+              "delta_score": -0.0023949146270751953,
+              "delta_logit": -0.019665241241455078,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0553_b",
+              "label": 0,
+              "twin_score": 0.9720965623855591,
+              "score": 0.9713699221611023,
+              "delta_score": -0.0007266402244567871,
+              "delta_logit": -0.02645111083984375,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0019_b",
+              "label": 0,
+              "twin_score": 0.8988113403320312,
+              "score": 0.9024733304977417,
+              "delta_score": 0.0036619901657104492,
+              "delta_logit": 0.04092693328857422,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0022_b",
+              "label": 0,
+              "twin_score": 0.957841694355011,
+              "score": 0.9601231813430786,
+              "delta_score": 0.002281486988067627,
+              "delta_logit": 0.05801534652709961,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0227_b",
+              "label": 0,
+              "twin_score": 0.978661060333252,
+              "score": 0.9802114963531494,
+              "delta_score": 0.001550436019897461,
+              "delta_logit": 0.0770111083984375,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0029_b",
+              "label": 0,
+              "twin_score": 0.9487507939338684,
+              "score": 0.9500359296798706,
+              "delta_score": 0.0012851357460021973,
+              "delta_logit": 0.026749610900878906,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0377_b",
+              "label": 0,
+              "twin_score": 0.9893813133239746,
+              "score": 0.9894776940345764,
+              "delta_score": 9.638071060180664e-05,
+              "delta_logit": 0.009221076965332031,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0524_b",
+              "label": 0,
+              "twin_score": 0.9449490904808044,
+              "score": 0.9456285834312439,
+              "delta_score": 0.0006794929504394531,
+              "delta_logit": 0.013138771057128906,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0104_a",
+              "label": 1,
+              "twin_score": 0.9755331873893738,
+              "score": 0.9774497747421265,
+              "delta_score": 0.0019165873527526855,
+              "delta_logit": 0.08353519439697266,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0422_a",
+              "label": 1,
+              "twin_score": 0.9636455774307251,
+              "score": 0.9641473889350891,
+              "delta_score": 0.0005018115043640137,
+              "delta_logit": 0.014421463012695312,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0477_a",
+              "label": 1,
+              "twin_score": 0.9960750937461853,
+              "score": 0.9960895776748657,
+              "delta_score": 1.4483928680419922e-05,
+              "delta_logit": 0.0037207603454589844,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0503_a",
+              "label": 1,
+              "twin_score": 0.9896588921546936,
+              "score": 0.9898537993431091,
+              "delta_score": 0.00019490718841552734,
+              "delta_logit": 0.01922750473022461,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0319_b",
+              "label": 0,
+              "twin_score": 0.9977574944496155,
+              "score": 0.9978151321411133,
+              "delta_score": 5.7637691497802734e-05,
+              "delta_logit": 0.02610015869140625,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0509_a",
+              "label": 1,
+              "twin_score": 0.8692918419837952,
+              "score": 0.8663353323936462,
+              "delta_score": -0.0029565095901489258,
+              "delta_logit": -0.02577376365661621,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0429_a",
+              "label": 1,
+              "twin_score": 0.9206103682518005,
+              "score": 0.9168364405632019,
+              "delta_score": -0.003773927688598633,
+              "delta_logit": -0.05054903030395508,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0177_a",
+              "label": 1,
+              "twin_score": 0.8672714233398438,
+              "score": 0.8691616058349609,
+              "delta_score": 0.0018901824951171875,
+              "delta_logit": 0.016520023345947266,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0063_a",
+              "label": 1,
+              "twin_score": 0.9993361830711365,
+              "score": 0.9993665814399719,
+              "delta_score": 3.039836883544922e-05,
+              "delta_logit": 0.046935081481933594,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0327_a",
+              "label": 1,
+              "twin_score": 0.993446409702301,
+              "score": 0.9935696125030518,
+              "delta_score": 0.00012320280075073242,
+              "delta_logit": 0.019096851348876953,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0258_a",
+              "label": 1,
+              "twin_score": 0.9824236631393433,
+              "score": 0.981759786605835,
+              "delta_score": -0.0006638765335083008,
+              "delta_logit": -0.03774905204772949,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0122_a",
+              "label": 1,
+              "twin_score": 0.853203296661377,
+              "score": 0.849126398563385,
+              "delta_score": -0.004076898097991943,
+              "delta_logit": -0.03218388557434082,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0304_a",
+              "label": 1,
+              "twin_score": 0.9798540472984314,
+              "score": 0.9804587364196777,
+              "delta_score": 0.0006046891212463379,
+              "delta_logit": 0.031092166900634766,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0424_a",
+              "label": 1,
+              "twin_score": 0.9442998170852661,
+              "score": 0.9429398775100708,
+              "delta_score": -0.0013599395751953125,
+              "delta_logit": -0.025562524795532227,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0127_a",
+              "label": 1,
+              "twin_score": 0.8732342720031738,
+              "score": 0.8788545727729797,
+              "delta_score": 0.005620300769805908,
+              "delta_logit": 0.051764726638793945,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0009_b",
+              "label": 0,
+              "twin_score": 0.9704689979553223,
+              "score": 0.9695016145706177,
+              "delta_score": -0.0009673833847045898,
+              "delta_logit": -0.03322887420654297,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0172_b",
+              "label": 0,
+              "twin_score": 0.7594866752624512,
+              "score": 0.7634899616241455,
+              "delta_score": 0.004003286361694336,
+              "delta_logit": 0.022042274475097656,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0478_b",
+              "label": 0,
+              "twin_score": 0.9826486110687256,
+              "score": 0.9818384647369385,
+              "delta_score": -0.0008101463317871094,
+              "delta_logit": -0.04645800590515137,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0558_a",
+              "label": 1,
+              "twin_score": 0.9720383286476135,
+              "score": 0.9728596806526184,
+              "delta_score": 0.0008213520050048828,
+              "delta_logit": 0.03065776824951172,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0263_b",
+              "label": 0,
+              "twin_score": 0.9659740924835205,
+              "score": 0.9661107063293457,
+              "delta_score": 0.0001366138458251953,
+              "delta_logit": 0.004164457321166992,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0434_b",
+              "label": 0,
+              "twin_score": 0.9944885969161987,
+              "score": 0.9944685697555542,
+              "delta_score": -2.002716064453125e-05,
+              "delta_logit": -0.0036640167236328125,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0362_b",
+              "label": 0,
+              "twin_score": 0.969739556312561,
+              "score": 0.9691629409790039,
+              "delta_score": -0.0005766153335571289,
+              "delta_logit": -0.019470691680908203,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0329_a",
+              "label": 1,
+              "twin_score": 0.9711089134216309,
+              "score": 0.9710686802864075,
+              "delta_score": -4.023313522338867e-05,
+              "delta_logit": -0.001434326171875,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0512_b",
+              "label": 0,
+              "twin_score": 0.9461514353752136,
+              "score": 0.9415475726127625,
+              "delta_score": -0.004603862762451172,
+              "delta_logit": -0.08691549301147461,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0374_b",
+              "label": 0,
+              "twin_score": 0.9941820502281189,
+              "score": 0.9939327836036682,
+              "delta_score": -0.0002492666244506836,
+              "delta_logit": -0.04221677780151367,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0303_a",
+              "label": 1,
+              "twin_score": 0.984177827835083,
+              "score": 0.9841899275779724,
+              "delta_score": 1.2099742889404297e-05,
+              "delta_logit": 0.0007748603820800781,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0504_a",
+              "label": 1,
+              "twin_score": 0.9329714775085449,
+              "score": 0.9338022470474243,
+              "delta_score": 0.0008307695388793945,
+              "delta_logit": 0.01336216926574707,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0022_a",
+              "label": 1,
+              "twin_score": 0.9766218066215515,
+              "score": 0.9774996638298035,
+              "delta_score": 0.0008778572082519531,
+              "delta_logit": 0.039174556732177734,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0472_a",
+              "label": 1,
+              "twin_score": 0.9952682852745056,
+              "score": 0.995262622833252,
+              "delta_score": -5.662441253662109e-06,
+              "delta_logit": -0.0012035369873046875,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0059_b",
+              "label": 0,
+              "twin_score": 0.913597583770752,
+              "score": 0.9154397249221802,
+              "delta_score": 0.0018421411514282227,
+              "delta_logit": 0.023564577102661133,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0078_b",
+              "label": 0,
+              "twin_score": 0.9900161623954773,
+              "score": 0.9901552200317383,
+              "delta_score": 0.00013905763626098633,
+              "delta_logit": 0.014176368713378906,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0128_b",
+              "label": 0,
+              "twin_score": 0.4438631534576416,
+              "score": 0.4557900130748749,
+              "delta_score": 0.011926859617233276,
+              "delta_logit": 0.048195093870162964,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0009_a",
+              "label": 1,
+              "twin_score": 0.9978267550468445,
+              "score": 0.9979959726333618,
+              "delta_score": 0.00016921758651733398,
+              "delta_logit": 0.08121252059936523,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0579_b",
+              "label": 0,
+              "twin_score": 0.9704356789588928,
+              "score": 0.9699864983558655,
+              "delta_score": -0.00044918060302734375,
+              "delta_logit": -0.015544414520263672,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0504_b",
+              "label": 0,
+              "twin_score": 0.9094457030296326,
+              "score": 0.9113538265228271,
+              "delta_score": 0.00190812349319458,
+              "delta_logit": 0.023392677307128906,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0559_a",
+              "label": 1,
+              "twin_score": 0.9420414566993713,
+              "score": 0.9432973861694336,
+              "delta_score": 0.0012559294700622559,
+              "delta_logit": 0.023240089416503906,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0562_b",
+              "label": 0,
+              "twin_score": 0.8618922233581543,
+              "score": 0.8587155342102051,
+              "delta_score": -0.0031766891479492188,
+              "delta_logit": -0.026433706283569336,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0403_a",
+              "label": 1,
+              "twin_score": 0.8891516923904419,
+              "score": 0.8896811604499817,
+              "delta_score": 0.0005294680595397949,
+              "delta_logit": 0.005383729934692383,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0103_a",
+              "label": 1,
+              "twin_score": 0.9904392957687378,
+              "score": 0.9906733632087708,
+              "delta_score": 0.00023406744003295898,
+              "delta_logit": 0.025030136108398438,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0462_a",
+              "label": 1,
+              "twin_score": 0.995378851890564,
+              "score": 0.9953696131706238,
+              "delta_score": -9.238719940185547e-06,
+              "delta_logit": -0.002002716064453125,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0328_a",
+              "label": 1,
+              "twin_score": 0.9817460775375366,
+              "score": 0.9825656414031982,
+              "delta_score": 0.0008195638656616211,
+              "delta_logit": 0.046770334243774414,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0469_a",
+              "label": 1,
+              "twin_score": 0.991751492023468,
+              "score": 0.9915059208869934,
+              "delta_score": -0.0002455711364746094,
+              "delta_logit": -0.029580116271972656,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0478_a",
+              "label": 1,
+              "twin_score": 0.9931004047393799,
+              "score": 0.9931106567382812,
+              "delta_score": 1.0251998901367188e-05,
+              "delta_logit": 0.0014905929565429688,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0528_b",
+              "label": 0,
+              "twin_score": 0.9689101576805115,
+              "score": 0.965609073638916,
+              "delta_score": -0.003301084041595459,
+              "delta_logit": -0.10432672500610352,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0313_b",
+              "label": 0,
+              "twin_score": 0.9941799640655518,
+              "score": 0.9941726326942444,
+              "delta_score": -7.331371307373047e-06,
+              "delta_logit": -0.0012645721435546875,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0013_b",
+              "label": 0,
+              "twin_score": 0.9674530029296875,
+              "score": 0.9684697389602661,
+              "delta_score": 0.0010167360305786133,
+              "delta_logit": 0.032787322998046875,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0463_a",
+              "label": 1,
+              "twin_score": 0.995989978313446,
+              "score": 0.9962148070335388,
+              "delta_score": 0.00022482872009277344,
+              "delta_logit": 0.057946205139160156,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0413_a",
+              "label": 1,
+              "twin_score": 0.9133193492889404,
+              "score": 0.9131977558135986,
+              "delta_score": -0.00012159347534179688,
+              "delta_logit": -0.001535177230834961,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0527_b",
+              "label": 0,
+              "twin_score": 0.9708197712898254,
+              "score": 0.970966637134552,
+              "delta_score": 0.0001468658447265625,
+              "delta_logit": 0.00519561767578125,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0278_b",
+              "label": 0,
+              "twin_score": 0.922581136226654,
+              "score": 0.9228329658508301,
+              "delta_score": 0.0002518296241760254,
+              "delta_logit": 0.003531932830810547,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0204_b",
+              "label": 0,
+              "twin_score": 0.9486088752746582,
+              "score": 0.9494494199752808,
+              "delta_score": 0.0008405447006225586,
+              "delta_logit": 0.017378568649291992,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0554_b",
+              "label": 0,
+              "twin_score": 0.9733502864837646,
+              "score": 0.9728346467018127,
+              "delta_score": -0.0005156397819519043,
+              "delta_logit": -0.019693851470947266,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0113_b",
+              "label": 0,
+              "twin_score": 0.6421088576316833,
+              "score": 0.6394079327583313,
+              "delta_score": -0.0027009248733520508,
+              "delta_logit": -0.011733531951904297,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0284_b",
+              "label": 0,
+              "twin_score": 0.8990539908409119,
+              "score": 0.8964240550994873,
+              "delta_score": -0.0026299357414245605,
+              "delta_logit": -0.028648853302001953,
+              "flip": false
+            }
+          ]
+        },
+        "27_-1": {
+          "threshold": 0.6854614019393921,
+          "compared": 64,
+          "deviated": 64,
+          "flips": 0,
+          "mean_abs_delta_score": 0.0005552079528570175,
+          "max_abs_delta_score": 0.0037053823471069336,
+          "mean_abs_delta_logit": 0.021634770557284355,
+          "max_abs_delta_logit": 0.07607483863830566,
+          "rows": [
+            {
+              "id": "bpairs/apibp_0059_a",
+              "label": 1,
+              "twin_score": 0.9990026354789734,
+              "score": 0.9989720582962036,
+              "delta_score": -3.057718276977539e-05,
+              "delta_logit": -0.03032207489013672,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0112_a",
+              "label": 1,
+              "twin_score": 0.9555382132530212,
+              "score": 0.9553028345108032,
+              "delta_score": -0.00023537874221801758,
+              "delta_logit": -0.005527019500732422,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0079_b",
+              "label": 0,
+              "twin_score": 0.9296291470527649,
+              "score": 0.930113673210144,
+              "delta_score": 0.0004845261573791504,
+              "delta_logit": 0.0074310302734375,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0553_b",
+              "label": 0,
+              "twin_score": 0.996263325214386,
+              "score": 0.99616539478302,
+              "delta_score": -9.79304313659668e-05,
+              "delta_logit": -0.025980472564697266,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0019_b",
+              "label": 0,
+              "twin_score": 0.9441772699356079,
+              "score": 0.9428837895393372,
+              "delta_score": -0.001293480396270752,
+              "delta_logit": -0.0242769718170166,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0022_b",
+              "label": 0,
+              "twin_score": 0.9707794189453125,
+              "score": 0.9717930555343628,
+              "delta_score": 0.001013636589050293,
+              "delta_logit": 0.036345481872558594,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0227_b",
+              "label": 0,
+              "twin_score": 0.968815803527832,
+              "score": 0.970011830329895,
+              "delta_score": 0.0011960268020629883,
+              "delta_logit": 0.04034233093261719,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0029_b",
+              "label": 0,
+              "twin_score": 0.9743075966835022,
+              "score": 0.9747133255004883,
+              "delta_score": 0.000405728816986084,
+              "delta_logit": 0.016336917877197266,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0377_b",
+              "label": 0,
+              "twin_score": 0.9944431185722351,
+              "score": 0.9945465326309204,
+              "delta_score": 0.00010341405868530273,
+              "delta_logit": 0.018880844116210938,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0524_b",
+              "label": 0,
+              "twin_score": 0.9841391444206238,
+              "score": 0.984521210193634,
+              "delta_score": 0.0003820657730102539,
+              "delta_logit": 0.024775028228759766,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0104_a",
+              "label": 1,
+              "twin_score": 0.9941483736038208,
+              "score": 0.9945458173751831,
+              "delta_score": 0.0003974437713623047,
+              "delta_logit": 0.07071685791015625,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0422_a",
+              "label": 1,
+              "twin_score": 0.9849291443824768,
+              "score": 0.9841391444206238,
+              "delta_score": -0.0007899999618530273,
+              "delta_logit": -0.051891326904296875,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0477_a",
+              "label": 1,
+              "twin_score": 0.9858852624893188,
+              "score": 0.9857133626937866,
+              "delta_score": -0.00017189979553222656,
+              "delta_logit": -0.012280464172363281,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0503_a",
+              "label": 1,
+              "twin_score": 0.9926683902740479,
+              "score": 0.9925714135169983,
+              "delta_score": -9.697675704956055e-05,
+              "delta_logit": -0.013256072998046875,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0319_b",
+              "label": 0,
+              "twin_score": 0.9920744895935059,
+              "score": 0.9921229481697083,
+              "delta_score": 4.845857620239258e-05,
+              "delta_logit": 0.006174564361572266,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0509_a",
+              "label": 1,
+              "twin_score": 0.989821195602417,
+              "score": 0.9898425936698914,
+              "delta_score": 2.1398067474365234e-05,
+              "delta_logit": 0.0021295547485351562,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0429_a",
+              "label": 1,
+              "twin_score": 0.9917305111885071,
+              "score": 0.9916151762008667,
+              "delta_score": -0.00011533498764038086,
+              "delta_logit": -0.013964653015136719,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0177_a",
+              "label": 1,
+              "twin_score": 0.950715184211731,
+              "score": 0.9506585001945496,
+              "delta_score": -5.6684017181396484e-05,
+              "delta_logit": -0.0012085437774658203,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0063_a",
+              "label": 1,
+              "twin_score": 0.9997428059577942,
+              "score": 0.9997422099113464,
+              "delta_score": -5.960464477539062e-07,
+              "delta_logit": -0.002346038818359375,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0327_a",
+              "label": 1,
+              "twin_score": 0.9974600672721863,
+              "score": 0.9973063468933105,
+              "delta_score": -0.00015372037887573242,
+              "delta_logit": -0.058938026428222656,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0258_a",
+              "label": 1,
+              "twin_score": 0.9874838590621948,
+              "score": 0.9873270392417908,
+              "delta_score": -0.00015681982040405273,
+              "delta_logit": -0.012604713439941406,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0122_a",
+              "label": 1,
+              "twin_score": 0.9657092094421387,
+              "score": 0.9664707183837891,
+              "delta_score": 0.0007615089416503906,
+              "delta_logit": 0.023246049880981445,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0304_a",
+              "label": 1,
+              "twin_score": 0.9606318473815918,
+              "score": 0.961081862449646,
+              "delta_score": 0.0004500150680541992,
+              "delta_logit": 0.011966228485107422,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0424_a",
+              "label": 1,
+              "twin_score": 0.9869883060455322,
+              "score": 0.987251877784729,
+              "delta_score": 0.00026357173919677734,
+              "delta_logit": 0.020732402801513672,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0127_a",
+              "label": 1,
+              "twin_score": 0.9729374051094055,
+              "score": 0.9740318655967712,
+              "delta_score": 0.0010944604873657227,
+              "delta_logit": 0.04240703582763672,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0009_b",
+              "label": 0,
+              "twin_score": 0.9593176245689392,
+              "score": 0.9600564241409302,
+              "delta_score": 0.0007387995719909668,
+              "delta_logit": 0.019095182418823242,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0172_b",
+              "label": 0,
+              "twin_score": 0.8999453783035278,
+              "score": 0.8963226079940796,
+              "delta_score": -0.003622770309448242,
+              "delta_logit": -0.039602041244506836,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0478_b",
+              "label": 0,
+              "twin_score": 0.9980186223983765,
+              "score": 0.997948944568634,
+              "delta_score": -6.967782974243164e-05,
+              "delta_logit": -0.03466224670410156,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0558_a",
+              "label": 1,
+              "twin_score": 0.9823032021522522,
+              "score": 0.9822560548782349,
+              "delta_score": -4.7147274017333984e-05,
+              "delta_logit": -0.0027103424072265625,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0263_b",
+              "label": 0,
+              "twin_score": 0.9758427739143372,
+              "score": 0.9757499098777771,
+              "delta_score": -9.28640365600586e-05,
+              "delta_logit": -0.00392913818359375,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0434_b",
+              "label": 0,
+              "twin_score": 0.9845912456512451,
+              "score": 0.9849022030830383,
+              "delta_score": 0.0003109574317932129,
+              "delta_logit": 0.020705699920654297,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0362_b",
+              "label": 0,
+              "twin_score": 0.9920525550842285,
+              "score": 0.9919342994689941,
+              "delta_score": -0.000118255615234375,
+              "delta_logit": -0.01487874984741211,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0329_a",
+              "label": 1,
+              "twin_score": 0.9650174379348755,
+              "score": 0.964499294757843,
+              "delta_score": -0.0005181431770324707,
+              "delta_logit": -0.01523900032043457,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0512_b",
+              "label": 0,
+              "twin_score": 0.7288627028465271,
+              "score": 0.7251573204994202,
+              "delta_score": -0.0037053823471069336,
+              "delta_logit": -0.01867055892944336,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0374_b",
+              "label": 0,
+              "twin_score": 0.9985944628715515,
+              "score": 0.9985081553459167,
+              "delta_score": -8.630752563476562e-05,
+              "delta_logit": -0.059662818908691406,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0303_a",
+              "label": 1,
+              "twin_score": 0.9970183372497559,
+              "score": 0.9970738887786865,
+              "delta_score": 5.555152893066406e-05,
+              "delta_logit": 0.018868446350097656,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0504_a",
+              "label": 1,
+              "twin_score": 0.9877856969833374,
+              "score": 0.9877907037734985,
+              "delta_score": 5.0067901611328125e-06,
+              "delta_logit": 0.000415802001953125,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0022_a",
+              "label": 1,
+              "twin_score": 0.9212496280670166,
+              "score": 0.921722948551178,
+              "delta_score": 0.00047332048416137695,
+              "delta_logit": 0.006541013717651367,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0472_a",
+              "label": 1,
+              "twin_score": 0.9830635190010071,
+              "score": 0.9831357598304749,
+              "delta_score": 7.224082946777344e-05,
+              "delta_logit": 0.004349708557128906,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0059_b",
+              "label": 0,
+              "twin_score": 0.9627728462219238,
+              "score": 0.9599481821060181,
+              "delta_score": -0.0028246641159057617,
+              "delta_logit": -0.07607483863830566,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0078_b",
+              "label": 0,
+              "twin_score": 0.6603387594223022,
+              "score": 0.6571784615516663,
+              "delta_score": -0.0031602978706359863,
+              "delta_logit": -0.014058709144592285,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0128_b",
+              "label": 0,
+              "twin_score": 0.8397454023361206,
+              "score": 0.8391441106796265,
+              "delta_score": -0.0006012916564941406,
+              "delta_logit": -0.004461526870727539,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0009_a",
+              "label": 1,
+              "twin_score": 0.9995500445365906,
+              "score": 0.999536395072937,
+              "delta_score": -1.3649463653564453e-05,
+              "delta_logit": -0.029912948608398438,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0579_b",
+              "label": 0,
+              "twin_score": 0.9623231291770935,
+              "score": 0.9609122276306152,
+              "delta_score": -0.0014109015464782715,
+              "delta_logit": -0.03822946548461914,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0504_b",
+              "label": 0,
+              "twin_score": 0.9860242009162903,
+              "score": 0.986219584941864,
+              "delta_score": 0.00019538402557373047,
+              "delta_logit": 0.014270305633544922,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0559_a",
+              "label": 1,
+              "twin_score": 0.9866824150085449,
+              "score": 0.9865103363990784,
+              "delta_score": -0.00017207860946655273,
+              "delta_logit": -0.013011455535888672,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0562_b",
+              "label": 0,
+              "twin_score": 0.9624263048171997,
+              "score": 0.961688756942749,
+              "delta_score": -0.0007375478744506836,
+              "delta_logit": -0.020205020904541016,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0403_a",
+              "label": 1,
+              "twin_score": 0.9828134775161743,
+              "score": 0.9826929569244385,
+              "delta_score": -0.00012052059173583984,
+              "delta_logit": -0.007112026214599609,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0103_a",
+              "label": 1,
+              "twin_score": 0.9986732006072998,
+              "score": 0.9986407160758972,
+              "delta_score": -3.248453140258789e-05,
+              "delta_logit": -0.024169921875,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0462_a",
+              "label": 1,
+              "twin_score": 0.9794564843177795,
+              "score": 0.9791771769523621,
+              "delta_score": -0.00027930736541748047,
+              "delta_logit": -0.013790130615234375,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0328_a",
+              "label": 1,
+              "twin_score": 0.9947130084037781,
+              "score": 0.9948558807373047,
+              "delta_score": 0.00014287233352661133,
+              "delta_logit": 0.027525901794433594,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0469_a",
+              "label": 1,
+              "twin_score": 0.9978411197662354,
+              "score": 0.9978868365287781,
+              "delta_score": 4.571676254272461e-05,
+              "delta_logit": 0.021432876586914062,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0478_a",
+              "label": 1,
+              "twin_score": 0.9966835379600525,
+              "score": 0.9965779185295105,
+              "delta_score": -0.00010561943054199219,
+              "delta_logit": -0.03145456314086914,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0528_b",
+              "label": 0,
+              "twin_score": 0.9760127663612366,
+              "score": 0.9766528606414795,
+              "delta_score": 0.0006400942802429199,
+              "delta_logit": 0.027698993682861328,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0313_b",
+              "label": 0,
+              "twin_score": 0.9945900440216064,
+              "score": 0.994697093963623,
+              "delta_score": 0.00010704994201660156,
+              "delta_logit": 0.02010345458984375,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0013_b",
+              "label": 0,
+              "twin_score": 0.9874146580696106,
+              "score": 0.9871323108673096,
+              "delta_score": -0.0002823472023010254,
+              "delta_logit": -0.02248096466064453,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0463_a",
+              "label": 1,
+              "twin_score": 0.9978771209716797,
+              "score": 0.9980048537254333,
+              "delta_score": 0.0001277327537536621,
+              "delta_logit": 0.06219196319580078,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0413_a",
+              "label": 1,
+              "twin_score": 0.9903580546379089,
+              "score": 0.9902389049530029,
+              "delta_score": -0.00011914968490600586,
+              "delta_logit": -0.012392520904541016,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0527_b",
+              "label": 0,
+              "twin_score": 0.9167119264602661,
+              "score": 0.917665421962738,
+              "delta_score": 0.0009534955024719238,
+              "delta_logit": 0.01255345344543457,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0278_b",
+              "label": 0,
+              "twin_score": 0.9790852069854736,
+              "score": 0.978952169418335,
+              "delta_score": -0.00013303756713867188,
+              "delta_logit": -0.006478309631347656,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0204_b",
+              "label": 0,
+              "twin_score": 0.8540800213813782,
+              "score": 0.8518562912940979,
+              "delta_score": -0.0022237300872802734,
+              "delta_logit": -0.017731189727783203,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0554_b",
+              "label": 0,
+              "twin_score": 0.9633352756500244,
+              "score": 0.9635437726974487,
+              "delta_score": 0.0002084970474243164,
+              "delta_logit": 0.005917549133300781,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0113_b",
+              "label": 0,
+              "twin_score": 0.9397737979888916,
+              "score": 0.9401718378067017,
+              "delta_score": 0.0003980398178100586,
+              "delta_logit": 0.007055044174194336,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0284_b",
+              "label": 0,
+              "twin_score": 0.9618422389030457,
+              "score": 0.9626019597053528,
+              "delta_score": 0.0007597208023071289,
+              "delta_logit": 0.020900726318359375,
+              "flip": false
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "whole-capture, 20261013T144543Z",
+      "deviated": "20261013T144543Z/qwen3_4b_bf16",
+      "twin": "20261013T141533Z/qwen3_4b_bf16",
+      "cells": {
+        "18_-1": {
+          "threshold": 0.8025219440460205,
+          "compared": 64,
+          "deviated": 64,
+          "flips": 0,
+          "mean_abs_delta_score": 0.0013667619787156582,
+          "max_abs_delta_score": 0.011926859617233276,
+          "mean_abs_delta_logit": 0.02786969719454646,
+          "max_abs_delta_logit": 0.10432672500610352,
+          "rows": [
+            {
+              "id": "bpairs/apibp_0059_a",
+              "label": 1,
+              "twin_score": 0.9998705387115479,
+              "score": 0.999872088432312,
+              "delta_score": 1.5497207641601562e-06,
+              "delta_logit": 0.011961936950683594,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0112_a",
+              "label": 1,
+              "twin_score": 0.861434280872345,
+              "score": 0.858852744102478,
+              "delta_score": -0.0025815367698669434,
+              "delta_logit": -0.02146005630493164,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0079_b",
+              "label": 0,
+              "twin_score": 0.8592715263366699,
+              "score": 0.8568766117095947,
+              "delta_score": -0.0023949146270751953,
+              "delta_logit": -0.019665241241455078,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0553_b",
+              "label": 0,
+              "twin_score": 0.9720965623855591,
+              "score": 0.9713699221611023,
+              "delta_score": -0.0007266402244567871,
+              "delta_logit": -0.02645111083984375,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0019_b",
+              "label": 0,
+              "twin_score": 0.8988113403320312,
+              "score": 0.9024733304977417,
+              "delta_score": 0.0036619901657104492,
+              "delta_logit": 0.04092693328857422,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0022_b",
+              "label": 0,
+              "twin_score": 0.957841694355011,
+              "score": 0.9601231813430786,
+              "delta_score": 0.002281486988067627,
+              "delta_logit": 0.05801534652709961,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0227_b",
+              "label": 0,
+              "twin_score": 0.978661060333252,
+              "score": 0.9802114963531494,
+              "delta_score": 0.001550436019897461,
+              "delta_logit": 0.0770111083984375,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0029_b",
+              "label": 0,
+              "twin_score": 0.9487507939338684,
+              "score": 0.9500359296798706,
+              "delta_score": 0.0012851357460021973,
+              "delta_logit": 0.026749610900878906,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0377_b",
+              "label": 0,
+              "twin_score": 0.9893813133239746,
+              "score": 0.9894776940345764,
+              "delta_score": 9.638071060180664e-05,
+              "delta_logit": 0.009221076965332031,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0524_b",
+              "label": 0,
+              "twin_score": 0.9449490904808044,
+              "score": 0.9456285834312439,
+              "delta_score": 0.0006794929504394531,
+              "delta_logit": 0.013138771057128906,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0104_a",
+              "label": 1,
+              "twin_score": 0.9755331873893738,
+              "score": 0.9774497747421265,
+              "delta_score": 0.0019165873527526855,
+              "delta_logit": 0.08353519439697266,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0422_a",
+              "label": 1,
+              "twin_score": 0.9636455774307251,
+              "score": 0.9641473889350891,
+              "delta_score": 0.0005018115043640137,
+              "delta_logit": 0.014421463012695312,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0477_a",
+              "label": 1,
+              "twin_score": 0.9960750937461853,
+              "score": 0.9960895776748657,
+              "delta_score": 1.4483928680419922e-05,
+              "delta_logit": 0.0037207603454589844,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0503_a",
+              "label": 1,
+              "twin_score": 0.9896588921546936,
+              "score": 0.9898537993431091,
+              "delta_score": 0.00019490718841552734,
+              "delta_logit": 0.01922750473022461,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0319_b",
+              "label": 0,
+              "twin_score": 0.9977574944496155,
+              "score": 0.9978151321411133,
+              "delta_score": 5.7637691497802734e-05,
+              "delta_logit": 0.02610015869140625,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0509_a",
+              "label": 1,
+              "twin_score": 0.8692918419837952,
+              "score": 0.8663353323936462,
+              "delta_score": -0.0029565095901489258,
+              "delta_logit": -0.02577376365661621,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0429_a",
+              "label": 1,
+              "twin_score": 0.9206103682518005,
+              "score": 0.9168364405632019,
+              "delta_score": -0.003773927688598633,
+              "delta_logit": -0.05054903030395508,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0177_a",
+              "label": 1,
+              "twin_score": 0.8672714233398438,
+              "score": 0.8691616058349609,
+              "delta_score": 0.0018901824951171875,
+              "delta_logit": 0.016520023345947266,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0063_a",
+              "label": 1,
+              "twin_score": 0.9993361830711365,
+              "score": 0.9993665814399719,
+              "delta_score": 3.039836883544922e-05,
+              "delta_logit": 0.046935081481933594,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0327_a",
+              "label": 1,
+              "twin_score": 0.993446409702301,
+              "score": 0.9935696125030518,
+              "delta_score": 0.00012320280075073242,
+              "delta_logit": 0.019096851348876953,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0258_a",
+              "label": 1,
+              "twin_score": 0.9824236631393433,
+              "score": 0.981759786605835,
+              "delta_score": -0.0006638765335083008,
+              "delta_logit": -0.03774905204772949,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0122_a",
+              "label": 1,
+              "twin_score": 0.853203296661377,
+              "score": 0.849126398563385,
+              "delta_score": -0.004076898097991943,
+              "delta_logit": -0.03218388557434082,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0304_a",
+              "label": 1,
+              "twin_score": 0.9798540472984314,
+              "score": 0.9804587364196777,
+              "delta_score": 0.0006046891212463379,
+              "delta_logit": 0.031092166900634766,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0424_a",
+              "label": 1,
+              "twin_score": 0.9442998170852661,
+              "score": 0.9429398775100708,
+              "delta_score": -0.0013599395751953125,
+              "delta_logit": -0.025562524795532227,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0127_a",
+              "label": 1,
+              "twin_score": 0.8732342720031738,
+              "score": 0.8788545727729797,
+              "delta_score": 0.005620300769805908,
+              "delta_logit": 0.051764726638793945,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0009_b",
+              "label": 0,
+              "twin_score": 0.9704689979553223,
+              "score": 0.9695016145706177,
+              "delta_score": -0.0009673833847045898,
+              "delta_logit": -0.03322887420654297,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0172_b",
+              "label": 0,
+              "twin_score": 0.7594866752624512,
+              "score": 0.7634899616241455,
+              "delta_score": 0.004003286361694336,
+              "delta_logit": 0.022042274475097656,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0478_b",
+              "label": 0,
+              "twin_score": 0.9826486110687256,
+              "score": 0.9818384647369385,
+              "delta_score": -0.0008101463317871094,
+              "delta_logit": -0.04645800590515137,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0558_a",
+              "label": 1,
+              "twin_score": 0.9720383286476135,
+              "score": 0.9728596806526184,
+              "delta_score": 0.0008213520050048828,
+              "delta_logit": 0.03065776824951172,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0263_b",
+              "label": 0,
+              "twin_score": 0.9659740924835205,
+              "score": 0.9661107063293457,
+              "delta_score": 0.0001366138458251953,
+              "delta_logit": 0.004164457321166992,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0434_b",
+              "label": 0,
+              "twin_score": 0.9944885969161987,
+              "score": 0.9944685697555542,
+              "delta_score": -2.002716064453125e-05,
+              "delta_logit": -0.0036640167236328125,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0362_b",
+              "label": 0,
+              "twin_score": 0.969739556312561,
+              "score": 0.9691629409790039,
+              "delta_score": -0.0005766153335571289,
+              "delta_logit": -0.019470691680908203,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0329_a",
+              "label": 1,
+              "twin_score": 0.9711089134216309,
+              "score": 0.9710686802864075,
+              "delta_score": -4.023313522338867e-05,
+              "delta_logit": -0.001434326171875,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0512_b",
+              "label": 0,
+              "twin_score": 0.9461514353752136,
+              "score": 0.9415475726127625,
+              "delta_score": -0.004603862762451172,
+              "delta_logit": -0.08691549301147461,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0374_b",
+              "label": 0,
+              "twin_score": 0.9941820502281189,
+              "score": 0.9939327836036682,
+              "delta_score": -0.0002492666244506836,
+              "delta_logit": -0.04221677780151367,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0303_a",
+              "label": 1,
+              "twin_score": 0.984177827835083,
+              "score": 0.9841899275779724,
+              "delta_score": 1.2099742889404297e-05,
+              "delta_logit": 0.0007748603820800781,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0504_a",
+              "label": 1,
+              "twin_score": 0.9329714775085449,
+              "score": 0.9338022470474243,
+              "delta_score": 0.0008307695388793945,
+              "delta_logit": 0.01336216926574707,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0022_a",
+              "label": 1,
+              "twin_score": 0.9766218066215515,
+              "score": 0.9774996638298035,
+              "delta_score": 0.0008778572082519531,
+              "delta_logit": 0.039174556732177734,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0472_a",
+              "label": 1,
+              "twin_score": 0.9952682852745056,
+              "score": 0.995262622833252,
+              "delta_score": -5.662441253662109e-06,
+              "delta_logit": -0.0012035369873046875,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0059_b",
+              "label": 0,
+              "twin_score": 0.913597583770752,
+              "score": 0.9154397249221802,
+              "delta_score": 0.0018421411514282227,
+              "delta_logit": 0.023564577102661133,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0078_b",
+              "label": 0,
+              "twin_score": 0.9900161623954773,
+              "score": 0.9901552200317383,
+              "delta_score": 0.00013905763626098633,
+              "delta_logit": 0.014176368713378906,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0128_b",
+              "label": 0,
+              "twin_score": 0.4438631534576416,
+              "score": 0.4557900130748749,
+              "delta_score": 0.011926859617233276,
+              "delta_logit": 0.048195093870162964,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0009_a",
+              "label": 1,
+              "twin_score": 0.9978267550468445,
+              "score": 0.9979959726333618,
+              "delta_score": 0.00016921758651733398,
+              "delta_logit": 0.08121252059936523,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0579_b",
+              "label": 0,
+              "twin_score": 0.9704356789588928,
+              "score": 0.9699864983558655,
+              "delta_score": -0.00044918060302734375,
+              "delta_logit": -0.015544414520263672,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0504_b",
+              "label": 0,
+              "twin_score": 0.9094457030296326,
+              "score": 0.9113538265228271,
+              "delta_score": 0.00190812349319458,
+              "delta_logit": 0.023392677307128906,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0559_a",
+              "label": 1,
+              "twin_score": 0.9420414566993713,
+              "score": 0.9432973861694336,
+              "delta_score": 0.0012559294700622559,
+              "delta_logit": 0.023240089416503906,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0562_b",
+              "label": 0,
+              "twin_score": 0.8618922233581543,
+              "score": 0.8587155342102051,
+              "delta_score": -0.0031766891479492188,
+              "delta_logit": -0.026433706283569336,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0403_a",
+              "label": 1,
+              "twin_score": 0.8891516923904419,
+              "score": 0.8896811604499817,
+              "delta_score": 0.0005294680595397949,
+              "delta_logit": 0.005383729934692383,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0103_a",
+              "label": 1,
+              "twin_score": 0.9904392957687378,
+              "score": 0.9906733632087708,
+              "delta_score": 0.00023406744003295898,
+              "delta_logit": 0.025030136108398438,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0462_a",
+              "label": 1,
+              "twin_score": 0.995378851890564,
+              "score": 0.9953696131706238,
+              "delta_score": -9.238719940185547e-06,
+              "delta_logit": -0.002002716064453125,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0328_a",
+              "label": 1,
+              "twin_score": 0.9817460775375366,
+              "score": 0.9825656414031982,
+              "delta_score": 0.0008195638656616211,
+              "delta_logit": 0.046770334243774414,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0469_a",
+              "label": 1,
+              "twin_score": 0.991751492023468,
+              "score": 0.9915059208869934,
+              "delta_score": -0.0002455711364746094,
+              "delta_logit": -0.029580116271972656,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0478_a",
+              "label": 1,
+              "twin_score": 0.9931004047393799,
+              "score": 0.9931106567382812,
+              "delta_score": 1.0251998901367188e-05,
+              "delta_logit": 0.0014905929565429688,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0528_b",
+              "label": 0,
+              "twin_score": 0.9689101576805115,
+              "score": 0.965609073638916,
+              "delta_score": -0.003301084041595459,
+              "delta_logit": -0.10432672500610352,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0313_b",
+              "label": 0,
+              "twin_score": 0.9941799640655518,
+              "score": 0.9941726326942444,
+              "delta_score": -7.331371307373047e-06,
+              "delta_logit": -0.0012645721435546875,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0013_b",
+              "label": 0,
+              "twin_score": 0.9674530029296875,
+              "score": 0.9684697389602661,
+              "delta_score": 0.0010167360305786133,
+              "delta_logit": 0.032787322998046875,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0463_a",
+              "label": 1,
+              "twin_score": 0.995989978313446,
+              "score": 0.9962148070335388,
+              "delta_score": 0.00022482872009277344,
+              "delta_logit": 0.057946205139160156,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0413_a",
+              "label": 1,
+              "twin_score": 0.9133193492889404,
+              "score": 0.9131977558135986,
+              "delta_score": -0.00012159347534179688,
+              "delta_logit": -0.001535177230834961,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0527_b",
+              "label": 0,
+              "twin_score": 0.9708197712898254,
+              "score": 0.970966637134552,
+              "delta_score": 0.0001468658447265625,
+              "delta_logit": 0.00519561767578125,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0278_b",
+              "label": 0,
+              "twin_score": 0.922581136226654,
+              "score": 0.9228329658508301,
+              "delta_score": 0.0002518296241760254,
+              "delta_logit": 0.003531932830810547,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0204_b",
+              "label": 0,
+              "twin_score": 0.9486088752746582,
+              "score": 0.9494494199752808,
+              "delta_score": 0.0008405447006225586,
+              "delta_logit": 0.017378568649291992,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0554_b",
+              "label": 0,
+              "twin_score": 0.9733502864837646,
+              "score": 0.9728346467018127,
+              "delta_score": -0.0005156397819519043,
+              "delta_logit": -0.019693851470947266,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0113_b",
+              "label": 0,
+              "twin_score": 0.6421088576316833,
+              "score": 0.6394079327583313,
+              "delta_score": -0.0027009248733520508,
+              "delta_logit": -0.011733531951904297,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0284_b",
+              "label": 0,
+              "twin_score": 0.8990539908409119,
+              "score": 0.8964240550994873,
+              "delta_score": -0.0026299357414245605,
+              "delta_logit": -0.028648853302001953,
+              "flip": false
+            }
+          ]
+        },
+        "27_-1": {
+          "threshold": 0.6854614019393921,
+          "compared": 64,
+          "deviated": 64,
+          "flips": 0,
+          "mean_abs_delta_score": 0.0005552079528570175,
+          "max_abs_delta_score": 0.0037053823471069336,
+          "mean_abs_delta_logit": 0.021634770557284355,
+          "max_abs_delta_logit": 0.07607483863830566,
+          "rows": [
+            {
+              "id": "bpairs/apibp_0059_a",
+              "label": 1,
+              "twin_score": 0.9990026354789734,
+              "score": 0.9989720582962036,
+              "delta_score": -3.057718276977539e-05,
+              "delta_logit": -0.03032207489013672,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0112_a",
+              "label": 1,
+              "twin_score": 0.9555382132530212,
+              "score": 0.9553028345108032,
+              "delta_score": -0.00023537874221801758,
+              "delta_logit": -0.005527019500732422,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0079_b",
+              "label": 0,
+              "twin_score": 0.9296291470527649,
+              "score": 0.930113673210144,
+              "delta_score": 0.0004845261573791504,
+              "delta_logit": 0.0074310302734375,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0553_b",
+              "label": 0,
+              "twin_score": 0.996263325214386,
+              "score": 0.99616539478302,
+              "delta_score": -9.79304313659668e-05,
+              "delta_logit": -0.025980472564697266,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0019_b",
+              "label": 0,
+              "twin_score": 0.9441772699356079,
+              "score": 0.9428837895393372,
+              "delta_score": -0.001293480396270752,
+              "delta_logit": -0.0242769718170166,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0022_b",
+              "label": 0,
+              "twin_score": 0.9707794189453125,
+              "score": 0.9717930555343628,
+              "delta_score": 0.001013636589050293,
+              "delta_logit": 0.036345481872558594,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0227_b",
+              "label": 0,
+              "twin_score": 0.968815803527832,
+              "score": 0.970011830329895,
+              "delta_score": 0.0011960268020629883,
+              "delta_logit": 0.04034233093261719,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0029_b",
+              "label": 0,
+              "twin_score": 0.9743075966835022,
+              "score": 0.9747133255004883,
+              "delta_score": 0.000405728816986084,
+              "delta_logit": 0.016336917877197266,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0377_b",
+              "label": 0,
+              "twin_score": 0.9944431185722351,
+              "score": 0.9945465326309204,
+              "delta_score": 0.00010341405868530273,
+              "delta_logit": 0.018880844116210938,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0524_b",
+              "label": 0,
+              "twin_score": 0.9841391444206238,
+              "score": 0.984521210193634,
+              "delta_score": 0.0003820657730102539,
+              "delta_logit": 0.024775028228759766,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0104_a",
+              "label": 1,
+              "twin_score": 0.9941483736038208,
+              "score": 0.9945458173751831,
+              "delta_score": 0.0003974437713623047,
+              "delta_logit": 0.07071685791015625,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0422_a",
+              "label": 1,
+              "twin_score": 0.9849291443824768,
+              "score": 0.9841391444206238,
+              "delta_score": -0.0007899999618530273,
+              "delta_logit": -0.051891326904296875,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0477_a",
+              "label": 1,
+              "twin_score": 0.9858852624893188,
+              "score": 0.9857133626937866,
+              "delta_score": -0.00017189979553222656,
+              "delta_logit": -0.012280464172363281,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0503_a",
+              "label": 1,
+              "twin_score": 0.9926683902740479,
+              "score": 0.9925714135169983,
+              "delta_score": -9.697675704956055e-05,
+              "delta_logit": -0.013256072998046875,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0319_b",
+              "label": 0,
+              "twin_score": 0.9920744895935059,
+              "score": 0.9921229481697083,
+              "delta_score": 4.845857620239258e-05,
+              "delta_logit": 0.006174564361572266,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0509_a",
+              "label": 1,
+              "twin_score": 0.989821195602417,
+              "score": 0.9898425936698914,
+              "delta_score": 2.1398067474365234e-05,
+              "delta_logit": 0.0021295547485351562,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0429_a",
+              "label": 1,
+              "twin_score": 0.9917305111885071,
+              "score": 0.9916151762008667,
+              "delta_score": -0.00011533498764038086,
+              "delta_logit": -0.013964653015136719,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0177_a",
+              "label": 1,
+              "twin_score": 0.950715184211731,
+              "score": 0.9506585001945496,
+              "delta_score": -5.6684017181396484e-05,
+              "delta_logit": -0.0012085437774658203,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0063_a",
+              "label": 1,
+              "twin_score": 0.9997428059577942,
+              "score": 0.9997422099113464,
+              "delta_score": -5.960464477539062e-07,
+              "delta_logit": -0.002346038818359375,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0327_a",
+              "label": 1,
+              "twin_score": 0.9974600672721863,
+              "score": 0.9973063468933105,
+              "delta_score": -0.00015372037887573242,
+              "delta_logit": -0.058938026428222656,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0258_a",
+              "label": 1,
+              "twin_score": 0.9874838590621948,
+              "score": 0.9873270392417908,
+              "delta_score": -0.00015681982040405273,
+              "delta_logit": -0.012604713439941406,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0122_a",
+              "label": 1,
+              "twin_score": 0.9657092094421387,
+              "score": 0.9664707183837891,
+              "delta_score": 0.0007615089416503906,
+              "delta_logit": 0.023246049880981445,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0304_a",
+              "label": 1,
+              "twin_score": 0.9606318473815918,
+              "score": 0.961081862449646,
+              "delta_score": 0.0004500150680541992,
+              "delta_logit": 0.011966228485107422,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0424_a",
+              "label": 1,
+              "twin_score": 0.9869883060455322,
+              "score": 0.987251877784729,
+              "delta_score": 0.00026357173919677734,
+              "delta_logit": 0.020732402801513672,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0127_a",
+              "label": 1,
+              "twin_score": 0.9729374051094055,
+              "score": 0.9740318655967712,
+              "delta_score": 0.0010944604873657227,
+              "delta_logit": 0.04240703582763672,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0009_b",
+              "label": 0,
+              "twin_score": 0.9593176245689392,
+              "score": 0.9600564241409302,
+              "delta_score": 0.0007387995719909668,
+              "delta_logit": 0.019095182418823242,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0172_b",
+              "label": 0,
+              "twin_score": 0.8999453783035278,
+              "score": 0.8963226079940796,
+              "delta_score": -0.003622770309448242,
+              "delta_logit": -0.039602041244506836,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0478_b",
+              "label": 0,
+              "twin_score": 0.9980186223983765,
+              "score": 0.997948944568634,
+              "delta_score": -6.967782974243164e-05,
+              "delta_logit": -0.03466224670410156,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0558_a",
+              "label": 1,
+              "twin_score": 0.9823032021522522,
+              "score": 0.9822560548782349,
+              "delta_score": -4.7147274017333984e-05,
+              "delta_logit": -0.0027103424072265625,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0263_b",
+              "label": 0,
+              "twin_score": 0.9758427739143372,
+              "score": 0.9757499098777771,
+              "delta_score": -9.28640365600586e-05,
+              "delta_logit": -0.00392913818359375,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0434_b",
+              "label": 0,
+              "twin_score": 0.9845912456512451,
+              "score": 0.9849022030830383,
+              "delta_score": 0.0003109574317932129,
+              "delta_logit": 0.020705699920654297,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0362_b",
+              "label": 0,
+              "twin_score": 0.9920525550842285,
+              "score": 0.9919342994689941,
+              "delta_score": -0.000118255615234375,
+              "delta_logit": -0.01487874984741211,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0329_a",
+              "label": 1,
+              "twin_score": 0.9650174379348755,
+              "score": 0.964499294757843,
+              "delta_score": -0.0005181431770324707,
+              "delta_logit": -0.01523900032043457,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0512_b",
+              "label": 0,
+              "twin_score": 0.7288627028465271,
+              "score": 0.7251573204994202,
+              "delta_score": -0.0037053823471069336,
+              "delta_logit": -0.01867055892944336,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0374_b",
+              "label": 0,
+              "twin_score": 0.9985944628715515,
+              "score": 0.9985081553459167,
+              "delta_score": -8.630752563476562e-05,
+              "delta_logit": -0.059662818908691406,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0303_a",
+              "label": 1,
+              "twin_score": 0.9970183372497559,
+              "score": 0.9970738887786865,
+              "delta_score": 5.555152893066406e-05,
+              "delta_logit": 0.018868446350097656,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0504_a",
+              "label": 1,
+              "twin_score": 0.9877856969833374,
+              "score": 0.9877907037734985,
+              "delta_score": 5.0067901611328125e-06,
+              "delta_logit": 0.000415802001953125,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0022_a",
+              "label": 1,
+              "twin_score": 0.9212496280670166,
+              "score": 0.921722948551178,
+              "delta_score": 0.00047332048416137695,
+              "delta_logit": 0.006541013717651367,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0472_a",
+              "label": 1,
+              "twin_score": 0.9830635190010071,
+              "score": 0.9831357598304749,
+              "delta_score": 7.224082946777344e-05,
+              "delta_logit": 0.004349708557128906,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0059_b",
+              "label": 0,
+              "twin_score": 0.9627728462219238,
+              "score": 0.9599481821060181,
+              "delta_score": -0.0028246641159057617,
+              "delta_logit": -0.07607483863830566,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0078_b",
+              "label": 0,
+              "twin_score": 0.6603387594223022,
+              "score": 0.6571784615516663,
+              "delta_score": -0.0031602978706359863,
+              "delta_logit": -0.014058709144592285,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0128_b",
+              "label": 0,
+              "twin_score": 0.8397454023361206,
+              "score": 0.8391441106796265,
+              "delta_score": -0.0006012916564941406,
+              "delta_logit": -0.004461526870727539,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0009_a",
+              "label": 1,
+              "twin_score": 0.9995500445365906,
+              "score": 0.999536395072937,
+              "delta_score": -1.3649463653564453e-05,
+              "delta_logit": -0.029912948608398438,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0579_b",
+              "label": 0,
+              "twin_score": 0.9623231291770935,
+              "score": 0.9609122276306152,
+              "delta_score": -0.0014109015464782715,
+              "delta_logit": -0.03822946548461914,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0504_b",
+              "label": 0,
+              "twin_score": 0.9860242009162903,
+              "score": 0.986219584941864,
+              "delta_score": 0.00019538402557373047,
+              "delta_logit": 0.014270305633544922,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0559_a",
+              "label": 1,
+              "twin_score": 0.9866824150085449,
+              "score": 0.9865103363990784,
+              "delta_score": -0.00017207860946655273,
+              "delta_logit": -0.013011455535888672,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0562_b",
+              "label": 0,
+              "twin_score": 0.9624263048171997,
+              "score": 0.961688756942749,
+              "delta_score": -0.0007375478744506836,
+              "delta_logit": -0.020205020904541016,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0403_a",
+              "label": 1,
+              "twin_score": 0.9828134775161743,
+              "score": 0.9826929569244385,
+              "delta_score": -0.00012052059173583984,
+              "delta_logit": -0.007112026214599609,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0103_a",
+              "label": 1,
+              "twin_score": 0.9986732006072998,
+              "score": 0.9986407160758972,
+              "delta_score": -3.248453140258789e-05,
+              "delta_logit": -0.024169921875,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0462_a",
+              "label": 1,
+              "twin_score": 0.9794564843177795,
+              "score": 0.9791771769523621,
+              "delta_score": -0.00027930736541748047,
+              "delta_logit": -0.013790130615234375,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0328_a",
+              "label": 1,
+              "twin_score": 0.9947130084037781,
+              "score": 0.9948558807373047,
+              "delta_score": 0.00014287233352661133,
+              "delta_logit": 0.027525901794433594,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0469_a",
+              "label": 1,
+              "twin_score": 0.9978411197662354,
+              "score": 0.9978868365287781,
+              "delta_score": 4.571676254272461e-05,
+              "delta_logit": 0.021432876586914062,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0478_a",
+              "label": 1,
+              "twin_score": 0.9966835379600525,
+              "score": 0.9965779185295105,
+              "delta_score": -0.00010561943054199219,
+              "delta_logit": -0.03145456314086914,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0528_b",
+              "label": 0,
+              "twin_score": 0.9760127663612366,
+              "score": 0.9766528606414795,
+              "delta_score": 0.0006400942802429199,
+              "delta_logit": 0.027698993682861328,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0313_b",
+              "label": 0,
+              "twin_score": 0.9945900440216064,
+              "score": 0.994697093963623,
+              "delta_score": 0.00010704994201660156,
+              "delta_logit": 0.02010345458984375,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0013_b",
+              "label": 0,
+              "twin_score": 0.9874146580696106,
+              "score": 0.9871323108673096,
+              "delta_score": -0.0002823472023010254,
+              "delta_logit": -0.02248096466064453,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0463_a",
+              "label": 1,
+              "twin_score": 0.9978771209716797,
+              "score": 0.9980048537254333,
+              "delta_score": 0.0001277327537536621,
+              "delta_logit": 0.06219196319580078,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0413_a",
+              "label": 1,
+              "twin_score": 0.9903580546379089,
+              "score": 0.9902389049530029,
+              "delta_score": -0.00011914968490600586,
+              "delta_logit": -0.012392520904541016,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0527_b",
+              "label": 0,
+              "twin_score": 0.9167119264602661,
+              "score": 0.917665421962738,
+              "delta_score": 0.0009534955024719238,
+              "delta_logit": 0.01255345344543457,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0278_b",
+              "label": 0,
+              "twin_score": 0.9790852069854736,
+              "score": 0.978952169418335,
+              "delta_score": -0.00013303756713867188,
+              "delta_logit": -0.006478309631347656,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0204_b",
+              "label": 0,
+              "twin_score": 0.8540800213813782,
+              "score": 0.8518562912940979,
+              "delta_score": -0.0022237300872802734,
+              "delta_logit": -0.017731189727783203,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0554_b",
+              "label": 0,
+              "twin_score": 0.9633352756500244,
+              "score": 0.9635437726974487,
+              "delta_score": 0.0002084970474243164,
+              "delta_logit": 0.005917549133300781,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0113_b",
+              "label": 0,
+              "twin_score": 0.9397737979888916,
+              "score": 0.9401718378067017,
+              "delta_score": 0.0003980398178100586,
+              "delta_logit": 0.007055044174194336,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0284_b",
+              "label": 0,
+              "twin_score": 0.9618422389030457,
+              "score": 0.9626019597053528,
+              "delta_score": 0.0007597208023071289,
+              "delta_logit": 0.020900726318359375,
+              "flip": false
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "batch 8, pilot canary_check",
+      "deviated": "20261017T145226Z/canary_check",
+      "twin": "20261019T112159Z/u1_canary_check",
+      "cells": {
+        "18_-1": {
+          "threshold": 0.8025219440460205,
+          "compared": 56,
+          "deviated": 8,
+          "flips": 0,
+          "mean_abs_delta_score": 0.0009268820285797119,
+          "max_abs_delta_score": 0.0034956932067871094,
+          "mean_abs_delta_logit": 0.014367595314979553,
+          "max_abs_delta_logit": 0.025642871856689453,
+          "rows": [
+            {
+              "id": "bpairs/apibp_0463_a",
+              "label": 1,
+              "twin_score": 0.995989978313446,
+              "score": 0.9958914518356323,
+              "delta_score": -9.85264778137207e-05,
+              "delta_logit": -0.024359703063964844,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0413_a",
+              "label": 1,
+              "twin_score": 0.9133193492889404,
+              "score": 0.913600742816925,
+              "delta_score": 0.00028139352798461914,
+              "delta_logit": 0.0035593509674072266,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0527_b",
+              "label": 0,
+              "twin_score": 0.9708197712898254,
+              "score": 0.9711397290229797,
+              "delta_score": 0.0003199577331542969,
+              "delta_logit": 0.0113525390625,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0278_b",
+              "label": 0,
+              "twin_score": 0.922581136226654,
+              "score": 0.9242221713066101,
+              "delta_score": 0.0016410350799560547,
+              "delta_logit": 0.02320098876953125,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0204_b",
+              "label": 0,
+              "twin_score": 0.9486088752746582,
+              "score": 0.9487869739532471,
+              "delta_score": 0.0001780986785888672,
+              "delta_logit": 0.0036602020263671875,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0554_b",
+              "label": 0,
+              "twin_score": 0.9733502864837646,
+              "score": 0.9726770520210266,
+              "delta_score": -0.0006732344627380371,
+              "delta_logit": -0.025642871856689453,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0113_b",
+              "label": 0,
+              "twin_score": 0.6421088576316833,
+              "score": 0.6386131644248962,
+              "delta_score": -0.0034956932067871094,
+              "delta_logit": -0.015179038047790527,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0284_b",
+              "label": 0,
+              "twin_score": 0.8990539908409119,
+              "score": 0.8983268737792969,
+              "delta_score": -0.0007271170616149902,
+              "delta_logit": -0.007986068725585938,
+              "flip": false
+            }
+          ]
+        },
+        "27_-1": {
+          "threshold": 0.6854614019393921,
+          "compared": 56,
+          "deviated": 8,
+          "flips": 0,
+          "mean_abs_delta_score": 0.0022637397050857544,
+          "max_abs_delta_score": 0.0075986385345458984,
+          "mean_abs_delta_logit": 0.03958454728126526,
+          "max_abs_delta_logit": 0.08534860610961914,
+          "rows": [
+            {
+              "id": "bpairs/apibp_0463_a",
+              "label": 1,
+              "twin_score": 0.9978771209716797,
+              "score": 0.9979292154312134,
+              "delta_score": 5.2094459533691406e-05,
+              "delta_logit": 0.024866104125976562,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0413_a",
+              "label": 1,
+              "twin_score": 0.9903580546379089,
+              "score": 0.9904389381408691,
+              "delta_score": 8.088350296020508e-05,
+              "delta_logit": 0.008516788482666016,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0527_b",
+              "label": 0,
+              "twin_score": 0.9167119264602661,
+              "score": 0.9215325713157654,
+              "delta_score": 0.004820644855499268,
+              "delta_logit": 0.0648660659790039,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0278_b",
+              "label": 0,
+              "twin_score": 0.9790852069854736,
+              "score": 0.9795984625816345,
+              "delta_score": 0.0005132555961608887,
+              "delta_logit": 0.025366783142089844,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0204_b",
+              "label": 0,
+              "twin_score": 0.8540800213813782,
+              "score": 0.8616786599159241,
+              "delta_score": 0.0075986385345458984,
+              "delta_logit": 0.06233668327331543,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0554_b",
+              "label": 0,
+              "twin_score": 0.9633352756500244,
+              "score": 0.962400496006012,
+              "delta_score": -0.0009347796440124512,
+              "delta_logit": -0.026146411895751953,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0113_b",
+              "label": 0,
+              "twin_score": 0.9397737979888916,
+              "score": 0.938676118850708,
+              "delta_score": -0.0010976791381835938,
+              "delta_logit": -0.01922893524169922,
+              "flip": false
+            },
+            {
+              "id": "bpairs/apibp_0284_b",
+              "label": 0,
+              "twin_score": 0.9618422389030457,
+              "score": 0.9648541808128357,
+              "delta_score": 0.003011941909790039,
+              "delta_logit": 0.08534860610961914,
+              "flip": false
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "batch 106, pilot",
+      "deviated": "20261017T145226Z/pilot",
+      "twin": "20261022T125644Z/kept",
+      "cells": {
+        "18_-1": {
+          "threshold": 0.8025219440460205,
+          "compared": 1000,
+          "deviated": 1,
+          "flips": 0,
+          "mean_abs_delta_score": 0.0009632240980863571,
+          "max_abs_delta_score": 0.0009632240980863571,
+          "mean_abs_delta_logit": 0.03647899627685547,
+          "max_abs_delta_logit": 0.03647899627685547,
+          "rows": [
+            {
+              "id": "slabs/train/682",
+              "label": 0,
+              "twin_score": 0.02762596867978573,
+              "score": 0.02666274458169937,
+              "delta_score": -0.0009632240980863571,
+              "delta_logit": -0.03647899627685547,
+              "flip": false
+            }
+          ]
+        },
+        "18_-9": {
+          "threshold": 0.7068628668785095,
+          "compared": 1000,
+          "deviated": 1,
+          "flips": 0,
+          "mean_abs_delta_score": 0.00016783084720373154,
+          "max_abs_delta_score": 0.00016783084720373154,
+          "mean_abs_delta_logit": 0.013346195220947266,
+          "max_abs_delta_logit": 0.013346195220947266,
+          "rows": [
+            {
+              "id": "slabs/train/682",
+              "label": 0,
+              "twin_score": 0.012821599841117859,
+              "score": 0.012653768993914127,
+              "delta_score": -0.00016783084720373154,
+              "delta_logit": -0.013346195220947266,
+              "flip": false
+            }
+          ]
+        },
+        "18_-10": {
+          "threshold": 0.8802140355110168,
+          "compared": 1000,
+          "deviated": 1,
+          "flips": 0,
+          "mean_abs_delta_score": 1.3009685062570497e-07,
+          "max_abs_delta_score": 1.3009685062570497e-07,
+          "mean_abs_delta_logit": 0.023619651794433594,
+          "max_abs_delta_logit": 0.023619651794433594,
+          "rows": [
+            {
+              "id": "slabs/train/682",
+              "label": 0,
+              "twin_score": 5.573340786213521e-06,
+              "score": 5.443243935587816e-06,
+              "delta_score": -1.3009685062570497e-07,
+              "delta_logit": -0.023619651794433594,
+              "flip": false
+            }
+          ]
+        },
+        "27_-1": {
+          "threshold": 0.6854614019393921,
+          "compared": 1000,
+          "deviated": 1,
+          "flips": 0,
+          "mean_abs_delta_score": 0.0002938532270491123,
+          "max_abs_delta_score": 0.0002938532270491123,
+          "mean_abs_delta_logit": 0.05686759948730469,
+          "max_abs_delta_logit": 0.05686759948730469,
+          "rows": [
+            {
+              "id": "slabs/train/682",
+              "label": 0,
+              "twin_score": 0.00534261716529727,
+              "score": 0.0050487639382481575,
+              "delta_score": -0.0002938532270491123,
+              "delta_logit": -0.05686759948730469,
+              "flip": false
+            }
+          ]
+        },
+        "27_-9": {
+          "threshold": 0.6964724659919739,
+          "compared": 1000,
+          "deviated": 1,
+          "flips": 0,
+          "mean_abs_delta_score": 3.7995632737874985e-05,
+          "max_abs_delta_score": 3.7995632737874985e-05,
+          "mean_abs_delta_logit": 0.020150184631347656,
+          "max_abs_delta_logit": 0.020150184631347656,
+          "rows": [
+            {
+              "id": "slabs/train/682",
+              "label": 0,
+              "twin_score": 0.0018702512606978416,
+              "score": 0.0019082468934357166,
+              "delta_score": 3.7995632737874985e-05,
+              "delta_logit": 0.020150184631347656,
+              "flip": false
+            }
+          ]
+        },
+        "27_-10": {
+          "threshold": 0.8412460684776306,
+          "compared": 1000,
+          "deviated": 1,
+          "flips": 0,
+          "mean_abs_delta_score": 2.6574241928756237e-05,
+          "max_abs_delta_score": 2.6574241928756237e-05,
+          "mean_abs_delta_logit": 0.018125534057617188,
+          "max_abs_delta_logit": 0.018125534057617188,
+          "rows": [
+            {
+              "id": "slabs/train/682",
+              "label": 0,
+              "twin_score": 0.0014550352934747934,
+              "score": 0.0014816095354035497,
+              "delta_score": 2.6574241928756237e-05,
+              "delta_logit": 0.018125534057617188,
+              "flip": false
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
