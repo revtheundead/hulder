@@ -91,6 +91,24 @@ CONFIGS = {
         ("canary_first", ("slabs_all", 0)),
     ),
 }
+# Experiment 2 (docs/design.md §7): the full capture's batches that
+# hold the calibration split (rows 10,936 to 13,039) and boundary-pairs (rows 15,136 to 16,331, the
+# last batch 4 prompts), as half-open ranges of the full request. With the canary, whose 8 prompts
+# are the other boundary-pairs rows, every batch keeps its full-capture composition.
+FULL_REQUEST = CONFIGS["qwen3_4b_bf16_full"][1]
+EXP2_ROWS = ((10936, 13040), (15136, 16332))
+EXP2_SLICE = ("canary_first", ("rows", FULL_REQUEST, EXP2_ROWS))
+CONFIGS |= {
+    # The control: the full capture's config on the slice, to equal kept/ bit for bit.
+    "qwen3_4b_bf16_exp2": (CONFIGS["qwen3_4b_bf16_full"][0], EXP2_SLICE),
+    # The noise floor: the slice in a seeded order, so each prompt meets other neighbours.
+    "qwen3_4b_bf16_exp2_shuffled": (
+        CONFIGS["qwen3_4b_bf16_full"][0],
+        ("canary_first", ("shuffled", ("rows", FULL_REQUEST, EXP2_ROWS), 1)),
+    ),
+    # The candidate: vLLM's online FP8 (W8A8 on the L4) of the same weights.
+    "qwen3_4b_fp8_online_exp2": ({**CONFIGS["qwen3_4b_bf16_full"][0], "quantization": "fp8"}, EXP2_SLICE),
+}
 # config name -> base model, passed to base_model_for as override=. Only for a checkpoint whose
 # base model it can't find; the worker stops with a warning naming the entry to add.
 BASE_MODEL_OVERRIDES: dict[str, str] = {}
@@ -187,6 +205,18 @@ EXPERIMENTS = {
     # so the kept dataset can be each batch's majority (full_capture_report.py). 12 minutes per
     # config is about 3 times the pilot's projection of engine startup and 2,043 batches.
     "full_capture": ([[(f"r{i}", "qwen3_4b_bf16_full")] for i in (1, 2, 3)], True, 12 * 60),
+    # Experiment 2: the bf16 control, the shuffled bf16 rerun and three online-FP8 replicas, each
+    # batch of which is kept by majority, every one in its own fresh container. 8 minutes per config
+    # is about 2.5 times the slowest expected worker, a cold FP8 compile and 414 batches.
+    "exp2": (
+        [
+            [("control", "qwen3_4b_bf16_exp2")],
+            [("shuffled", "qwen3_4b_bf16_exp2_shuffled")],
+            *([(f"fp8_r{i}", "qwen3_4b_fp8_online_exp2")] for i in (1, 2, 3)),
+        ],
+        True,
+        8 * 60,
+    ),
 }
 
 
@@ -257,13 +287,40 @@ def slabs_all_prompts(seed: int, path: Path = SLABS_SPLITS) -> list[dict]:
     return prompts
 
 
+def rows_of(prompts: list, ranges: tuple[tuple[int, int], ...]) -> list:
+    """The prompts in half-open (start, stop) ranges, in order. Raises unless the ranges are
+    non-empty, ascending, apart and within the prompts."""
+    stops = [0, *(stop for _, stop in ranges)]
+    if any(not prev <= start < stop for prev, (start, stop) in zip(stops[:-1], ranges, strict=True)) or (
+        stops[-1] > len(prompts)
+    ):
+        raise ValueError(f"ranges {ranges} must be non-empty, ascending and apart within {len(prompts)} prompts")
+    return [p for start, stop in ranges for p in prompts[start:stop]]
+
+
+def batch_order_seed(source: tuple) -> int | None:
+    """The seed of the shuffled source within a CONFIGS source, or None if nothing is shuffled."""
+    kind, *args = source
+    if kind == "shuffled":
+        return args[1]
+    if kind in ("canary_first", "rows"):
+        return batch_order_seed(args[0])
+    return None
+
+
 def prompts_for(source: tuple) -> list[dict]:
     """The prompts a CONFIGS source names: ("smoke", n[, start]), smoke_prompts(n)[start:],
-    ("slabs_train", n, seed), ("slabs_all", seed) or ("canary_first", source), canary_first of
-    another source's prompts."""
+    ("slabs_train", n, seed), ("slabs_all", seed), ("canary_first", source), canary_first of
+    another source's prompts, ("rows", source, ranges), rows_of them, or ("shuffled", source,
+    seed), them in numpy's default_rng(seed) permutation."""
     kind, *args = source
     if kind == "canary_first":
         return canary_first(prompts_for(*args))
+    if kind == "rows":
+        return rows_of(prompts_for(args[0]), args[1])
+    if kind == "shuffled":
+        prompts = prompts_for(args[0])
+        return [prompts[i] for i in np.random.default_rng(args[1]).permutation(len(prompts))]
     if kind == "smoke":
         n, start = (*args, 0)[:2]
         return smoke_prompts(n)[start:]
@@ -487,6 +544,9 @@ def worker_spec(entry: tuple, timeout_s: int) -> dict:
         "base_model": BASE_MODEL_OVERRIDES.get(entry[1]),
         "env": entry[2] if len(entry) > 2 else {},
         "timeout_s": timeout_s,
+        # Added to every snapshot's metadata. A shuffled rerun records its seed, so check warns
+        # that its batches differ from the reference's rather than hiding it.
+        "extra_metadata": {} if (seed := batch_order_seed(source)) is None else {"batch_order_seed": seed},
     }
 
 
@@ -557,6 +617,11 @@ def gpu_metadata(nvidia_smi: str) -> dict:
     snapshot metadata: any difference between runs then warns (docs/design.md §6, metadata rule 2)."""
     _, uuid, driver, _ = (field.strip() for field in nvidia_smi.strip().splitlines()[0].split(","))
     return {"gpu_uuid": uuid, "gpu_driver": driver}
+
+
+def with_gpu_metadata(spec: dict, nvidia_smi: str) -> dict:
+    """The spec with the container's GPU UUID and driver added to its own extra metadata."""
+    return {**spec, "extra_metadata": {**spec.get("extra_metadata", {}), **gpu_metadata(nvidia_smi)}}
 
 
 def compare_batches(

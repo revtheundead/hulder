@@ -129,7 +129,7 @@ def run_group(group: list[tuple[str, dict]], run_id: str) -> dict:
         start = time.time()
         out = Path(RUNS) / run_id / label
         out.mkdir(parents=True, exist_ok=True)
-        spec = {**spec, "extra_metadata": lib.gpu_metadata(gpu)}
+        spec = lib.with_gpu_metadata(spec, gpu)
         (out / "spec.json").write_text(json.dumps(spec, indent=2) + "\n")
         env = dict(spec.get("env", {}))
         log_cublas = env.pop(lib.CUBLAS_LOG, None)
