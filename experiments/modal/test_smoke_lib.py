@@ -874,9 +874,9 @@ def test_experiment_2s_request_is_the_canary_then_whole_batches_of_the_full_requ
 
 
 def test_experiment_2s_request_holds_every_calibration_and_boundary_pairs_prompt():
+    ids = set(_exp2_ids("qwen3_4b_bf16_exp2"))  # skips first without the parquet or pandas
     import pandas as pd
 
-    ids = set(_exp2_ids("qwen3_4b_bf16_exp2"))
     split = pd.read_parquet(lib.SLABS_SPLITS, columns=["id", "split"]).set_index("id")["split"]
     assert set(split[split == "calibration"].index) <= ids
     bpairs = set(split[split.str.startswith("bpairs_")].index)

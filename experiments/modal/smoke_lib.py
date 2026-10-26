@@ -91,9 +91,9 @@ CONFIGS = {
         ("canary_first", ("slabs_all", 0)),
     ),
 }
-# Experiment 2 (docs/design.md §7): the full capture's batches that
-# hold the calibration split (rows 10,936 to 13,039) and boundary-pairs (rows 15,136 to 16,331, the
-# last batch 4 prompts), as half-open ranges of the full request. With the canary, whose 8 prompts
+# Experiment 2, the first gate comparison on Qwen3-4B (docs/design.md §7): the full capture's
+# batches that hold the calibration split (rows 10,936 to 13,039) and boundary-pairs (rows 15,136
+# to 16,331, the last batch 4 prompts), as half-open ranges of the full request. With the canary, whose 8 prompts
 # are the other boundary-pairs rows, every batch keeps its full-capture composition.
 FULL_REQUEST = CONFIGS["qwen3_4b_bf16_full"][1]
 EXP2_ROWS = ((10936, 13040), (15136, 16332))
