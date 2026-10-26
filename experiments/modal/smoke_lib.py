@@ -33,6 +33,9 @@ DOWNLOAD_CPU, DOWNLOAD_MEMORY_GIB = 2.0, 4
 # what was spent before the run (--spent-usd).
 CONFIG_TIMEOUT_S = 20 * 60
 BUDGET_USD = 3.0
+# A container's billed time outside its workers (Modal startup, image, Volume), which no timeout
+# bounds. The most measured: 333.3 s, the full capture's r3 (20261022T125644Z), against 179 to 195 s.
+CONTAINER_STARTUP_S = 333
 MAX_CONFIGS_PER_CONTAINER = 6
 
 SYSTEM_PROMPT = "You are a helpful assistant."
@@ -503,8 +506,15 @@ def estimate_cost(seconds: float, *, gpu: bool, cpu: float, memory_gib: float) -
 
 
 def worst_case_cost(n_configs: int, timeout_s: float = CONFIG_TIMEOUT_S) -> float:
-    """What a capture container running n_configs can cost before their timeouts stop it."""
-    return estimate_cost(n_configs * timeout_s, gpu=True, cpu=GPU_CPU, memory_gib=GPU_MEMORY_GIB)
+    """What a capture container running n_configs can cost before their timeouts stop it, with its
+    time outside the workers, which no timeout bounds."""
+    seconds = n_configs * timeout_s + CONTAINER_STARTUP_S
+    return estimate_cost(seconds, gpu=True, cpu=GPU_CPU, memory_gib=GPU_MEMORY_GIB)
+
+
+def run_worst_case(containers: list[list[tuple]], timeout_s: float = CONFIG_TIMEOUT_S) -> float:
+    """worst_case_cost over a run's containers, one startup each."""
+    return sum(worst_case_cost(len(group), timeout_s) for group in containers)
 
 
 def cublas_log_env(out_dir: str) -> dict:

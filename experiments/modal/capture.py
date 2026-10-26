@@ -245,8 +245,8 @@ def main(experiment: str, spent_usd: float, out: str = ".cache/modal-runs", back
         manifest["estimated_usd"] = round(run_cost, 4)
         (run_dir / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
 
-    def affordable(n_configs: int) -> bool:
-        worst = lib.worst_case_cost(n_configs, timeout_s)
+    def affordable(groups: list) -> bool:
+        worst = lib.run_worst_case(groups, timeout_s)
         return spent_usd + manifest.get("estimated_usd", 0) + worst <= lib.BUDGET_USD
 
     start = time.time()
@@ -288,7 +288,7 @@ def main(experiment: str, spent_usd: float, out: str = ".cache/modal-runs", back
     groups = [[(e[0], lib.worker_spec(e, timeout_s)) for e in group] for group in containers]
     if single_use:
         # All at once, so each container holds its own GPU; the budget covers all of them up front.
-        if not affordable(sum(map(len, containers))):
+        if not affordable(containers):
             manifest["stopped"] = "the containers' worst case would pass the day's budget"
         else:
             start = time.time()
@@ -299,7 +299,7 @@ def main(experiment: str, spent_usd: float, out: str = ".cache/modal-runs", back
                     manifest["stopped"] = f"container {i} failed; its logs are in {run_dir}"
     else:
         for i, (group, specs) in enumerate(zip(containers, groups, strict=True)):
-            if not affordable(len(group)):
+            if not affordable([group]):
                 manifest["stopped"] = f"before container {i}: its worst case would pass the day's budget"
                 break
             print(f"container {i}: {', '.join(e[0] for e in group)} on an L4", flush=True)

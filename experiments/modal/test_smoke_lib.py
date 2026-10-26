@@ -47,8 +47,7 @@ def test_every_experiment_names_known_configs_with_unique_labels_and_fits_the_bu
         assert len(labels) == len(set(labels))
         assert all(e[1] in lib.CONFIGS for group in containers for e in group)
         assert max(map(len, containers)) <= lib.MAX_CONFIGS_PER_CONTAINER
-        worst = sum(lib.worst_case_cost(len(group), timeout_s) for group in containers)
-        assert worst < lib.BUDGET_USD
+        assert lib.run_worst_case(containers, timeout_s) < lib.BUDGET_USD
 
 
 def test_a_comparison_runs_in_one_container_and_the_cross_container_run_in_two():
@@ -71,8 +70,9 @@ def test_the_two_path_census_traces_five_defaults_then_one_invariant_in_each_of_
     for group in containers:
         assert [e[1] for e in group] == ["qwen3_4b_bf16"] * 6
         assert [e[2] for e in group] == [{lib.CUBLAS_LOG: "1"}] * 5 + [lib.BATCH_INVARIANT]
-    worst = sum(lib.worst_case_cost(len(group), timeout_s) for group in containers)
-    assert 0.90 + worst <= lib.BUDGET_USD  # spent on 2026-10-15 before the run, from Modal's usage page
+    # $0.90 was spent on 2026-10-15 before the run. With container startup counted, its worst case
+    # of $2.22 would have passed that day's budget, so the guard would now stop it.
+    assert 0.90 + lib.run_worst_case(containers, timeout_s) > lib.BUDGET_USD
 
 
 TRACE_LINE = (
@@ -656,11 +656,11 @@ def test_a_smoke_source_can_start_partway():
     assert lib.prompts_for(("smoke", 64, 8)) == lib.smoke_prompts(64)[8:]
 
 
-def test_the_pilot_runs_canary_check_then_pilot_in_one_container_for_at_most_83_cents():
+def test_the_pilot_runs_canary_check_then_pilot_in_one_container_for_at_most_94_cents():
     [group], single_use, timeout_s = lib.EXPERIMENTS["pilot"]
     assert [e[0] for e in group] == ["canary_check", "pilot"] and not single_use
     assert timeout_s == 20 * 60
-    assert lib.worst_case_cost(len(group), timeout_s) == pytest.approx(0.83, abs=0.005)
+    assert lib.worst_case_cost(len(group), timeout_s) == pytest.approx(0.94, abs=0.005)
 
 
 def test_canary_check_captures_exactly_the_historical_64_prompt_batches():
@@ -756,7 +756,7 @@ def test_compare_batches_refuses_rows_of_another_shape():
         lib.compare_batches(a, b)
 
 
-def test_canary_repeat_runs_three_untraced_and_one_traced_canary_check_in_fresh_containers_for_at_most_67_cents():
+def test_canary_repeat_runs_three_untraced_and_one_traced_canary_check_in_fresh_containers_for_at_most_112_cents():
     containers, single_use, timeout_s = lib.EXPERIMENTS["canary_repeat"]
     assert single_use and timeout_s == 8 * 60
     # Untraced entries carry no env, so they run under exactly the pilot's engine environment.
@@ -767,15 +767,15 @@ def test_canary_repeat_runs_three_untraced_and_one_traced_canary_check_in_fresh_
         [("t1_canary_check", "qwen3_4b_bf16_canary_check", {lib.CUBLAS_LOG: "1"})],
     ]
     assert [lib.worker_spec(g[0], timeout_s)["env"] for g in containers] == [{}, {}, {}, {lib.CUBLAS_LOG: "1"}]
-    assert sum(lib.worst_case_cost(len(g), timeout_s) for g in containers) == pytest.approx(0.66, abs=0.005)
+    assert lib.run_worst_case(containers, timeout_s) == pytest.approx(1.12, abs=0.005)
 
 
-def test_full_capture_runs_three_untraced_replicas_in_fresh_containers_for_at_most_75_cents():
+def test_full_capture_runs_three_untraced_replicas_in_fresh_containers_for_at_most_109_cents():
     containers, single_use, timeout_s = lib.EXPERIMENTS["full_capture"]
     assert single_use and timeout_s == 12 * 60
     # No env entry, so each runs under exactly the pilot's engine environment.
     assert containers == [[(f"r{i}", "qwen3_4b_bf16_full")] for i in (1, 2, 3)]
-    assert sum(lib.worst_case_cost(len(g), timeout_s) for g in containers) == pytest.approx(0.75, abs=0.005)
+    assert lib.run_worst_case(containers, timeout_s) == pytest.approx(1.09, abs=0.005)
 
 
 class FakeVolume:
