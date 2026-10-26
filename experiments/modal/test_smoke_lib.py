@@ -155,6 +155,19 @@ def test_an_hour_of_l4_costs_the_published_rate():
     assert with_extras == pytest.approx(1.24, abs=0.01)
 
 
+def test_the_worst_case_counts_each_containers_startup_beside_its_timeouts():
+    # The full capture's slowest container spent 333.3 s outside its worker (r3, 2026-10-22).
+    assert lib.CONTAINER_STARTUP_S == 333
+    per_s = lib.estimate_cost(1, gpu=True, cpu=lib.GPU_CPU, memory_gib=lib.GPU_MEMORY_GIB)
+    assert lib.worst_case_cost(2, 480) == pytest.approx((2 * 480 + 333) * per_s)
+
+
+def test_the_runs_worst_case_charges_one_startup_per_container():
+    containers = [[("a", "qwen3_4b_bf16"), ("b", "qwen3_4b_bf16")], [("c", "qwen3_4b_bf16")]]
+    expected = lib.worst_case_cost(2, 480) + lib.worst_case_cost(1, 480)
+    assert lib.run_worst_case(containers, 480) == pytest.approx(expected)
+
+
 def test_relative_l2_is_zero_for_equal_and_scale_free():
     a = np.random.default_rng(0).normal(size=(3, 2, 8)).astype(np.float16)
     assert np.all(lib.relative_l2(a, a) == 0)
