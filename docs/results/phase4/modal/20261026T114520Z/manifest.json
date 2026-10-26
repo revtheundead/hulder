@@ -1,0 +1,155 @@
+{
+  "run_id": "20261026T114520Z",
+  "experiment": "exp2",
+  "single_use": true,
+  "commit": "fda703482aae8877949f2ee794257987c60f98c1",
+  "command": "uv run --with modal==1.6.1 modal run experiments/modal/capture.py --experiment exp2 --spent-usd 0.0 --backup-dir /mnt/d/hulder-backup/verified-2026-10-26/.cache/modal-runs",
+  "modal": "1.6.1",
+  "rates_usd_per_s": {
+    "L4": 0.000222,
+    "cpu_core": 1.31e-05,
+    "memory_gib": 2.22e-06
+  },
+  "spent_before_usd": 0.0,
+  "boot_id": "39411509-a4df-44c3-b971-08fcfc3f004f",
+  "containers": [
+    {
+      "labels": [
+        "control"
+      ],
+      "wall_seconds": 127.7,
+      "estimated_usd": 0.0441
+    },
+    {
+      "labels": [
+        "shuffled"
+      ],
+      "wall_seconds": 266.9,
+      "estimated_usd": 0.0922
+    },
+    {
+      "labels": [
+        "fp8_r1"
+      ],
+      "wall_seconds": 375.9,
+      "estimated_usd": 0.1298
+    },
+    {
+      "labels": [
+        "fp8_r2"
+      ],
+      "wall_seconds": 399.4,
+      "estimated_usd": 0.138
+    },
+    {
+      "labels": [
+        "fp8_r3"
+      ],
+      "wall_seconds": 424.2,
+      "estimated_usd": 0.1466
+    }
+  ],
+  "configs": {
+    "control": {
+      "container": 0,
+      "config": "qwen3_4b_bf16_exp2",
+      "returncode": 0,
+      "volume": {
+        "files": {
+          "18_-1.npz": "655224d281ef34a1c934d3aa60c73cf5be72d2895672b2620c008dbba26bd6c6",
+          "18_-10.npz": "b97d89f5b5ed7fc67e4eef0604ebf82ab19cbc0626c839f3c2fd9ab15fad7276",
+          "18_-9.npz": "c4792c3dde05f1d3361370f2297d16efa5aa9f24920f04a77090e42df7dcee00",
+          "27_-1.npz": "24cdd65c30cb72e1ea64713c5a10b79c4393ef690a20c6402ff566865e23ca9e",
+          "27_-10.npz": "a819bc7c918ca8986abeee962cbccf422c186a8ff81cc9151630c835cd384dab",
+          "27_-9.npz": "fae86d639628373e1298b57c1fc0d29951b4259ee3ffb850c8d1aa2c42676b78",
+          "token_ids.npz": "8a84c4232be14f796fa6d7333b31a8c6f4d407c386ce8e1aafb749c01e7a4630"
+        },
+        "fetched": true,
+        "backed_up": true,
+        "problem": null
+      }
+    },
+    "shuffled": {
+      "container": 1,
+      "config": "qwen3_4b_bf16_exp2_shuffled",
+      "returncode": 0,
+      "volume": {
+        "files": {
+          "18_-1.npz": "dd45c6f023697997f7180be162e49f8dd232aab3ea1330852ed3970dac010756",
+          "18_-10.npz": "ade25390d8bf323010deab2b24d55a79e3fab6d62b08385af52dfc7f233a9d3d",
+          "18_-9.npz": "872db945824132ae059bf8a8129c86237d3225d6b838c95cc5f80d2b929b948c",
+          "27_-1.npz": "a81ab165371e1952c7cc397c8cd508ad9fdb14e2c8722ecd36dba9c90b0d0c00",
+          "27_-10.npz": "d22a0a2856c934a7e1c3c15616763182dc7a6f90f7c5758f663d8896a7aee834",
+          "27_-9.npz": "41040d8dea226a354919f468cbb0dd52d7152734fde2a9318ebab59c2ed1761d",
+          "token_ids.npz": "839eb4c99da5d10b1e9f924ec2bb911025f51a90f73cf4447ec35a58cfec51dd"
+        },
+        "fetched": true,
+        "backed_up": true,
+        "problem": null
+      }
+    },
+    "fp8_r1": {
+      "container": 2,
+      "config": "qwen3_4b_fp8_online_exp2",
+      "returncode": 0,
+      "volume": {
+        "files": {
+          "18_-1.npz": "f5fba52ecedae7556b0af9396d1c3bc1a02dadb3541c4cca4ba5c7a33f863a0e",
+          "18_-10.npz": "c21815113bd3026d0e070b14721b2af3149a3e671c8deb5769c33f76ac4c1b3a",
+          "18_-9.npz": "06deb1a47ae4f5120f4f4497e24d28902815ea4f84611a133ae318b6ad20bb32",
+          "27_-1.npz": "8ceba18212080f3aef1c10db0e6886f76ce89059fd8fab097d3c9cd8c7ff8ae4",
+          "27_-10.npz": "e1d7bd30dc3efe7137e1fc5d3b76381dd2023578100cf06590e4c8b0643ce08d",
+          "27_-9.npz": "090f4cc8ab4f5708baad24de12b1160234631e141528efb5e9805839a03849be",
+          "token_ids.npz": "8a84c4232be14f796fa6d7333b31a8c6f4d407c386ce8e1aafb749c01e7a4630"
+        },
+        "fetched": true,
+        "backed_up": true,
+        "problem": null
+      }
+    },
+    "fp8_r2": {
+      "container": 3,
+      "config": "qwen3_4b_fp8_online_exp2",
+      "returncode": 0,
+      "volume": {
+        "files": {
+          "18_-1.npz": "400231ad5317636ad63802d0d0b2fc1fda13b704e0c4dff46678315a1f0d7e28",
+          "18_-10.npz": "3b93171e2a998b8ae3afdcb4c2ee2c9991e331250b74b829cadf21e807dff25c",
+          "18_-9.npz": "7c60df3263f145f8bc1e3cfb1f3fdc44c6bd840ee8b0fbf557db3132edd67e68",
+          "27_-1.npz": "68c83a336b93f380a3889489f2d6c2ed00e7983ea6fdd23a9ba160ec91737431",
+          "27_-10.npz": "736f93f9bab8c7f50860bc8d178b10b7569238ae8e763080be713a717a9f6c35",
+          "27_-9.npz": "1d39c08a61f3b35d45ed035f91c2436039bfcc3b9ba7933caf64bf8e6448a494",
+          "token_ids.npz": "8a84c4232be14f796fa6d7333b31a8c6f4d407c386ce8e1aafb749c01e7a4630"
+        },
+        "fetched": true,
+        "backed_up": true,
+        "problem": null
+      }
+    },
+    "fp8_r3": {
+      "container": 4,
+      "config": "qwen3_4b_fp8_online_exp2",
+      "returncode": 0,
+      "volume": {
+        "files": {
+          "18_-1.npz": "9f648e7dbdc84cbd39284c8af1ece697a58dbcab4a3ae70de2f07f3db582da9b",
+          "18_-10.npz": "8a61bde80e63c77d8c1dcbb93695c293d08fdb4490e1f472f3c52e78a7a90d0c",
+          "18_-9.npz": "f19aaa386c5bec4c8992eaf5c91d7b085c34db53f72a5b3c232ccaff95de1a4f",
+          "27_-1.npz": "44ce47436ba828c577b9f8935c36716a888ca43cb17453c6bf5db04a8a5e3bc9",
+          "27_-10.npz": "46b26f2d1f52c4ab2b984fa3d86d916174c7349ddc535e5f1642e29bc392cdaf",
+          "27_-9.npz": "4151ee633b956f0872b530c25f6252dc2c8c48507f1fe94d1850ac71e97c74d7",
+          "token_ids.npz": "8a84c4232be14f796fa6d7333b31a8c6f4d407c386ce8e1aafb749c01e7a4630"
+        },
+        "fetched": true,
+        "backed_up": true,
+        "problem": null
+      }
+    }
+  },
+  "download": {
+    "seconds": 0.6,
+    "wall_seconds": 21.9,
+    "estimated_usd": 0.0008
+  },
+  "estimated_usd": 0.5515
+}
