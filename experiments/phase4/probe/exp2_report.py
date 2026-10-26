@@ -40,6 +40,7 @@ import pilot_report as pilot
 import smoke_lib as lib
 
 KEPT = Path(".cache/modal-runs/20261022T125644Z/kept")
+FULL_CAPTURE_REPORT = KEPT.parent / "full_capture_report.json"
 SELECTION = Path("docs/results/phase4/probe_qwen3_selection.json")
 CELLS = {"primary": "18_-1", "secondary": "27_-1"}  # the secondary was chosen after experiment 1
 FP8 = ("fp8_r1", "fp8_r2", "fp8_r3")
@@ -200,7 +201,8 @@ def paired_shift(probe: hulder.Probe, threshold: float, reference: hulder.Snapsh
     a, b = np.asarray(reference.activations), np.asarray(other.activations)
     ds = np.abs(hulder.apply_probe(probe, b) - hulder.apply_probe(probe, a))
     dl = np.abs(probe_logits(probe, b) - probe_logits(probe, a))
-    flips = (hulder.apply_probe(probe, a) > threshold) != (hulder.apply_probe(probe, b) > threshold)
+    before, after = hulder.apply_probe(probe, a) > threshold, hulder.apply_probe(probe, b) > threshold
+    flips, y = before != after, np.asarray(reference.labels)
     return {
         "n": len(a),
         "rows_bit_identical": int((_bits(a) == _bits(b)).all(axis=1).sum()),
@@ -209,6 +211,31 @@ def paired_shift(probe: hulder.Probe, threshold: float, reference: hulder.Snapsh
         "mean_abs_dlogit": float(dl.mean()),
         "max_abs_dlogit": float(dl.max()),
         "flips": t.rate(int(flips.sum()), len(a)),
+        "flips_by_class": {
+            name: {
+                "newly_flagged": int((~before & after & (y == label)).sum()),
+                "unflagged": int((before & ~after & (y == label)).sum()),
+            }
+            for name, label in (("attack", 1), ("benign", 0))
+        },
+    }
+
+
+def split_rates(fp8: dict, bf16: dict) -> dict:
+    """The FP8 replicas' rate of 2-to-1 split batches against the bf16 full capture's, by Fisher's
+    exact test. Post hoc, and the two ran on different slices of the request."""
+    from scipy.stats import fisher_exact
+
+    a, b = (fp8["split"], fp8["batches"]), (bf16["split"], bf16["batches"])
+    table = [[a[0], a[1] - a[0]], [b[0], b[1] - b[0]]]
+    return {
+        "fp8": t.rate(*a),
+        "bf16_full_capture": t.rate(*b),
+        "fisher_two_sided_p": float(fisher_exact(table).pvalue),
+        "note": (
+            "A post hoc test, chosen after seeing the splits. The FP8 replicas ran this experiment's 414 batches "
+            "and the bf16 replicas the full capture's 2,042, so the slices differ."
+        ),
     }
 
 
@@ -298,6 +325,7 @@ def report(
     *,
     splits: dict[str, str],
     selection_path: Path = SELECTION,
+    full_capture_report: Path = FULL_CAPTURE_REPORT,
 ) -> dict:
     loaded = load_run(run_dir)
     out: dict = {"run_id": run_dir.name, "stops": list(loaded["stops"])}
@@ -321,6 +349,9 @@ def report(
     if workers[FP8[0]]["prompt_token_ids_sha256"] != workers["control"]["prompt_token_ids_sha256"]:
         majority["stops"].append("R1: the FP8 replicas were fed other tokens than the control")
     kept = majority.pop("kept")
+    if full_capture_report.exists():
+        bf16 = json.loads(full_capture_report.read_text())["counts"]
+        majority["split_rate_vs_bf16_full_capture"] = split_rates(majority["counts"], bf16)
     out["fp8_majority"] = majority
     if majority["stops"]:
         return {**out, "stops": out["stops"] + majority["stops"], "stopped_at": "fp8_majority"}
