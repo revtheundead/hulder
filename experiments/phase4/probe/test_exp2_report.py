@@ -51,7 +51,10 @@ def test_one_changed_bit_names_its_array_and_batch_and_the_control_isnt_identica
     kept = {name: snap(kept_ids, acts) for name in NAMES}
     changed = acts[picked].copy()
     changed[12, 1] = -changed[12, 1] if changed[12, 1] else np.float16(1)  # row 12 is batch 2
-    control = {"18_-1": snap([kept_ids[i] for i in picked], acts[picked]), "27_-1": snap([kept_ids[i] for i in picked], changed)}
+    control = {
+        "18_-1": snap([kept_ids[i] for i in picked], acts[picked]),
+        "27_-1": snap([kept_ids[i] for i in picked], changed),
+    }
     out = r.control_vs_kept(control, kept, picked)
     assert not out["identical"]
     assert out["arrays"]["18_-1"]["differing_batches"] == []
@@ -110,7 +113,9 @@ def test_r2_stops_when_over_1_percent_of_batches_have_no_majority():
 def test_r1_stops_on_other_tokens_or_other_metadata():
     reps, workers = replicas()
     workers["fp8_r3"]["prompt_token_ids_sha256"] = "other"
-    assert any(s.startswith("R1:") and "prompt_token_ids_sha256" in s for s in r.fp8_majority(reps, workers, {})["stops"])
+    assert any(
+        s.startswith("R1:") and "prompt_token_ids_sha256" in s for s in r.fp8_majority(reps, workers, {})["stops"]
+    )
     reps, workers = replicas()
     for name in NAMES:
         reps["fp8_r2"][name].metadata["quantization"] = "awq"
@@ -161,7 +166,9 @@ def test_the_noise_floor_counts_identical_rows_score_shifts_and_flips():
     acts = rows(16)
     moved = acts.copy()
     moved[3] = -moved[3] if moved[3].sum() else moved[3] + np.float16(1)  # flips row 3's side of 0.5
-    out = r.paired_shift(probe(), 0.5, snap([f"p{i}" for i in range(16)], acts), snap([f"p{i}" for i in range(16)], moved))
+    out = r.paired_shift(
+        probe(), 0.5, snap([f"p{i}" for i in range(16)], acts), snap([f"p{i}" for i in range(16)], moved)
+    )
     assert out["rows_bit_identical"] == 15 and out["n"] == 16
     assert out["flips"]["k"] == 1
     assert out["mean_abs_dscore"] > 0 and out["max_abs_dlogit"] > 0
@@ -234,7 +241,7 @@ def test_boundary_pairs_compares_rates_flips_and_clustered_auroc_and_doesnt_coun
 
 def test_the_report_stops_before_the_check_when_the_control_differs(monkeypatch, tmp_path):
     monkeypatch.setattr(r, "control_vs_kept", lambda *a, **k: {"identical": False, "arrays": {}, "batches": 414})
-    monkeypatch.setattr(r, "load_run", lambda *a, **k: {"stops": [], "workers": {}, "token_ids": {}})
+    monkeypatch.setattr(r, "load_run", lambda *a, **k: {"stops": [], "workers": {}, "token_ids": {}, "names": []})
     called = []
     monkeypatch.setattr(r, "fp8_majority", lambda *a, **k: called.append(1))
     out = r.report(tmp_path, tmp_path, tmp_path, tmp_path / "out", splits={})
