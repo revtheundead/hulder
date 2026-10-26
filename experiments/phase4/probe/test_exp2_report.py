@@ -247,3 +247,25 @@ def test_the_report_stops_before_the_check_when_the_control_differs(monkeypatch,
     out = r.report(tmp_path, tmp_path, tmp_path, tmp_path / "out", splits={})
     assert out["stopped_at"] == "control" and called == [] and "checks" not in out
     assert json.loads(json.dumps(out)) == out  # serialisable as written
+
+
+# Added after the first run: flips by class and direction, and the post-hoc split-rate test.
+
+
+def test_the_paired_shift_splits_flips_by_class_and_direction():
+    ids = [f"p{i}" for i in range(4)]
+    x = np.array([[1, 0, 0, 0], [-1, 0, 0, 0], [1, 0, 0, 0], [-1, 0, 0, 0]], dtype=np.float16)
+    moved = -x  # every decision flips
+    out = r.paired_shift(probe(), 0.5, snap(ids, x, labels=[1, 1, 0, 0]), snap(ids, moved, labels=[1, 1, 0, 0]))
+    assert out["flips_by_class"] == {
+        "attack": {"newly_flagged": 1, "unflagged": 1},
+        "benign": {"newly_flagged": 1, "unflagged": 1},
+    }
+
+
+def test_the_split_rate_comparison_is_fishers_exact_test_labelled_post_hoc():
+    out = r.split_rates({"batches": 414, "split": 4}, {"batches": 2042, "split": 0})
+    assert out["fp8"]["k"] == 4 and out["bf16_full_capture"]["k"] == 0
+    assert out["fp8"]["ci95"] == pytest.approx([0.00264, 0.02455], abs=1e-5)
+    assert out["fisher_two_sided_p"] == pytest.approx(0.000798, abs=1e-6)
+    assert "post hoc" in out["note"] and "slices" in out["note"]
