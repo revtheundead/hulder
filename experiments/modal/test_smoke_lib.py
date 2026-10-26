@@ -524,7 +524,12 @@ def test_the_full_config_is_the_pilots_with_every_split_behind_the_canary_as_its
 
 
 def needs_the_real_parquet(source: tuple) -> bool:
-    return source[0] != "smoke" and not (source[0] == "canary_first" and source[1][0] == "smoke")
+    kind, *args = source
+    if kind == "smoke":
+        return False
+    if kind in ("canary_first", "rows", "shuffled"):
+        return needs_the_real_parquet(args[0])
+    return True
 
 
 @pytest.mark.parametrize(
@@ -776,6 +781,117 @@ def test_full_capture_runs_three_untraced_replicas_in_fresh_containers_for_at_mo
     # No env entry, so each runs under exactly the pilot's engine environment.
     assert containers == [[(f"r{i}", "qwen3_4b_bf16_full")] for i in (1, 2, 3)]
     assert lib.run_worst_case(containers, timeout_s) == pytest.approx(1.09, abs=0.005)
+
+
+def test_a_rows_source_keeps_the_half_open_ranges_of_another_source_in_order():
+    every = lib.smoke_prompts(64)
+    assert lib.prompts_for(("rows", ("smoke", 64), ((8, 16), (40, 44)))) == every[8:16] + every[40:44]
+
+
+def test_a_rows_source_refuses_ranges_out_of_order_overlapping_or_out_of_bounds():
+    for ranges in (((16, 24), (8, 16)), ((8, 16), (12, 20)), ((60, 65),), ((10, 10),)):
+        with pytest.raises(ValueError, match="ranges"):
+            lib.prompts_for(("rows", ("smoke", 64), ranges))
+
+
+def test_a_shuffled_source_is_numpys_seeded_permutation_of_another():
+    every = lib.smoke_prompts(64)[8:]
+    order = np.random.default_rng(1).permutation(len(every))
+    assert lib.prompts_for(("shuffled", ("smoke", 64, 8), 1)) == [every[i] for i in order]
+
+
+def test_only_a_shuffled_source_records_its_batch_order_seed():
+    assert lib.batch_order_seed(("canary_first", ("shuffled", ("rows", ("smoke", 64), ((8, 64),)), 1))) == 1
+    assert lib.batch_order_seed(("canary_first", ("rows", ("smoke", 64), ((8, 64),)))) is None
+    assert lib.batch_order_seed(("smoke", 64)) is None
+
+
+def test_a_shuffled_specs_snapshots_carry_its_batch_order_seed_and_others_none():
+    shuffled = lib.worker_spec(("rerun", "qwen3_4b_bf16_exp2_shuffled"), 480) if lib.SLABS_SPLITS.exists() else None
+    control = lib.worker_spec(("canary_check", "qwen3_4b_bf16_canary_check"), 480)
+    assert control["extra_metadata"] == {}
+    if shuffled is None:
+        pytest.skip("needs .cache/probe/splits.parquet")
+    assert shuffled["extra_metadata"] == {"batch_order_seed": 1}
+
+
+def test_the_containers_gpu_metadata_adds_to_the_specs_own():
+    spec = {"extra_metadata": {"batch_order_seed": 1}}
+    gpu = "NVIDIA L4, GPU-abc, 610.57.04, 23034 MiB"
+    assert lib.with_gpu_metadata(spec, gpu)["extra_metadata"] == {
+        "batch_order_seed": 1,
+        "gpu_uuid": "GPU-abc",
+        "gpu_driver": "610.57.04",
+    }
+    assert lib.with_gpu_metadata({}, gpu)["extra_metadata"] == {"gpu_uuid": "GPU-abc", "gpu_driver": "610.57.04"}
+
+
+def test_experiment_2s_configs_are_the_full_captures_with_online_fp8_the_one_change():
+    full, _ = lib.CONFIGS["qwen3_4b_bf16_full"]
+    assert lib.CONFIGS["qwen3_4b_bf16_exp2"][0] == full
+    assert lib.CONFIGS["qwen3_4b_bf16_exp2_shuffled"][0] == full
+    assert lib.CONFIGS["qwen3_4b_fp8_online_exp2"][0] == {**full, "quantization": "fp8"}
+    assert lib.CONFIGS["qwen3_4b_bf16_exp2"][1] == ("canary_first", ("rows", lib.FULL_REQUEST, lib.EXP2_ROWS))
+    assert lib.CONFIGS["qwen3_4b_fp8_online_exp2"][1] == lib.CONFIGS["qwen3_4b_bf16_exp2"][1]
+    assert lib.CONFIGS["qwen3_4b_bf16_exp2_shuffled"][1] == (
+        "canary_first",
+        ("shuffled", ("rows", lib.FULL_REQUEST, lib.EXP2_ROWS), 1),
+    )
+
+
+def test_experiment_2_is_five_fresh_containers_within_the_guard_counting_their_startup():
+    containers, single_use, timeout_s = lib.EXPERIMENTS["exp2"]
+    assert single_use and timeout_s == 8 * 60
+    assert containers == [
+        [("control", "qwen3_4b_bf16_exp2")],
+        [("shuffled", "qwen3_4b_bf16_exp2_shuffled")],
+        *([(f"fp8_r{i}", "qwen3_4b_fp8_online_exp2")] for i in (1, 2, 3)),
+    ]
+    # 5 x (480 s + 333 s of startup) at $0.000344 per container-second.
+    worst = lib.run_worst_case(containers, timeout_s)
+    assert worst == pytest.approx(5 * lib.worst_case_cost(1, 480)) == pytest.approx(1.40, abs=0.005)
+    assert worst - 5 * lib.worst_case_cost(0, timeout_s) == pytest.approx(0.83, abs=0.005)  # the timeouts alone
+    assert worst < lib.BUDGET_USD
+
+
+def _exp2_ids(config):
+    if not lib.SLABS_SPLITS.exists():
+        pytest.skip("needs .cache/probe/splits.parquet")
+    pytest.importorskip("pandas")
+    return [r["id"] for r in lib.worker_spec(("x", config), 480)["prompts"]]
+
+
+def test_experiment_2s_request_is_the_canary_then_whole_batches_of_the_full_request():
+    ids = _exp2_ids("qwen3_4b_bf16_exp2")
+    full = [r["id"] for r in lib.prompts_for(lib.FULL_REQUEST)]
+    assert lib.EXP2_ROWS == ((10936, 13040), (15136, 16332))
+    assert ids == full[:8] + full[10936:13040] + full[15136:16332]
+    assert len(ids) == 3308 == len(set(ids))
+    # Every batch after the canary is a batch of the full capture, the last one its final 4.
+    batches = [tuple(ids[i : i + 8]) for i in range(8, len(ids), 8)]
+    full_batches = {tuple(full[i : i + 8]) for i in range(0, len(full), 8)}
+    assert len(batches) == 413 and set(batches) <= full_batches and len(batches[-1]) == 4
+
+
+def test_experiment_2s_request_holds_every_calibration_and_boundary_pairs_prompt():
+    import pandas as pd
+
+    ids = set(_exp2_ids("qwen3_4b_bf16_exp2"))
+    split = pd.read_parquet(lib.SLABS_SPLITS, columns=["id", "split"]).set_index("id")["split"]
+    assert set(split[split == "calibration"].index) <= ids
+    bpairs = set(split[split.str.startswith("bpairs_")].index)
+    assert len(bpairs) == 1200 and bpairs <= ids
+    # Beyond those, only the slices' edges: 2 validation and 1 test prompt, and 4 more test prompts.
+    others = split[sorted(ids - bpairs - set(split[split == "calibration"].index))]
+    assert others.value_counts().to_dict() == {"test": 5, "validation": 2}
+
+
+def test_experiment_2s_shuffled_rerun_holds_the_controls_prompts_in_a_seeded_order():
+    control = _exp2_ids("qwen3_4b_bf16_exp2")
+    shuffled = _exp2_ids("qwen3_4b_bf16_exp2_shuffled")
+    assert shuffled[:8] == control[:8]  # the canary, still batch 1
+    order = np.random.default_rng(1).permutation(len(control) - 8)
+    assert shuffled[8:] == [control[8:][i] for i in order]
 
 
 class FakeVolume:
