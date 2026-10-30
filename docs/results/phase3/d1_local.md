@@ -4,7 +4,7 @@ Checks of the in-server options for D1 (docs/design.md §5) on the local GPU, be
 
 RTX 2070 (Turing, driver 621.01), vLLM 0.30.0, vllm-lens 1.3.0. Qwen2.5-1.5B-Instruct at `989aa798` in fp16 under `vllm serve`, with chunked prefill and CUDA graphs on (piecewise) and prefix caching off. The bundled demo probe (layer 20, position −1, threshold 0.3952) and the bundled demo snapshots (`demo_fp16.npz` as the reference and `demo_fp16_run1.npz` as its rerun) on their 360 boundary-pairs prompts. Every server is a fresh process with `--max-num-seqs 8`. Results are in [`d1_local.json`](d1_local.json).
 
-Reproduce from the repository root, at `9220bb37003c` for checks 1 to 5, at `2120a6eaa1d0` for the generation repeats and at `b4552d178af0` for the no-op connector:
+Reproduce from the repository root, at `9220bb37003c` for checks 1 to 5, at `2120a6eaa1d0` for the generation repeats and at `9541fad1aff1` for the no-op connector:
 
 ```bash
 source scripts/dev-env.sh && uv run python experiments/phase3/d1_local.py --out .cache/d1-local
@@ -24,7 +24,7 @@ uv run python experiments/phase3/d1_local.py --out .cache/d1-local --no-write
 | 4. Decode | One greedy request of 64 tokens on each server, from `/metrics` | Plain: 64 steps, no drafts. B: 64 steps, 63 draft tokens, 0 accepted |
 | 5. vllm-lens | 360 prompts at concurrency 1 through the completions API, residual stream at lens layers 19 and 20 | Lens layer 19 is hulder's layer 20: PASS, 0 flips, mean \|Δscore\| 0.00047. Lens layer 20 is the next layer: 7 flips, mean 0.032. Eager mode forced, CUDA graphs off |
 | 5. Lens disabled | `VLLM_LENS_DISABLE=1`, check 2's generation against the plain server | 32 of 32 identical |
-| No-op connector | `experiments/phase3/no_write_connector.py`, one 16-token request | Serves. No `kv_transfer_params`, no files written, 15 draft tokens over 15 decode steps |
+| No-op connector | `experiments/phase3/no_write_connector.py`, one 16-token request, then 16 more at concurrency 8 | Serves all 17. No `kv_transfer_params`, no files written, 15 draft tokens over 15 decode steps |
 
 **Chunked prefill works with the connector.** docs/design.md §5 and the offline extraction decision said it needed chunked prefill off. At 0.30.0 it doesn't: in check 3, prompts prefilled over several steps came back with the prompt's token ids, and their scores flipped no decision. The shift beyond the floor can't be pinned on chunking alone, since a 64-token budget also changes which prompts share a step for all 360.
 
