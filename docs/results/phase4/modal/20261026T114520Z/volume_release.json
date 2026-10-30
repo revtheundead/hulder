@@ -1,0 +1,75 @@
+{
+  "boot_id": "850518c1-926a-4209-9a4f-cf433bda14bc",
+  "configs": {
+    "control": {
+      "released": true,
+      "removed": [
+        "18_-1.npz",
+        "18_-10.npz",
+        "18_-9.npz",
+        "27_-1.npz",
+        "27_-10.npz",
+        "27_-9.npz",
+        "token_ids.npz"
+      ],
+      "already_gone": [],
+      "problem": null
+    },
+    "fp8_r1": {
+      "released": true,
+      "removed": [
+        "18_-1.npz",
+        "18_-10.npz",
+        "18_-9.npz",
+        "27_-1.npz",
+        "27_-10.npz",
+        "27_-9.npz",
+        "token_ids.npz"
+      ],
+      "already_gone": [],
+      "problem": null
+    },
+    "fp8_r2": {
+      "released": true,
+      "removed": [
+        "18_-1.npz",
+        "18_-10.npz",
+        "18_-9.npz",
+        "27_-1.npz",
+        "27_-10.npz",
+        "27_-9.npz",
+        "token_ids.npz"
+      ],
+      "already_gone": [],
+      "problem": null
+    },
+    "fp8_r3": {
+      "released": true,
+      "removed": [
+        "18_-1.npz",
+        "18_-10.npz",
+        "18_-9.npz",
+        "27_-1.npz",
+        "27_-10.npz",
+        "27_-9.npz",
+        "token_ids.npz"
+      ],
+      "already_gone": [],
+      "problem": null
+    },
+    "shuffled": {
+      "released": true,
+      "removed": [
+        "18_-1.npz",
+        "18_-10.npz",
+        "18_-9.npz",
+        "27_-1.npz",
+        "27_-10.npz",
+        "27_-9.npz",
+        "token_ids.npz"
+      ],
+      "already_gone": [],
+      "problem": null
+    }
+  }
+}
