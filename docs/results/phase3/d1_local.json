@@ -1,0 +1,141 @@
+{
+  "decode_plain": {
+    "steps": 64,
+    "tokens": 93,
+    "draft_tokens": 0,
+    "accepted_tokens": 0
+  },
+  "skew": {
+    "verdict": "PASS",
+    "decision_flips": 0,
+    "mean_abs_shift": 0.00022925886150915176,
+    "noise_floor_decision_flips": 0,
+    "noise_floor_mean_abs_shift": 0.00020760514598805457,
+    "shift_exceeds_noise_floor": false,
+    "max_abs_delta_score": 0.003330230712890625
+  },
+  "prompt_tokens": {
+    "min": 39,
+    "median": 51,
+    "max": 303
+  },
+  "generate": {
+    "identical": 31,
+    "of": 32,
+    "differing_prompts": [
+      17
+    ]
+  },
+  "stream": {
+    "chunks": 13,
+    "chunks_with_kv_transfer_params": []
+  },
+  "decode_connector": {
+    "steps": 64,
+    "tokens": 93,
+    "draft_tokens": 63,
+    "accepted_tokens": 0
+  },
+  "chunked": {
+    "verdict": "PASS",
+    "decision_flips": 0,
+    "mean_abs_shift": 0.0003315857902634889,
+    "noise_floor_decision_flips": 0,
+    "noise_floor_mean_abs_shift": 0.00020760514598805457,
+    "shift_exceeds_noise_floor": true,
+    "max_abs_delta_score": 0.0024142861366271973,
+    "prompts_over_64_tokens": 30
+  },
+  "chunked_vs_unchunked": {
+    "flips": 0,
+    "mean_abs_delta_score": 0.0003126444941800502,
+    "max_abs_delta_score": 0.0024142861366271973
+  },
+  "versions": {
+    "vllm": "0.30.0"
+  },
+  "lens_disabled_generate": {
+    "identical": 32,
+    "of": 32,
+    "differing_prompts": []
+  },
+  "lens": {
+    "19": {
+      "verdict": "PASS",
+      "decision_flips": 0,
+      "mean_abs_shift": 0.00046923814807087183,
+      "noise_floor_decision_flips": 0,
+      "noise_floor_mean_abs_shift": 0.00020760514598805457,
+      "shift_exceeds_noise_floor": true,
+      "max_abs_delta_score": 0.0034926533699035645
+    },
+    "20": {
+      "verdict": "PASS",
+      "decision_flips": 7,
+      "mean_abs_shift": 0.03209255635738373,
+      "noise_floor_decision_flips": 0,
+      "noise_floor_mean_abs_shift": 0.00020760514598805457,
+      "shift_exceeds_noise_floor": true,
+      "max_abs_delta_score": 0.21093368530273438
+    }
+  },
+  "repeats": {
+    "plain_1 vs plain_2": {
+      "identical": 32,
+      "of": 32,
+      "diverged": []
+    },
+    "connector_1 vs connector_2": {
+      "identical": 32,
+      "of": 32,
+      "diverged": []
+    },
+    "plain_1 vs connector_1": {
+      "identical": 31,
+      "of": 32,
+      "diverged": [
+        {
+          "prompt": 17,
+          "token": 46,
+          "tokens": [
+            " properly",
+            " thoroughly"
+          ],
+          "margins": [
+            0.0,
+            0.015625
+          ]
+        }
+      ]
+    },
+    "plain_2 vs connector_2": {
+      "identical": 31,
+      "of": 32,
+      "diverged": [
+        {
+          "prompt": 17,
+          "token": 46,
+          "tokens": [
+            " properly",
+            " thoroughly"
+          ],
+          "margins": [
+            0.0,
+            0.015625
+          ]
+        }
+      ]
+    }
+  },
+  "no_write": {
+    "kv_transfer_params": null,
+    "files_written": [],
+    "decode": {
+      "steps": 16,
+      "tokens": 45,
+      "draft_tokens": 15,
+      "accepted_tokens": 0
+    },
+    "more_requests_served": 16
+  }
+}
