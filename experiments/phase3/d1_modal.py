@@ -225,7 +225,7 @@ def main(spent_usd: float, out: str = ".cache/modal-runs") -> None:
         (run_dir / name).write_bytes(data)
     (run_dir / "d1_l4.json").write_text(json.dumps(returned["results"], indent=2, default=str) + "\n")
     record()
-    print(json.dumps({k: returned["results"][k] for k in ("stopped", "verdicts")}, indent=2))
+    print(json.dumps({k: returned["results"][k] for k in ("stopped", "verdicts", "divergences")}, indent=2))
     print(
         f"Run {run_id} in {run_dir}, estimated ${manifest['estimated_usd']}. Check the actual charge on Modal's usage page."
     )

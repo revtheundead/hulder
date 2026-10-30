@@ -17,8 +17,10 @@ metric is inconclusive when the baseline's own range across rounds exceeds half 
 
 Stop rules, checked after every arm-run: a server that doesn't start, a run past its timeout, a
 bench with failed requests, or an arm whose greedy replies diverge from round 0's baseline at more
-non-tie tokens than a later baseline does (generation_fails). Every arm except lens runs with
-VLLM_LENS_DISABLE=1, which left greedy replies unchanged in the local check.
+non-tie tokens than a later baseline does (generation_fails). Each prompt counts once, at its
+first divergence, and every first divergence is reported with the baseline's margin there
+(divergence_table). Every arm except lens runs with VLLM_LENS_DISABLE=1, which left greedy
+replies unchanged in the local check.
 
 The L4 run goes through d1_modal.py. A smoke run of the whole path on the local GPU, with the
 small model and a tiny workload, needs vllm-lens layered on:
@@ -97,17 +99,51 @@ def verdicts(runs: dict, baseline: str = BASELINE) -> dict:
     return out
 
 
+def divergence_class(reference_margin: float | None) -> str:
+    """A first divergence by the reference's top-two margin there. None means a reply ended early."""
+    if reference_margin == 0:
+        return "exact tie"
+    if reference_margin is not None and reference_margin <= TIE_BOUND:
+        return "within bound"
+    return "change"
+
+
+def non_tie_divergences(comparison: dict) -> int:
+    """Prompts whose first divergence isn't a tie. compare_generations records only each prompt's
+    first divergence, since everything after it differs anyway, so a prompt counts once."""
+    return sum(divergence_class(d["margins"][0]) == "change" for d in comparison["diverged"])
+
+
 def generation_fails(arm_vs_plain: dict, plain_vs_plain: list[dict]) -> bool | None:
     """Whether an arm's greedy replies diverge from the baseline's at more non-tie tokens than a
     fresh baseline does (d1_local.compare_generations results). None until a baseline has been
     compared with another."""
     if not plain_vs_plain:
         return None
+    return non_tie_divergences(arm_vs_plain) > max(map(non_tie_divergences, plain_vs_plain))
 
-    def changes(comparison: dict) -> int:
-        return sum(d["margins"][0] is None or d["margins"][0] > TIE_BOUND for d in comparison["diverged"])
 
-    return changes(arm_vs_plain) > max(map(changes, plain_vs_plain))
+def divergence_table(generation: dict) -> dict:
+    """Every run's first divergences from round 0's baseline, each with the reference's margin and
+    class, and the counts per class, so it shows whether TIE_BOUND excused any ("within bound")."""
+    classes = ("exact tie", "within bound", "change")
+    rows = [
+        {
+            "run": run,
+            "prompt": d["prompt"],
+            "token": d["token"],
+            "tokens": d["tokens"],
+            "reference_margin": d["margins"][0],
+            "arm_margin": d["margins"][1],
+            "class": divergence_class(d["margins"][0]),
+        }
+        for run, comparison in sorted(generation.items())
+        for d in comparison["diverged"]
+    ]
+    counts = {run: dict.fromkeys(classes, 0) for run in sorted(generation)}
+    for row in rows:
+        counts[row["run"]][row["class"]] += 1
+    return {"tie_bound": TIE_BOUND, "rows": rows, "counts": counts}
 
 
 def startup_facts(log: str) -> dict:
@@ -334,6 +370,7 @@ def run_all(cfg: dict, workload: dict, out: Path, rounds: int, timeout_s: float)
             results["stopped"] = f"greedy replies changed beyond a fresh baseline's: {', '.join(fails)}"
             break
     results["verdicts"] = verdicts(runs)
+    results["divergences"] = divergence_table(results.get("generation", {}))
     return results
 
 
@@ -380,7 +417,7 @@ def main(argv: list[str] | None = None) -> int:
     args.out.mkdir(parents=True, exist_ok=True)
     results = run_all(SMOKE, workload, args.out, rounds=1, timeout_s=900)
     (args.out / "d1_l4.json").write_text(json.dumps(results, indent=2, default=str) + "\n")
-    print(json.dumps({k: results[k] for k in ("stopped", "verdicts")}, indent=2))
+    print(json.dumps({k: results[k] for k in ("stopped", "verdicts", "divergences")}, indent=2))
     return 0 if results["stopped"] is None else 1
 
 
