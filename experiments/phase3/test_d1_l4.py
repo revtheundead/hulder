@@ -115,3 +115,9 @@ def test_divergence_table_lists_every_first_divergence_with_its_reference_margin
         "r0_b_stock": {"exact tie": 0, "within bound": 1, "change": 2},
         "r1_baseline": {"exact tie": 1, "within bound": 0, "change": 0},
     }
+
+
+def test_installed_packages_lists_every_distribution_once_as_name_and_version_sorted():
+    lines = r.installed_packages().splitlines()
+    assert lines == sorted(set(lines), key=str.lower)
+    assert any(line.startswith("pytest==") for line in lines)
