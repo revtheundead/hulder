@@ -53,3 +53,38 @@ def test_step_tokens_reads_missing_spec_decode_counters_as_zero():
         "draft_tokens": 0,
         "accepted_tokens": 0,
     }
+
+
+def reply(*steps):
+    """A chat response whose logprobs hold steps of (token, [(candidate, logprob), ...])."""
+    content = [
+        {"token": token, "logprob": top[0][1], "top_logprobs": [{"token": t, "logprob": lp} for t, lp in top]}
+        for token, top in steps
+    ]
+    return {"choices": [{"message": {"content": "".join(t for t, _ in steps)}, "logprobs": {"content": content}}]}
+
+
+def test_compare_generations_reports_the_first_differing_token_and_both_runs_margins():
+    same = reply(("a", [("a", -0.1), ("b", -2.5)]))
+    left = reply(("a", [("a", -0.1), ("b", -3.0)]), ("x", [("x", -0.70), ("y", -0.72)]), ("!", [("!", 0.0)]))
+    right = reply(("a", [("a", -0.1), ("b", -3.0)]), ("y", [("y", -0.69), ("x", -0.71)]), ("?", [("?", 0.0)]))
+    assert d.compare_generations([same, left], [same, right]) == {
+        "identical": 1,
+        "of": 2,
+        "diverged": [
+            {
+                "prompt": 1,
+                "token": 1,
+                "tokens": ["x", "y"],
+                "margins": [pytest.approx(0.02), pytest.approx(0.02)],
+            }
+        ],
+    }
+
+
+def test_compare_generations_counts_a_reply_that_is_a_prefix_of_the_other_as_diverged_at_its_end():
+    short = reply(("a", [("a", -0.1), ("b", -2.0)]))
+    longer = reply(("a", [("a", -0.1), ("b", -2.0)]), ("c", [("c", -0.5), ("d", -0.9)]))
+    assert d.compare_generations([short], [longer])["diverged"] == [
+        {"prompt": 0, "token": 1, "tokens": [None, "c"], "margins": [None, pytest.approx(0.4)]}
+    ]
