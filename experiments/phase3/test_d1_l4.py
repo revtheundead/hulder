@@ -2,6 +2,7 @@
 stop rule and the startup facts read from a server log. CPU only."""
 
 import d1_l4 as r
+import d1_local
 import pytest
 
 
@@ -78,3 +79,39 @@ LOG = """\
 def test_startup_facts_reads_kv_cache_size_and_maximum_concurrency():
     assert r.startup_facts(LOG) == {"kv_cache_tokens": 53776, "max_concurrency": 26.26}
     assert r.startup_facts("") == {"kv_cache_tokens": None, "max_concurrency": None}
+
+
+def reply(*tokens_and_margins):
+    """A chat response whose every step has two candidates, the picked one ahead by its margin."""
+    content = [
+        {
+            "token": t,
+            "logprob": -0.1,
+            "top_logprobs": [{"token": t, "logprob": -0.1}, {"token": "~", "logprob": -0.1 - m}],
+        }
+        for t, m in tokens_and_margins
+    ]
+    return {"choices": [{"message": {"content": ""}, "logprobs": {"content": content}}]}
+
+
+def test_a_prompt_counts_once_however_many_tokens_differ_after_its_first_divergence():
+    reference = reply(("a", 1.0), ("b", 1.0), ("c", 1.0), ("d", 1.0))
+    arm = reply(("a", 1.0), ("x", 1.0), ("y", 1.0), ("z", 1.0))
+    comparison = d1_local.compare_generations([reference], [arm])
+    assert [(d["prompt"], d["token"]) for d in comparison["diverged"]] == [(0, 1)]
+    assert r.non_tie_divergences(comparison) == 1
+
+
+def test_divergence_table_lists_every_first_divergence_with_its_reference_margin_and_class():
+    generation = {"r1_baseline": diverged(0.0), "r0_b_stock": diverged(0.1, 0.5, None)}
+    table = r.divergence_table(generation)
+    assert [(row["run"], row["prompt"], row["reference_margin"], row["class"]) for row in table["rows"]] == [
+        ("r0_b_stock", 0, 0.1, "within bound"),
+        ("r0_b_stock", 1, 0.5, "change"),
+        ("r0_b_stock", 2, None, "change"),
+        ("r1_baseline", 0, 0.0, "exact tie"),
+    ]
+    assert table["counts"] == {
+        "r0_b_stock": {"exact tie": 0, "within bound": 1, "change": 2},
+        "r1_baseline": {"exact tie": 1, "within bound": 0, "change": 0},
+    }
