@@ -293,7 +293,7 @@ def run_arm(arm: str, rnd: int, cfg: dict, workload: dict, out: Path, rate: floa
             result["counters"] = d1_local.step_tokens(before, httpx.get(f"{url}/metrics").text)
             if arm == "lens":
                 result["hook_results"] = len(VLLMLensClient(url).collect_hook_results())
-    except (RuntimeError, TimeoutError, subprocess.SubprocessError) as error:
+    except (RuntimeError, TimeoutError, subprocess.SubprocessError, httpx.HTTPError) as error:
         result["error"] = f"{type(error).__name__}: {error}"
     finally:
         shutil.rmtree(storage, ignore_errors=True)

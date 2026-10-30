@@ -377,6 +377,8 @@ def run_no_write(out: Path) -> dict:
         before = httpx.get(f"{url}/metrics").text
         [response] = asyncio.run(chat_all(url, [DECODE_PROMPT], 1, max_tokens=16, min_tokens=16, ignore_eos=True))
         tokens = step_tokens(before, httpx.get(f"{url}/metrics").text)
+        # Several more, concurrently: a connector that mishandles finished requests fails on the second.
+        more = asyncio.run(chat_all(url, [r["text"] for r in prompts()[:16]], 8, max_tokens=16))
     written = sorted(p.name for p in storage.iterdir())
     shutil.rmtree(storage, ignore_errors=True)
     return {
@@ -384,6 +386,7 @@ def run_no_write(out: Path) -> dict:
             "kv_transfer_params": response.get("kv_transfer_params"),
             "files_written": written,
             "decode": tokens,
+            "more_requests_served": len(more),
         }
     }
 

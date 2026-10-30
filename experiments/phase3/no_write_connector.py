@@ -17,3 +17,8 @@ class NoWriteHiddenStatesConnector(ExampleHiddenStatesConnector):
         # Free them at once and return nothing to the client instead.
         self._request_filenames.pop(request.request_id, None)
         return False, None
+
+    def get_finished(self, finished_req_ids):
+        # Nothing is ever sent, so no request is reported as done sending. The stock method reports
+        # every finished request, which the scheduler then looks up after it has already freed it.
+        return None, None
