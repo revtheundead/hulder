@@ -14,6 +14,7 @@ prefix caching off, against the bundled demo snapshots and probe (layer 20, posi
 
 --repeats runs check 2's generation on two fresh plain servers and two fresh B servers, token by
 token with logprobs, so plain against B can be set against plain against plain.
+--no-write smoke-tests the L4 run's B no-op arm (no_write_connector.py).
 
 Checks 1 to 4 run in the project environment, check 5 with vllm-lens layered on:
 
@@ -357,6 +358,36 @@ def run_repeats(out: Path) -> dict:
     return {"repeats": {f"{a} vs {b}": compare_generations(runs[a], runs[b]) for a, b in pairs}}
 
 
+def run_no_write(out: Path) -> dict:
+    """The L4 run's B no-op arm (no_write_connector.py) on the local GPU: it serves, returns no
+    kv_transfer_params, writes nothing and still drafts one token per decode step."""
+    import httpx
+
+    storage = out / "no_write_storage"
+    storage.mkdir(exist_ok=True)
+    transfer = {
+        "kv_connector": "NoWriteHiddenStatesConnector",
+        "kv_connector_module_path": "no_write_connector",
+        "kv_role": "kv_producer",
+        "kv_connector_extra_config": {"shared_storage_path": str(storage), "use_synchronization_lock": False},
+    }
+    extra = [*extraction(storage)[:2], "--kv-transfer-config", json.dumps(transfer)]
+    env = {"PYTHONPATH": os.pathsep.join(filter(None, [str(Path(__file__).parent), os.environ.get("PYTHONPATH")]))}
+    with server("no_write", out, extra, env=env) as url:
+        before = httpx.get(f"{url}/metrics").text
+        [response] = asyncio.run(chat_all(url, [DECODE_PROMPT], 1, max_tokens=16, min_tokens=16, ignore_eos=True))
+        tokens = step_tokens(before, httpx.get(f"{url}/metrics").text)
+    written = sorted(p.name for p in storage.iterdir())
+    shutil.rmtree(storage, ignore_errors=True)
+    return {
+        "no_write": {
+            "kv_transfer_params": response.get("kv_transfer_params"),
+            "files_written": written,
+            "decode": tokens,
+        }
+    }
+
+
 def cleanup(response: dict) -> None:
     from vllm.distributed.kv_transfer.kv_connector.v1.example_hidden_states_connector import (
         cleanup_hidden_states,
@@ -407,12 +438,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--out", type=Path, default=ROOT / ".cache" / "d1-local")
     parser.add_argument("--lens", action="store_true", help="run check 5, under uv run --with " + VLLM_LENS)
     parser.add_argument("--repeats", action="store_true", help="run plain and B twice each and compare generations")
+    parser.add_argument("--no-write", action="store_true", help="smoke-test the L4 run's B no-op connector")
     args = parser.parse_args(argv)
     args.out.mkdir(parents=True, exist_ok=True)
     print(f"{shutil.disk_usage(args.out).free / 1e9:.0f} GB free in {args.out}", flush=True)
     path = args.out / "d1_local.json"
     results = json.loads(path.read_text()) if path.exists() else {}
-    results.update(run_lens(args.out) if args.lens else run_repeats(args.out) if args.repeats else run_main(args.out))
+    run = run_lens if args.lens else run_repeats if args.repeats else run_no_write if args.no_write else run_main
+    results.update(run(args.out))
     results["versions"] = {
         "vllm": version("vllm"),
         **({"vllm-lens": version("vllm-lens")} if args.lens else {}),
