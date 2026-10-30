@@ -51,7 +51,9 @@ def diverged(*margins):
     return {
         "identical": 32 - len(margins),
         "of": 32,
-        "diverged": [{"prompt": i, "token": 5, "tokens": ["x", "y"], "margins": [m, 0.1]} for i, m in enumerate(margins)],
+        "diverged": [
+            {"prompt": i, "token": 5, "tokens": ["x", "y"], "margins": [m, 0.1]} for i, m in enumerate(margins)
+        ],
     }
 
 
