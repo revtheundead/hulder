@@ -155,6 +155,15 @@ def startup_facts(log: str) -> dict:
     }
 
 
+def installed_packages() -> str:
+    """Every installed distribution as name==version, one per line, sorted, read from package
+    metadata as worker.py reads it, so recording the image's packages needs no subprocess."""
+    from importlib.metadata import distributions
+
+    lines = {f"{d.metadata['Name']}=={d.version}" for d in distributions() if d.metadata["Name"]}
+    return "\n".join(sorted(lines, key=str.lower)) + "\n"
+
+
 def free_gpu_memory() -> dict:
     line = subprocess.run(
         ["nvidia-smi", "--query-gpu=memory.used,memory.free", "--format=csv,noheader,nounits"],

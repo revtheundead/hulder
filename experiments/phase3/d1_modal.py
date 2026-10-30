@@ -21,8 +21,9 @@ case would pass $3. Inside, the run stops at the first stop rule in d1_l4.py. Th
 Modal's published rates (experiments/modal/smoke_lib.py) and have run high against the actual
 charge on the usage page.
 
-Writes the results, every server and bench log, and a manifest with the estimated cost to
---out/<run id>/.
+Writes the results, every server and bench log, the image's packages and a manifest with the
+estimated cost to --out/<run id>/. A failed call still records its wall time and estimate. The
+estimate counts the call's whole wall time, which includes any wait for a GPU, so it runs high.
 """
 
 import json
@@ -146,10 +147,7 @@ def measure(workload: dict) -> dict:
     cfg = {**CFG, "tokenizer": snapshot_download(MODEL, revision=REVISION, local_files_only=True)}
     out = Path("/tmp/d1")
     out.mkdir(parents=True)
-    freeze = subprocess.run(
-        ["/.uv/uv", "pip", "freeze", "--python", sys.executable], capture_output=True, text=True, check=True
-    )
-    (out / "pip_freeze.txt").write_text(freeze.stdout)
+    (out / "packages.txt").write_text(d1_l4.installed_packages())
     results = d1_l4.run_all(cfg, workload, out, rounds=ROUNDS, timeout_s=RUN_TIMEOUT_S)
     hf.commit()  # compile caches, for later runs
     files = {str(p.relative_to(out)): p.read_bytes() for p in sorted(out.rglob("*")) if p.is_file()}
@@ -212,7 +210,23 @@ def main(spent_usd: float, out: str = ".cache/modal-runs") -> None:
     )
     record()
     start = time.time()
-    returned = measure.remote(workload())
+    try:
+        returned = measure.remote(workload())
+    except Exception as error:
+        # Recorded before re-raising, so a failed call still leaves its wall time and estimate.
+        wall = time.time() - start
+        manifest["measure"] = {
+            "wall_seconds": round(wall, 1),
+            "estimated_usd": round(
+                lib.estimate_cost(wall, gpu=True, cpu=lib.GPU_CPU, memory_gib=lib.GPU_MEMORY_GIB), 4
+            ),
+            "error": f"{type(error).__name__}: {error}",
+        }
+        manifest["estimated_usd"] = round(
+            manifest["download"]["estimated_usd"] + manifest["measure"]["estimated_usd"], 4
+        )
+        record()
+        raise
     wall = time.time() - start
     manifest["measure"] = {
         "wall_seconds": round(wall, 1),
