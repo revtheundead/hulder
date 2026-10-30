@@ -35,6 +35,7 @@ vllm:spec_decode_num_accepted_tokens_total{{engine="0",model_name="m"}} {accepte
 
 
 def test_step_tokens_is_the_difference_between_two_scrapes():
+    pytest.importorskip("prometheus_client")  # from the vllm extra
     before = METRICS.format(tokens=100, steps=10, drafts=0, accepted=0)
     after = METRICS.format(tokens=100 + 30 + 2 * 63, steps=10 + 64, drafts=63, accepted=0)
     assert d.step_tokens(before, after) == {
@@ -46,6 +47,7 @@ def test_step_tokens_is_the_difference_between_two_scrapes():
 
 
 def test_step_tokens_reads_missing_spec_decode_counters_as_zero():
+    pytest.importorskip("prometheus_client")  # from the vllm extra
     plain = "\n".join(METRICS.splitlines()[:3]) + "\n"
     assert d.step_tokens(plain.format(tokens=0, steps=0), plain.format(tokens=93, steps=64)) == {
         "steps": 64,

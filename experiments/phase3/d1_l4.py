@@ -44,7 +44,6 @@ import time
 from pathlib import Path
 
 import d1_local
-from prometheus_client.parser import text_string_to_metric_families
 
 HERE = Path(__file__).resolve().parent
 ARMS = ("baseline", "b_stock", "b_noop", "lens")
@@ -238,6 +237,7 @@ class Peaks(threading.Thread):
 
     def run(self) -> None:
         import httpx
+        from prometheus_client.parser import text_string_to_metric_families
 
         while not self.stop.wait(1.0):
             with contextlib.suppress(httpx.HTTPError):

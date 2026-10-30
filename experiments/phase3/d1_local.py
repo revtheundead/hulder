@@ -38,7 +38,6 @@ from importlib.metadata import version
 from pathlib import Path
 
 import numpy as np
-from prometheus_client.parser import text_string_to_metric_families
 
 ROOT = Path(__file__).resolve().parents[2]
 PROMPTS = ROOT / "examples" / "live_demo" / "demo_prompts.jsonl"
@@ -90,7 +89,9 @@ def last_position(hidden: np.ndarray, token_ids, prompt_token_ids) -> np.ndarray
 
 
 def step_tokens(before: str, after: str) -> dict:
-    """Engine steps, tokens scheduled and spec-decode tokens between two /metrics scrapes."""
+    """Engine steps, tokens scheduled and spec-decode tokens between two /metrics scrapes. Imports
+    prometheus_client, from the vllm extra, only here, so the base install can import this module."""
+    from prometheus_client.parser import text_string_to_metric_families
 
     def read(text: str) -> dict:
         totals = dict.fromkeys(COUNTERS.values(), 0.0)
