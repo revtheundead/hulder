@@ -115,3 +115,17 @@ def test_divergence_table_lists_every_first_divergence_with_its_reference_margin
         "r0_b_stock": {"exact tie": 0, "within bound": 1, "change": 2},
         "r1_baseline": {"exact tie": 1, "within bound": 0, "change": 0},
     }
+
+
+def test_installed_packages_lists_every_distribution_once_as_name_and_version_sorted():
+    lines = r.installed_packages().splitlines()
+    assert lines == sorted(set(lines), key=str.lower)
+    assert any(line.startswith("pytest==") for line in lines)
+
+
+def test_preflight_fails_clearly_when_the_model_isnt_in_the_hf_cache(tmp_path, monkeypatch):
+    pytest.importorskip("huggingface_hub")  # from the vllm extra
+    monkeypatch.setenv("HF_HOME", str(tmp_path))
+    monkeypatch.setenv("HF_HUB_OFFLINE", "1")
+    with pytest.raises(RuntimeError, match="isn't in the HF cache"):
+        r.preflight("Qwen/Qwen3-4B", "1cfa9a7208912126459214e8b04321603b3df60c")

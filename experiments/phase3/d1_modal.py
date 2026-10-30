@@ -21,8 +21,9 @@ case would pass $3. Inside, the run stops at the first stop rule in d1_l4.py. Th
 Modal's published rates (experiments/modal/smoke_lib.py) and have run high against the actual
 charge on the usage page.
 
-Writes the results, every server and bench log, and a manifest with the estimated cost to
---out/<run id>/.
+Writes the results, every server and bench log, the image's packages and a manifest with the
+estimated cost to --out/<run id>/. A failed call still records its wall time and estimate. The
+estimate counts the call's whole wall time, which includes any wait for a GPU, so it runs high.
 """
 
 import json
@@ -70,6 +71,8 @@ N_GENERATE = 32
 ROUNDS = 3
 RUN_TIMEOUT_S = 10 * 60
 N_RUNS = ROUNDS * 4
+# The pre-flight: CPU only, on the same image and Volume, before any GPU is asked for.
+PREFLIGHT_CPU, PREFLIGHT_MEMORY_GIB, PREFLIGHT_TIMEOUT_S = 2.0, 8, 10 * 60
 
 
 def build_wheel() -> Path:
@@ -122,6 +125,23 @@ def download() -> dict:
 
 
 @app.function(
+    cpu=PREFLIGHT_CPU,
+    memory=PREFLIGHT_MEMORY_GIB * 1024,
+    volumes={CACHE: hf},
+    timeout=PREFLIGHT_TIMEOUT_S,
+    retries=0,
+)
+def preflight() -> dict:
+    """d1_l4.preflight on this image with the Volume's HF cache and the Hub offline, as measure
+    runs, and the image's package list."""
+    os.environ.update({**CACHE_ENV, **ENGINE_ENV})
+    sys.path.insert(0, PHASE3)
+    import d1_l4
+
+    return {"facts": d1_l4.preflight(MODEL, REVISION), "packages": d1_l4.installed_packages()}
+
+
+@app.function(
     gpu="L4",
     cpu=lib.GPU_CPU,
     memory=lib.GPU_MEMORY_GIB * 1024,
@@ -146,10 +166,7 @@ def measure(workload: dict) -> dict:
     cfg = {**CFG, "tokenizer": snapshot_download(MODEL, revision=REVISION, local_files_only=True)}
     out = Path("/tmp/d1")
     out.mkdir(parents=True)
-    freeze = subprocess.run(
-        ["/.uv/uv", "pip", "freeze", "--python", sys.executable], capture_output=True, text=True, check=True
-    )
-    (out / "pip_freeze.txt").write_text(freeze.stdout)
+    (out / "packages.txt").write_text(d1_l4.installed_packages())
     results = d1_l4.run_all(cfg, workload, out, rounds=ROUNDS, timeout_s=RUN_TIMEOUT_S)
     hf.commit()  # compile caches, for later runs
     files = {str(p.relative_to(out)): p.read_bytes() for p in sorted(out.rglob("*")) if p.is_file()}
@@ -169,6 +186,12 @@ def workload() -> dict:
     return {**WORKLOAD, "gen_prompts": texts[:N_GENERATE], "bench_prompts": texts}
 
 
+def preflight_worst_case_usd() -> float:
+    return lib.estimate_cost(
+        PREFLIGHT_TIMEOUT_S + lib.CONTAINER_STARTUP_S, gpu=False, cpu=PREFLIGHT_CPU, memory_gib=PREFLIGHT_MEMORY_GIB
+    )
+
+
 def worst_case_usd() -> float:
     return lib.estimate_cost(
         N_RUNS * RUN_TIMEOUT_S + lib.CONTAINER_STARTUP_S, gpu=True, cpu=lib.GPU_CPU, memory_gib=lib.GPU_MEMORY_GIB
@@ -176,10 +199,10 @@ def worst_case_usd() -> float:
 
 
 @app.local_entrypoint()
-def main(spent_usd: float, out: str = ".cache/modal-runs") -> None:
+def main(spent_usd: float, out: str = ".cache/modal-runs", preflight_only: bool = False) -> None:
     if git("status", "--porcelain", "--untracked-files=no"):
         raise SystemExit("the tracked tree has changes; commit them so the manifest's commit is what ran")
-    worst = worst_case_usd()
+    worst = preflight_worst_case_usd() + (0 if preflight_only else worst_case_usd())
     if spent_usd + worst > lib.BUDGET_USD:
         raise SystemExit(f"today's ${spent_usd} plus the worst case ${worst:.2f} would pass ${lib.BUDGET_USD}")
     run_id = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
@@ -187,9 +210,10 @@ def main(spent_usd: float, out: str = ".cache/modal-runs") -> None:
     run_dir.mkdir(parents=True)
     manifest = {
         "run_id": run_id,
-        "experiment": "d1_cost",
+        "experiment": "d1_cost_preflight" if preflight_only else "d1_cost",
         "commit": git("rev-parse", "HEAD"),
-        "command": f"uv run --with modal==1.6.1 modal run experiments/phase3/d1_modal.py --spent-usd {spent_usd}",
+        "command": "uv run --with modal==1.6.1 modal run experiments/phase3/d1_modal.py "
+        f"--spent-usd {spent_usd}" + (" --preflight-only" if preflight_only else ""),
         "modal": modal.__version__,
         "rates_usd_per_s": {"L4": lib.L4_PER_S, "cpu_core": lib.CPU_CORE_PER_S, "memory_gib": lib.MEMORY_GIB_PER_S},
         "spent_before_usd": spent_usd,
@@ -212,14 +236,55 @@ def main(spent_usd: float, out: str = ".cache/modal-runs") -> None:
     )
     record()
     start = time.time()
-    returned = measure.remote(workload())
+    checked = preflight.remote()
+    wall = time.time() - start
+    manifest["preflight"] = {
+        **checked["facts"],
+        "wall_seconds": round(wall, 1),
+        "estimated_usd": round(
+            lib.estimate_cost(wall, gpu=False, cpu=PREFLIGHT_CPU, memory_gib=PREFLIGHT_MEMORY_GIB), 4
+        ),
+    }
+    manifest["estimated_usd"] = round(manifest["download"]["estimated_usd"] + manifest["preflight"]["estimated_usd"], 4)
+    (run_dir / "packages.txt").write_text(checked["packages"])
+    record()
+    if preflight_only:
+        print(json.dumps(manifest["preflight"], indent=2))
+        print(f"Pre-flight {run_id} in {run_dir}, estimated ${manifest['estimated_usd']}.")
+        return
+    start = time.time()
+    try:
+        returned = measure.remote(workload())
+    except Exception as error:
+        # Recorded before re-raising, so a failed call still leaves its wall time and estimate.
+        wall = time.time() - start
+        manifest["measure"] = {
+            "wall_seconds": round(wall, 1),
+            "estimated_usd": round(
+                lib.estimate_cost(wall, gpu=True, cpu=lib.GPU_CPU, memory_gib=lib.GPU_MEMORY_GIB), 4
+            ),
+            "error": f"{type(error).__name__}: {error}",
+        }
+        manifest["estimated_usd"] = round(
+            manifest["download"]["estimated_usd"]
+            + manifest["preflight"]["estimated_usd"]
+            + manifest["measure"]["estimated_usd"],
+            4,
+        )
+        record()
+        raise
     wall = time.time() - start
     manifest["measure"] = {
         "wall_seconds": round(wall, 1),
         "estimated_usd": round(lib.estimate_cost(wall, gpu=True, cpu=lib.GPU_CPU, memory_gib=lib.GPU_MEMORY_GIB), 4),
         "nvidia_smi": returned["nvidia_smi"],
     }
-    manifest["estimated_usd"] = round(manifest["download"]["estimated_usd"] + manifest["measure"]["estimated_usd"], 4)
+    manifest["estimated_usd"] = round(
+        manifest["download"]["estimated_usd"]
+        + manifest["preflight"]["estimated_usd"]
+        + manifest["measure"]["estimated_usd"],
+        4,
+    )
     for name, data in returned["files"].items():
         (run_dir / name).parent.mkdir(parents=True, exist_ok=True)
         (run_dir / name).write_bytes(data)

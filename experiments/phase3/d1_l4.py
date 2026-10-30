@@ -155,6 +155,58 @@ def startup_facts(log: str) -> dict:
     }
 
 
+def installed_packages() -> str:
+    """Every installed distribution as name==version, one per line, sorted, read from package
+    metadata as worker.py reads it, so recording the image's packages needs no subprocess."""
+    from importlib.metadata import distributions
+
+    lines = {f"{d.metadata['Name']}=={d.version}" for d in distributions() if d.metadata["Name"]}
+    return "\n".join(sorted(lines, key=str.lower)) + "\n"
+
+
+def preflight(model: str, revision: str) -> dict:
+    """Everything an arm-run needs except a GPU, checked on CPU: the package list, the tokenizer
+    read offline from the HF cache, the imports of the no-op connector and vllm-lens, and the
+    bench command. Raises RuntimeError on the first that fails."""
+    import importlib
+
+    from huggingface_hub import snapshot_download
+    from huggingface_hub.errors import LocalEntryNotFoundError
+
+    started = time.time()
+    try:
+        path = snapshot_download(model, revision=revision, local_files_only=True)
+    except LocalEntryNotFoundError as error:
+        raise RuntimeError(f"{model} at {revision[:12]} isn't in the HF cache: {error}") from error
+    from transformers import AutoTokenizer
+
+    tokenizer = AutoTokenizer.from_pretrained(path)
+    text = tokenizer.apply_chat_template(
+        [{"role": "user", "content": "hello"}], tokenize=False, add_generation_prompt=True
+    )
+    templated = tokenizer(text, add_special_tokens=False)["input_ids"]
+    sys.path.insert(0, str(HERE))
+    for module in ("no_write_connector", "vllm_lens", "vllm_lens.client", "prometheus_client.parser", "httpx"):
+        try:
+            importlib.import_module(module)
+        except ImportError as error:
+            raise RuntimeError(f"can't import {module}: {error}") from error
+    command = [sys.executable, "-m", "vllm.entrypoints.cli.main", "bench", "serve", "--help"]
+    bench_help = subprocess.run(command, capture_output=True, text=True, check=False)
+    if bench_help.returncode != 0:
+        raise RuntimeError(f"`vllm bench serve --help` exited {bench_help.returncode}: {bench_help.stderr[-500:]}")
+    packages = installed_packages()
+    return {
+        "tokenizer_path": path,
+        "tokenizer_vocab": len(tokenizer),
+        "templated_tokens": len(templated),
+        "packages": len(packages.splitlines()),
+        "versions": {line.split("==")[0]: line.split("==")[1] for line in packages.splitlines()
+                     if line.split("==")[0].lower() in ("vllm", "vllm-lens", "hulder", "torch", "transformers")},
+        "seconds": round(time.time() - started, 1),
+    }  # fmt: skip
+
+
 def free_gpu_memory() -> dict:
     line = subprocess.run(
         ["nvidia-smi", "--query-gpu=memory.used,memory.free", "--format=csv,noheader,nounits"],
