@@ -807,11 +807,12 @@ def test_only_a_shuffled_source_records_its_batch_order_seed():
 
 
 def test_a_shuffled_specs_snapshots_carry_its_batch_order_seed_and_others_none():
-    shuffled = lib.worker_spec(("rerun", "qwen3_4b_bf16_exp2_shuffled"), 480) if lib.SLABS_SPLITS.exists() else None
     control = lib.worker_spec(("canary_check", "qwen3_4b_bf16_canary_check"), 480)
     assert control["extra_metadata"] == {}
-    if shuffled is None:
+    if not lib.SLABS_SPLITS.exists():
         pytest.skip("needs .cache/probe/splits.parquet")
+    pytest.importorskip("pandas")
+    shuffled = lib.worker_spec(("rerun", "qwen3_4b_bf16_exp2_shuffled"), 480)
     assert shuffled["extra_metadata"] == {"batch_order_seed": 1}
 
 
