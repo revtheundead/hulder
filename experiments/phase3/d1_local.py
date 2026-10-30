@@ -12,6 +12,9 @@ prefix caching off, against the bundled demo snapshots and probe (layer 20, posi
 5. lens: vllm-lens in eager mode at layers 19 and 20, and with VLLM_LENS_DISABLE=1 against the
    plain server's greedy outputs from check 2
 
+--repeats runs check 2's generation on two fresh plain servers and two fresh B servers, token by
+token with logprobs, so plain against B can be set against plain against plain.
+
 Checks 1 to 4 run in the project environment, check 5 with vllm-lens layered on:
 
     source scripts/dev-env.sh && uv run python experiments/phase3/d1_local.py --out .cache/d1-local
@@ -254,6 +257,37 @@ def texts_match(a: list[dict], b: list[dict]) -> dict:
     return {"identical": len(left) - len(differ), "of": len(left), "differing_prompts": differ}
 
 
+def compare_generations(a: list[dict], b: list[dict]) -> dict:
+    """Token by token, where each prompt's two greedy replies first differ, with each run's
+    logprob margin between its top two candidates there (None past a reply's end). Replies need
+    logprobs with top_logprobs >= 2."""
+
+    def steps(response: dict) -> list[dict]:
+        return response["choices"][0]["logprobs"]["content"]
+
+    def margin(step: dict | None) -> float | None:
+        top = step["top_logprobs"] if step else []
+        return top[0]["logprob"] - top[1]["logprob"] if len(top) >= 2 else None
+
+    diverged = []
+    for prompt, (x, y) in enumerate(zip(a, b, strict=True)):
+        left, right = steps(x), steps(y)
+        k = next((i for i, (u, v) in enumerate(zip(left, right)) if u["token"] != v["token"]), None)
+        if k is None and len(left) == len(right):
+            continue
+        k = min(len(left), len(right)) if k is None else k
+        pair = [left[k] if k < len(left) else None, right[k] if k < len(right) else None]
+        diverged.append(
+            {
+                "prompt": prompt,
+                "token": k,
+                "tokens": [step["token"] if step else None for step in pair],
+                "margins": [margin(step) for step in pair],
+            }
+        )
+    return {"identical": len(a) - len(diverged), "of": len(a), "diverged": diverged}
+
+
 def run_main(out: Path) -> dict:
     import hulder
 
@@ -296,6 +330,31 @@ def run_main(out: Path) -> dict:
         )
     shutil.rmtree(storage, ignore_errors=True)
     return results
+
+
+def run_repeats(out: Path) -> dict:
+    """Greedy generation from two fresh plain servers and two fresh B servers, compared pairwise,
+    so a difference between plain and B can be set against each one's own run-to-run variation."""
+    texts = [r["text"] for r in prompts()][:N_GENERATE]
+    params = {"max_tokens": GENERATE_TOKENS, "logprobs": True, "top_logprobs": 2}
+    runs = {}
+    storage = out / "hidden_states"
+    for name, extra in (("plain", []), ("connector", extraction(storage))):
+        for i in (1, 2):
+            with server(f"repeat_{name}_{i}", out, extra) as url:
+                runs[f"{name}_{i}"] = asyncio.run(chat_all(url, texts, 1, **params))
+            if extra:
+                for response in runs[f"{name}_{i}"]:
+                    cleanup(response)
+    shutil.rmtree(storage, ignore_errors=True)
+    (out / "repeat_generate.json").write_text(json.dumps(runs))
+    pairs = [
+        ("plain_1", "plain_2"),
+        ("connector_1", "connector_2"),
+        ("plain_1", "connector_1"),
+        ("plain_2", "connector_2"),
+    ]
+    return {"repeats": {f"{a} vs {b}": compare_generations(runs[a], runs[b]) for a, b in pairs}}
 
 
 def cleanup(response: dict) -> None:
@@ -347,12 +406,13 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--out", type=Path, default=ROOT / ".cache" / "d1-local")
     parser.add_argument("--lens", action="store_true", help="run check 5, under uv run --with " + VLLM_LENS)
+    parser.add_argument("--repeats", action="store_true", help="run plain and B twice each and compare generations")
     args = parser.parse_args(argv)
     args.out.mkdir(parents=True, exist_ok=True)
     print(f"{shutil.disk_usage(args.out).free / 1e9:.0f} GB free in {args.out}", flush=True)
     path = args.out / "d1_local.json"
     results = json.loads(path.read_text()) if path.exists() else {}
-    results.update(run_lens(args.out) if args.lens else run_main(args.out))
+    results.update(run_lens(args.out) if args.lens else run_repeats(args.out) if args.repeats else run_main(args.out))
     results["versions"] = {
         "vllm": version("vllm"),
         **({"vllm-lens": version("vllm-lens")} if args.lens else {}),
