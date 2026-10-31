@@ -9,7 +9,7 @@ scripts/dev-env.sh):
 Qwen3-4B in bf16 at 1cfa9a72, the probe layer 18, served with chunked prefill on, prefix caching
 off and vLLM's defaults otherwise. The bench prompts are the 2,101 S-Labs calibration prompts
 (.cache/probe/splits.parquet), sorted by id. Each arm-run: greedy replies to the first 16, 64
-tokens each, a saturation bench of 300 prompts and a fixed-rate bench of up to 90 s, each
+tokens each, a saturation bench of 300 prompts and a fixed-rate bench of up to 75 s, each
 request 128 output tokens with EOS ignored. 4 arms over 3 rounds.
 
 The image is capture.py's (uv.lock with the vllm extra, on Python 3.12.14) with vllm-lens 1.3.0
@@ -70,11 +70,12 @@ CFG = {
         "--enable-chunked-prefill", "--no-enable-prefix-caching", "--seed", "0",
     ],
 }  # fmt: skip
-WORKLOAD = {"gen_tokens": 64, "saturation_prompts": 300, "fixed_seconds": 90, "output_len": 128}
+WORKLOAD = {"gen_tokens": 64, "saturation_prompts": 300, "fixed_seconds": 75, "output_len": 128}
 N_GENERATE = 16
 ROUNDS = 3
-# From run 20261030T191447Z's baseline: a cold start of 386.6 s, 174 s of it compiling, and about
-# 50 s of greedy replies, 16 s of saturation and 90 s at the fixed rate at this workload.
+# From run 20261030T191447Z's baseline: a cold start of 386.6 s, 174 s of it compiling. At this
+# workload its measurement is about 185 s: 39 s of greedy replies, about 24 s for each bench's own
+# process to start, 16 s of saturation, 75 s at the fixed rate and a few seconds' drain.
 TIMEOUTS = d1_l4.Timeouts(cold_startup=8 * 60, warm_startup=270, measure=4 * 60)
 # Outside the arm-runs: the GPU query, the comparisons and committing the compile cache.
 MEASURE_SLACK_S = 5 * 60
