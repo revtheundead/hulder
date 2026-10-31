@@ -8,18 +8,20 @@ scripts/dev-env.sh):
 
 Qwen3-4B in bf16 at 1cfa9a72, the probe layer 18, served with chunked prefill on, prefix caching
 off and vLLM's defaults otherwise. The bench prompts are the 2,101 S-Labs calibration prompts
-(.cache/probe/splits.parquet), sorted by id. Each arm-run: greedy replies to the first 32, 64
-tokens each, a saturation bench of 300 prompts and a fixed-rate bench of up to 120 s, each
+(.cache/probe/splits.parquet), sorted by id. Each arm-run: greedy replies to the first 16, 64
+tokens each, a saturation bench of 300 prompts and a fixed-rate bench of up to 75 s, each
 request 128 output tokens with EOS ignored. 4 arms over 3 rounds.
 
 The image is capture.py's (uv.lock with the vllm extra, on Python 3.12.14) with vllm-lens 1.3.0
 added, and the weights come from the hulder-hf Volume, so the Hub is offline in the container.
 
-Stop rules: each arm-run stops after 10 minutes, the container after all 12, and the run doesn't
-start if today's spend (--spent-usd, read from Modal's usage page) plus the container's worst
-case would pass $3. Inside, the run stops at the first stop rule in d1_l4.py. The estimates use
-Modal's published rates (experiments/modal/smoke_lib.py) and have run high against the actual
-charge on the usage page.
+Stop rules: each server has 8 minutes to answer /health in round 0, which may compile cold, and
+4.5 minutes in later rounds, which reuse its compile cache. Measurement then has 4 minutes, and
+only lens may run out of it without stopping the run, since that is its result. The container
+stops when all 12 arm-runs could have run out both timeouts, and the run doesn't start if today's
+spend (--spent-usd, read from Modal's usage page) plus the worst case would pass $3. Inside, the
+run stops at the first stop rule in d1_l4.py. The estimates use Modal's published rates
+(experiments/modal/smoke_lib.py) and have run high against the actual charge on the usage page.
 
 Writes the results, every server and bench log, the image's packages and a manifest with the
 estimated cost to --out/<run id>/. A failed call still records its wall time and estimate. The
@@ -40,11 +42,13 @@ import modal
 LOCAL = modal.is_local()
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1] if LOCAL else Path("/")
+PHASE3 = "/root/experiments/phase3"  # the phase 3 files in the container
 sys.path.insert(0, str(ROOT / "experiments" / "modal") if LOCAL else "/root")
+sys.path.insert(0, str(HERE) if LOCAL else PHASE3)
+import d1_l4
 import smoke_lib as lib
 
 CACHE = "/vol/hf"
-PHASE3 = "/root/experiments/phase3"  # the phase 3 files in the container
 CACHE_ENV = {
     "HF_HOME": f"{CACHE}/hf",
     "VLLM_CACHE_ROOT": f"{CACHE}/vllm",
@@ -66,11 +70,18 @@ CFG = {
         "--enable-chunked-prefill", "--no-enable-prefix-caching", "--seed", "0",
     ],
 }  # fmt: skip
-WORKLOAD = {"gen_tokens": 64, "saturation_prompts": 300, "fixed_seconds": 120, "output_len": 128}
-N_GENERATE = 32
+WORKLOAD = {"gen_tokens": 64, "saturation_prompts": 300, "fixed_seconds": 75, "output_len": 128}
+N_GENERATE = 16
 ROUNDS = 3
-RUN_TIMEOUT_S = 10 * 60
-N_RUNS = ROUNDS * 4
+# From run 20261030T191447Z's baseline: a cold start of 386.6 s, 174 s of it compiling. At this
+# workload its measurement is about 185 s: 39 s of greedy replies, about 24 s for each bench's own
+# process to start, 16 s of saturation, 75 s at the fixed rate and a few seconds' drain.
+TIMEOUTS = d1_l4.Timeouts(cold_startup=8 * 60, warm_startup=270, measure=4 * 60)
+# Outside the arm-runs: the GPU query, the comparisons and committing the compile cache.
+MEASURE_SLACK_S = 5 * 60
+MEASURE_TIMEOUT_S = d1_l4.worst_case_seconds(TIMEOUTS, ROUNDS) + MEASURE_SLACK_S
+# The weights are on the Volume already, so the download only checks them; 8 GB fetched fresh fits too.
+DOWNLOAD_TIMEOUT_S = 10 * 60
 # The pre-flight: CPU only, on the same image and Volume, before any GPU is asked for.
 PREFLIGHT_CPU, PREFLIGHT_MEMORY_GIB, PREFLIGHT_TIMEOUT_S = 2.0, 8, 10 * 60
 
@@ -111,7 +122,11 @@ hf = modal.Volume.from_name("hulder-hf", create_if_missing=True)
 
 
 @app.function(
-    cpu=lib.DOWNLOAD_CPU, memory=lib.DOWNLOAD_MEMORY_GIB * 1024, volumes={CACHE: hf}, timeout=30 * 60, retries=0
+    cpu=lib.DOWNLOAD_CPU,
+    memory=lib.DOWNLOAD_MEMORY_GIB * 1024,
+    volumes={CACHE: hf},
+    timeout=DOWNLOAD_TIMEOUT_S,
+    retries=0,
 )
 def download() -> dict:
     """The model at its pinned revision in the Volume's HF cache, fetched if it isn't there yet."""
@@ -135,9 +150,6 @@ def preflight() -> dict:
     """d1_l4.preflight on this image with the Volume's HF cache and the Hub offline, as measure
     runs, and the image's package list."""
     os.environ.update({**CACHE_ENV, **ENGINE_ENV})
-    sys.path.insert(0, PHASE3)
-    import d1_l4
-
     return {"facts": d1_l4.preflight(MODEL, REVISION), "packages": d1_l4.installed_packages()}
 
 
@@ -146,15 +158,13 @@ def preflight() -> dict:
     cpu=lib.GPU_CPU,
     memory=lib.GPU_MEMORY_GIB * 1024,
     volumes={CACHE: hf},
-    timeout=N_RUNS * RUN_TIMEOUT_S + 10 * 60,
+    timeout=int(MEASURE_TIMEOUT_S),
     retries=0,
     scaledown_window=2,
 )
 def measure(workload: dict) -> dict:
     """Every arm-run of d1_l4's schedule, then the results and every log."""
     os.environ.update({**CACHE_ENV, **ENGINE_ENV})
-    sys.path.insert(0, PHASE3)
-    import d1_l4
     from huggingface_hub import snapshot_download
 
     gpu = subprocess.run(
@@ -167,7 +177,7 @@ def measure(workload: dict) -> dict:
     out = Path("/tmp/d1")
     out.mkdir(parents=True)
     (out / "packages.txt").write_text(d1_l4.installed_packages())
-    results = d1_l4.run_all(cfg, workload, out, rounds=ROUNDS, timeout_s=RUN_TIMEOUT_S)
+    results = d1_l4.run_all(cfg, workload, out, rounds=ROUNDS, timeouts=TIMEOUTS)
     hf.commit()  # compile caches, for later runs
     files = {str(p.relative_to(out)): p.read_bytes() for p in sorted(out.rglob("*")) if p.is_file()}
     return {"results": results, "nvidia_smi": gpu, "files": files}
@@ -186,6 +196,15 @@ def workload() -> dict:
     return {**WORKLOAD, "gen_prompts": texts[:N_GENERATE], "bench_prompts": texts}
 
 
+def download_worst_case_usd() -> float:
+    return lib.estimate_cost(
+        DOWNLOAD_TIMEOUT_S + lib.CONTAINER_STARTUP_S,
+        gpu=False,
+        cpu=lib.DOWNLOAD_CPU,
+        memory_gib=lib.DOWNLOAD_MEMORY_GIB,
+    )
+
+
 def preflight_worst_case_usd() -> float:
     return lib.estimate_cost(
         PREFLIGHT_TIMEOUT_S + lib.CONTAINER_STARTUP_S, gpu=False, cpu=PREFLIGHT_CPU, memory_gib=PREFLIGHT_MEMORY_GIB
@@ -194,7 +213,7 @@ def preflight_worst_case_usd() -> float:
 
 def worst_case_usd() -> float:
     return lib.estimate_cost(
-        N_RUNS * RUN_TIMEOUT_S + lib.CONTAINER_STARTUP_S, gpu=True, cpu=lib.GPU_CPU, memory_gib=lib.GPU_MEMORY_GIB
+        MEASURE_TIMEOUT_S + lib.CONTAINER_STARTUP_S, gpu=True, cpu=lib.GPU_CPU, memory_gib=lib.GPU_MEMORY_GIB
     )
 
 
@@ -202,7 +221,7 @@ def worst_case_usd() -> float:
 def main(spent_usd: float, out: str = ".cache/modal-runs", preflight_only: bool = False) -> None:
     if git("status", "--porcelain", "--untracked-files=no"):
         raise SystemExit("the tracked tree has changes; commit them so the manifest's commit is what ran")
-    worst = preflight_worst_case_usd() + (0 if preflight_only else worst_case_usd())
+    worst = download_worst_case_usd() + preflight_worst_case_usd() + (0 if preflight_only else worst_case_usd())
     if spent_usd + worst > lib.BUDGET_USD:
         raise SystemExit(f"today's ${spent_usd} plus the worst case ${worst:.2f} would pass ${lib.BUDGET_USD}")
     run_id = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
@@ -221,7 +240,7 @@ def main(spent_usd: float, out: str = ".cache/modal-runs", preflight_only: bool 
         "cfg": CFG,
         "workload": WORKLOAD,
         "rounds": ROUNDS,
-        "run_timeout_s": RUN_TIMEOUT_S,
+        "timeouts_s": {**TIMEOUTS._asdict(), "stop_grace": d1_l4.STOP_GRACE_S, "measure_call": MEASURE_TIMEOUT_S},
     }
 
     def record() -> None:
