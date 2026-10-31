@@ -16,10 +16,11 @@ baseline is at most 5% for saturation throughput and 10% for fixed-rate p99 TTFT
 metric is inconclusive when the baseline's own range across rounds exceeds half its threshold.
 
 Stop rules, checked after every arm-run: a server that doesn't answer /health within its startup
-timeout, a measurement past its own timeout, a bench with failed requests, or an arm whose greedy replies diverge from round 0's baseline at more
+timeout, a baseline or B measurement past its own timeout, a bench with failed requests, or an arm whose greedy replies diverge from round 0's baseline at more
 non-tie tokens than a later baseline does (generation_fails). Each prompt counts once, at its
 first divergence, and every first divergence is reported with the baseline's margin there
-(divergence_table). Every arm except lens runs with VLLM_LENS_DISABLE=1, which left greedy
+(divergence_table). A lens measurement past its timeout is a lens result instead, recorded with
+how far it got (measurement_timeout), and the remaining arm-runs go on. Every arm except lens runs with VLLM_LENS_DISABLE=1, which left greedy
 replies unchanged in the local check.
 
 The L4 run goes through d1_modal.py. A smoke run of the whole path on the local GPU, with the
@@ -49,6 +50,7 @@ import d1_local
 HERE = Path(__file__).resolve().parent
 ARMS = ("baseline", "b_stock", "b_noop", "lens")
 BASELINE = "baseline"
+LENS = "lens"
 THRESHOLDS = {"throughput": 0.05, "p99_ttft": 0.10, "p99_tpot": 0.10}
 FIXED_RATE_FRACTION = 0.7
 # A greedy divergence starting where the reference's top two candidates are this close is a tie
@@ -58,6 +60,10 @@ FIXED_RATE_FRACTION = 0.7
 TIE_BOUND = 0.25
 PORT = 8766
 STOP_GRACE_S = 30  # from SIGTERM to SIGKILL when a server is stopped
+# A fixed-rate bench keeping up has completed every request that arrived this long ago: about four
+# 128-token replies at an eager 60 ms a token. One that hasn't did not sustain the rate.
+SUSTAIN_GRACE_S = 30
+UNSUSTAINED = "did not sustain the fixed rate"
 
 
 def schedule(arms: tuple[str, ...], rounds: int) -> list[tuple[int, str]]:
@@ -84,9 +90,12 @@ def worst_case_seconds(timeouts: Timeouts, rounds: int) -> float:
     return sum(timeouts.startup(rnd) + timeouts.measure + STOP_GRACE_S for rnd, _ in schedule(ARMS, rounds))
 
 
-def verdicts(runs: dict, baseline: str = BASELINE) -> dict:
+def verdicts(runs: dict, baseline: str = BASELINE, measurement_timeouts: dict | None = None) -> dict:
     """The cost rule for every arm with a baseline in the same round. runs maps (round, arm) to
-    {"saturation": bench result, "fixed": bench result}."""
+    {"saturation": bench result, "fixed": bench result}, and measurement_timeouts maps an arm to its
+    rounds' measurement_timeout results. An arm that didn't sustain the fixed rate in any round
+    fails, and one that ran out of measurement time can't pass."""
+    measurement_timeouts = measurement_timeouts or {}
     metrics = {
         "throughput": ("saturation", "request_throughput", lambda arm, base: 1 - arm / base),
         "p99_ttft": ("fixed", "p99_ttft_ms", lambda arm, base: arm / base - 1),
@@ -94,12 +103,13 @@ def verdicts(runs: dict, baseline: str = BASELINE) -> dict:
     }
     rounds = sorted({r for r, a in runs if a == baseline})
     out = {}
-    for arm in sorted({a for _, a in runs if a != baseline}):
+    for arm in sorted({a for _, a in runs if a != baseline} | set(measurement_timeouts)):
         paired = [r for r in rounds if (r, arm) in runs]
-        if not paired:
+        timeouts = measurement_timeouts.get(arm, [])
+        if not paired and not timeouts:
             continue
         result = {}
-        for name, (bench, key, overhead) in metrics.items():
+        for name, (bench, key, overhead) in metrics.items() if paired else ():
             base = [runs[(r, baseline)][bench][key] for r in rounds]
             spread = (max(base) - min(base)) / (sum(base) / len(base))
             overheads = [overhead(runs[(r, arm)][bench][key], runs[(r, baseline)][bench][key]) for r in paired]
@@ -113,7 +123,11 @@ def verdicts(runs: dict, baseline: str = BASELINE) -> dict:
                 "verdict": verdict,
             }
         settled = [m["verdict"] for m in result.values()]
-        result["passes"] = None if "inconclusive" in settled else all(v == "pass" for v in settled)
+        passes = None if "inconclusive" in settled else all(v == "pass" for v in settled)
+        if timeouts:
+            result["measurement_timeouts"] = timeouts
+            passes = False if any(t["outcome"] == UNSUSTAINED for t in timeouts) else passes and None
+        result["passes"] = passes
         out[arm] = result
     return out
 
@@ -163,6 +177,27 @@ def divergence_table(generation: dict) -> dict:
     for row in rows:
         counts[row["run"]][row["class"]] += 1
     return {"tie_bound": TIE_BOUND, "rows": rows, "counts": counts}
+
+
+def measurement_timeout(stage: str, stage_seconds: float, rate: float | None, bench_log: str | None) -> dict:
+    """A measurement timeout as a result: the stage it hit, how long that stage had run, the bench's
+    last progress (its own seconds and requests completed of its total, None outside a bench) and
+    the outcome. A fixed-rate bench that had completed fewer requests than had arrived
+    SUSTAIN_GRACE_S before did not sustain the rate."""
+    progress = re.findall(r"(\d+)/(\d+) \[(\d+):(\d+)", bench_log or "")
+    completed, of, minutes, seconds = (int(n) for n in progress[-1]) if progress else (None,) * 4
+    bench_seconds = None if minutes is None else 60 * minutes + seconds
+    behind = (
+        stage == "fixed" and bench_seconds is not None and completed < min(of, rate * (bench_seconds - SUSTAIN_GRACE_S))
+    )
+    return {
+        "stage": stage,
+        "stage_seconds": stage_seconds,
+        "bench_seconds": bench_seconds,
+        "completed": completed,
+        "of": of,
+        "outcome": UNSUSTAINED if behind else f"ran out of measurement time in {stage}",
+    }
 
 
 def startup_facts(log: str) -> dict:
@@ -374,10 +409,12 @@ def run_arm(arm: str, rnd: int, cfg: dict, workload: dict, out: Path, rate: floa
     command, env = arm_command(arm, cfg, storage)
     result = {"arm": arm, "round": rnd, "free_gpu_before": free_gpu_memory(), "command": command, "env": env}
     started = time.time()
+    stage, peaks = None, None
     try:
         with serve(command, env, run_dir / "server.log", timeouts.startup(rnd)) as url:
             result["startup_seconds"] = round(time.time() - started, 1)
             deadline = time.time() + timeouts.measure
+            stage, stage_started = "generate", time.time()
             if arm == "lens":
                 import torch
                 from vllm_lens.client import VLLMLensClient
@@ -394,21 +431,32 @@ def run_arm(arm: str, rnd: int, cfg: dict, workload: dict, out: Path, rate: floa
             before = httpx.get(f"{url}/metrics").text
             peaks = Peaks(url)
             peaks.start()
+            stage, stage_started = "saturation", time.time()
             n_sat = workload["saturation_prompts"]
             result["saturation"] = bench(url, cfg, workload, dataset, run_dir, "saturation", None, n_sat, deadline)
             rate = rate or FIXED_RATE_FRACTION * result["saturation"]["request_throughput"]
             n_fixed = min(len(workload["bench_prompts"]), max(1, round(rate * workload["fixed_seconds"])))
             result["fixed_rate"] = rate
+            stage, stage_started = "fixed", time.time()
             result["fixed"] = bench(url, cfg, workload, dataset, run_dir, "fixed", rate, n_fixed, deadline)
-            peaks.stop.set()
-            peaks.join()
-            result["peaks"] = peaks.peaks
             result["counters"] = d1_local.step_tokens(before, httpx.get(f"{url}/metrics").text)
             if arm == "lens":
                 result["hook_results"] = len(VLLMLensClient(url).collect_hook_results())
     except (RuntimeError, TimeoutError, subprocess.SubprocessError, httpx.HTTPError) as error:
-        result["error"] = f"{type(error).__name__}: {error}"
+        result["error"] = f"{type(error).__name__}: {str(error) or 'the measurement timeout passed'}"
+        if stage and isinstance(error, (TimeoutError, subprocess.TimeoutExpired)):
+            log = run_dir / f"{stage}.log"
+            result["timeout"] = measurement_timeout(
+                stage,
+                round(time.time() - stage_started, 1),
+                result.get("fixed_rate"),
+                log.read_text(errors="replace") if log.exists() else None,
+            )
     finally:
+        if peaks:
+            peaks.stop.set()
+            peaks.join()
+            result["peaks"] = peaks.peaks
         shutil.rmtree(storage, ignore_errors=True)
     result["seconds"] = round(time.time() - started, 1)
     result["startup"] = startup_facts((run_dir / "server.log").read_text(errors="replace"))
@@ -417,27 +465,34 @@ def run_arm(arm: str, rnd: int, cfg: dict, workload: dict, out: Path, rate: floa
 
 def run_all(cfg: dict, workload: dict, out: Path, rounds: int, timeouts: Timeouts) -> dict:
     """Every arm-run of the schedule in order, stopping at the first stop rule that fires."""
-    runs, plan = {}, schedule(ARMS, rounds)
+    runs, replies, lens_timeouts, plan = {}, {}, [], schedule(ARMS, rounds)
     results = {"schedule": plan, "runs": [], "stopped": None}
     rate = None
     for rnd, arm in plan:
         print(f"round {rnd}: {arm}", flush=True)
         run = run_arm(arm, rnd, cfg, workload, out, rate, timeouts)
-        replies = run.pop("generate", None)
+        generated = run.pop("generate", None)
         results["runs"].append(run)
-        if "error" in run:
+        # Lens runs eager, so it may not keep up with the baseline's fixed rate. That is its result.
+        lens_timed_out = arm == LENS and "timeout" in run
+        if "error" in run and not lens_timed_out:
             results["stopped"] = f"round {rnd} {arm}: {run['error']}"
             break
-        if failed := run["saturation"]["failed"] or run["fixed"]["failed"]:
+        if failed := sum(run[b]["failed"] for b in ("saturation", "fixed") if b in run):
             results["stopped"] = f"round {rnd} {arm}: {failed} failed requests"
             break
-        runs[(rnd, arm)] = {"saturation": run["saturation"], "fixed": run["fixed"], "replies": replies}
+        if lens_timed_out:
+            lens_timeouts.append({"round": rnd, **run["timeout"]})
+        else:
+            runs[(rnd, arm)] = {"saturation": run["saturation"], "fixed": run["fixed"]}
+        if generated is not None:
+            replies[(rnd, arm)] = generated
         if rnd == 0 and arm == BASELINE:
             rate = run["fixed_rate"]
-        reference = runs[(0, BASELINE)]["replies"]
+        reference = replies[(0, BASELINE)]
         comparisons = {
-            key: d1_local.compare_generations(reference, value["replies"])
-            for key, value in runs.items()
+            key: d1_local.compare_generations(reference, value)
+            for key, value in replies.items()
             if key != (0, BASELINE)
         }
         plain = [c for (r, a), c in comparisons.items() if a == BASELINE]
@@ -446,7 +501,7 @@ def run_all(cfg: dict, workload: dict, out: Path, rounds: int, timeouts: Timeout
         if fails:
             results["stopped"] = f"greedy replies changed beyond a fresh baseline's: {', '.join(fails)}"
             break
-    results["verdicts"] = verdicts(runs)
+    results["verdicts"] = verdicts(runs, measurement_timeouts={LENS: lens_timeouts} if lens_timeouts else None)
     results["divergences"] = divergence_table(results.get("generation", {}))
     return results
 

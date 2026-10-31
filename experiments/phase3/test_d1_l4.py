@@ -152,3 +152,100 @@ def test_serve_stops_a_server_that_doesnt_answer_within_its_startup_timeout(tmp_
     with pytest.raises(TimeoutError, match="1 s startup timeout"), r.serve(command, {}, tmp_path / "server.log", 1):
         pass
     assert time.time() - started < 10
+
+
+def progress_log(completed: int, of: int, elapsed: str) -> str:
+    bar = f"\r 50%|██ | {completed}/{of} [{elapsed}<00:52,  6.0it/s]\r"
+    return f"Starting main benchmark run...\n  0%|   | 0/{of} [00:00<?, ?it/s]{bar}"
+
+
+def test_a_fixed_rate_bench_that_completed_fewer_than_had_arrived_before_the_grace_did_not_sustain_the_rate():
+    # 13.5 req/s for 110 - 30 s is 1,080 arrivals, more than the 900 completed.
+    log = progress_log(900, 1215, "01:50")
+    timeout = r.measurement_timeout("fixed", stage_seconds=133.0, rate=13.5, bench_log=log)
+    assert timeout == {
+        "stage": "fixed",
+        "stage_seconds": 133.0,
+        "bench_seconds": 110,
+        "completed": 900,
+        "of": 1215,
+        "outcome": "did not sustain the fixed rate",
+    }
+
+
+def test_a_fixed_rate_bench_keeping_up_when_measurement_ran_out_is_out_of_time_not_unsustained():
+    # The L4 baseline of 20261030T191447Z at its timeout: 883 completed, 527 arrived 30 s before.
+    log = progress_log(883, 1620, "01:09")
+    timeout = r.measurement_timeout("fixed", stage_seconds=92.0, rate=13.5, bench_log=log)
+    assert timeout["outcome"] == "ran out of measurement time in fixed"
+
+
+def test_a_timeout_outside_the_fixed_rate_bench_or_without_progress_is_out_of_time():
+    generating = r.measurement_timeout("generate", stage_seconds=240.0, rate=None, bench_log=None)
+    assert generating["outcome"] == "ran out of measurement time in generate"
+    assert generating["completed"] is generating["of"] is generating["bench_seconds"] is None
+    starting = r.measurement_timeout("fixed", stage_seconds=20.0, rate=13.5, bench_log="Starting main benchmark run...")
+    assert starting["outcome"] == "ran out of measurement time in fixed"
+
+
+def bench_result(throughput=10.0, ttft=100.0, tpot=20.0):
+    return {"failed": 0, "request_throughput": throughput, "p99_ttft_ms": ttft, "p99_tpot_ms": tpot}
+
+
+def fake_run_all(monkeypatch, tmp_path, rounds, misbehaving):
+    """run_all over a fake run_arm, where misbehaving maps (round, arm) to the run's error fields."""
+    monkeypatch.setattr(r.d1_local, "compare_generations", lambda a, b: {"diverged": []})
+
+    def run_arm(arm, rnd, cfg, workload, out, rate, timeouts):
+        run = {"arm": arm, "round": rnd, "generate": ["reply"], "saturation": bench_result(), "fixed_rate": 7.0}
+        if (rnd, arm) in misbehaving:
+            return {**run, **misbehaving[(rnd, arm)]}
+        return {**run, "fixed": bench_result()}
+
+    monkeypatch.setattr(r, "run_arm", run_arm)
+    return r.run_all({}, {}, tmp_path, rounds=rounds, timeouts=r.Timeouts(480, 270, 240))
+
+
+def timed_out(outcome="did not sustain the fixed rate"):
+    timeout = {"stage": "fixed", "stage_seconds": 133.0, "bench_seconds": 110, "completed": 900, "of": 1215}
+    timeout["outcome"] = outcome
+    return {"error": "TimeoutExpired: the fixed-rate bench timed out", "timeout": timeout}
+
+
+def test_a_lens_measurement_timeout_is_a_lens_result_and_the_other_arm_runs_continue(monkeypatch, tmp_path):
+    results = fake_run_all(monkeypatch, tmp_path, rounds=2, misbehaving={(0, "lens"): timed_out()})
+    assert results["stopped"] is None
+    assert len(results["runs"]) == 2 * len(r.ARMS)
+    lens = results["verdicts"]["lens"]
+    assert lens["measurement_timeouts"] == [{"round": 0, **timed_out()["timeout"]}]
+    assert lens["passes"] is False
+    assert results["verdicts"]["b_stock"]["passes"] is True
+
+
+def test_a_lens_that_ran_out_of_measurement_time_is_left_undecided(monkeypatch, tmp_path):
+    misbehaving = {(0, "lens"): timed_out("ran out of measurement time in fixed")}
+    results = fake_run_all(monkeypatch, tmp_path, rounds=2, misbehaving=misbehaving)
+    assert results["stopped"] is None
+    assert results["verdicts"]["lens"]["passes"] is None
+
+
+def test_a_lens_that_times_out_every_round_still_gets_a_verdict(monkeypatch, tmp_path):
+    misbehaving = {(rnd, "lens"): timed_out() for rnd in range(2)}
+    results = fake_run_all(monkeypatch, tmp_path, rounds=2, misbehaving=misbehaving)
+    assert results["verdicts"]["lens"] == {
+        "measurement_timeouts": [{"round": rnd, **timed_out()["timeout"]} for rnd in range(2)],
+        "passes": False,
+    }
+
+
+@pytest.mark.parametrize("arm", ["baseline", "b_stock", "b_noop"])
+def test_a_measurement_timeout_in_the_baseline_or_b_still_stops_the_run(monkeypatch, tmp_path, arm):
+    results = fake_run_all(monkeypatch, tmp_path, rounds=2, misbehaving={(1, arm): timed_out()})
+    assert results["stopped"].startswith(f"round 1 {arm}: TimeoutExpired")
+
+
+def test_a_lens_startup_failure_still_stops_the_run(monkeypatch, tmp_path):
+    startup = {"error": "TimeoutError: the server didn't answer /health within its 480 s startup timeout"}
+    results = fake_run_all(monkeypatch, tmp_path, rounds=2, misbehaving={(0, "lens"): startup})
+    assert results["stopped"].startswith("round 0 lens: TimeoutError")
+    assert len(results["runs"]) == len(r.ARMS)

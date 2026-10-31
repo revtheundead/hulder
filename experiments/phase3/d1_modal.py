@@ -16,11 +16,12 @@ The image is capture.py's (uv.lock with the vllm extra, on Python 3.12.14) with 
 added, and the weights come from the hulder-hf Volume, so the Hub is offline in the container.
 
 Stop rules: each server has 8 minutes to answer /health in round 0, which may compile cold, and
-4.5 minutes in later rounds, which reuse its compile cache. Measurement then has 4 minutes. The
-container stops when all 12 arm-runs could have run out both timeouts, and the run doesn't start
-if today's spend (--spent-usd, read from Modal's usage page) plus the worst case would pass $3. Inside, the run stops at the first stop rule in d1_l4.py. The estimates use
-Modal's published rates (experiments/modal/smoke_lib.py) and have run high against the actual
-charge on the usage page.
+4.5 minutes in later rounds, which reuse its compile cache. Measurement then has 4 minutes, and
+only lens may run out of it without stopping the run, since that is its result. The container
+stops when all 12 arm-runs could have run out both timeouts, and the run doesn't start if today's
+spend (--spent-usd, read from Modal's usage page) plus the worst case would pass $3. Inside, the
+run stops at the first stop rule in d1_l4.py. The estimates use Modal's published rates
+(experiments/modal/smoke_lib.py) and have run high against the actual charge on the usage page.
 
 Writes the results, every server and bench log, the image's packages and a manifest with the
 estimated cost to --out/<run id>/. A failed call still records its wall time and estimate. The
