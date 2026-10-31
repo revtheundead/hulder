@@ -15,8 +15,8 @@ The cost rule (verdicts): an arm passes when the worst round's paired overhead a
 baseline is at most 5% for saturation throughput and 10% for fixed-rate p99 TTFT and p99 TPOT. A
 metric is inconclusive when the baseline's own range across rounds exceeds half its threshold.
 
-Stop rules, checked after every arm-run: a server that doesn't start, a run past its timeout, a
-bench with failed requests, or an arm whose greedy replies diverge from round 0's baseline at more
+Stop rules, checked after every arm-run: a server that doesn't answer /health within its startup
+timeout, a measurement past its own timeout, a bench with failed requests, or an arm whose greedy replies diverge from round 0's baseline at more
 non-tie tokens than a later baseline does (generation_fails). Each prompt counts once, at its
 first divergence, and every first divergence is reported with the baseline's margin there
 (divergence_table). Every arm except lens runs with VLLM_LENS_DISABLE=1, which left greedy
@@ -42,6 +42,7 @@ import sys
 import threading
 import time
 from pathlib import Path
+from typing import NamedTuple
 
 import d1_local
 
@@ -56,12 +57,31 @@ FIXED_RATE_FRACTION = 0.7
 # measured locally, and 0.125 to 0.25 in bf16 at |logit| 16 to 64. So two bf16 steps at 16 to 32.
 TIE_BOUND = 0.25
 PORT = 8766
+STOP_GRACE_S = 30  # from SIGTERM to SIGKILL when a server is stopped
 
 
 def schedule(arms: tuple[str, ...], rounds: int) -> list[tuple[int, str]]:
     """(round, arm) in run order: every arm once a round, the order rotated by one each round so no
     arm always follows another, and round 0 starting with the baseline."""
     return [(r, arms[(r + i) % len(arms)]) for r in range(rounds) for i in range(len(arms))]
+
+
+class Timeouts(NamedTuple):
+    """An arm-run's timeouts in seconds. Startup runs from launch until /health answers, and
+    measurement from then to the end of the last bench. Round 0 runs every arm first in the
+    container, so its servers may compile cold; later rounds reuse the compile cache it wrote."""
+
+    cold_startup: float
+    warm_startup: float
+    measure: float
+
+    def startup(self, rnd: int) -> float:
+        return self.cold_startup if rnd == 0 else self.warm_startup
+
+
+def worst_case_seconds(timeouts: Timeouts, rounds: int) -> float:
+    """The longest the schedule can run: every arm-run at both its timeouts, then stopped."""
+    return sum(timeouts.startup(rnd) + timeouts.measure + STOP_GRACE_S for rnd, _ in schedule(ARMS, rounds))
 
 
 def verdicts(runs: dict, baseline: str = BASELINE) -> dict:
@@ -244,8 +264,8 @@ def arm_command(arm: str, cfg: dict, storage: Path) -> tuple[list[str], dict]:
 
 
 @contextlib.contextmanager
-def serve(command: list[str], env: dict, log_path: Path, deadline: float):
-    """A server in its own process group, yielding its URL once /health answers, then killed."""
+def serve(command: list[str], env: dict, log_path: Path, startup_timeout_s: float):
+    """A server in its own process group, yielding its URL once /health answers, then stopped."""
     import httpx
 
     log = log_path.open("w")
@@ -255,6 +275,7 @@ def serve(command: list[str], env: dict, log_path: Path, deadline: float):
         command, stdout=log, stderr=subprocess.STDOUT, env={**os.environ, **env}, start_new_session=True
     )
     url = f"http://127.0.0.1:{PORT}"
+    deadline = time.time() + startup_timeout_s
     try:
         while True:
             if proc.poll() is not None:
@@ -263,14 +284,16 @@ def serve(command: list[str], env: dict, log_path: Path, deadline: float):
                 if httpx.get(f"{url}/health", timeout=2).status_code == 200:
                     break
             if time.time() > deadline:
-                raise TimeoutError("the server didn't start before the run's timeout")
+                raise TimeoutError(
+                    f"the server didn't answer /health within its {startup_timeout_s:g} s startup timeout"
+                )
             time.sleep(2)
         yield url
     finally:
         with contextlib.suppress(ProcessLookupError):
             os.killpg(proc.pid, signal.SIGTERM)
         try:
-            proc.wait(timeout=60)
+            proc.wait(timeout=STOP_GRACE_S)
         except subprocess.TimeoutExpired:
             os.killpg(proc.pid, signal.SIGKILL)
             proc.wait()
@@ -340,11 +363,11 @@ def make_probe_hook(weights, bias: float, layer: int):
     return Hook(fn=score, layer_indices=[layer])
 
 
-def run_arm(arm: str, rnd: int, cfg: dict, workload: dict, out: Path, rate: float | None, timeout_s: float) -> dict:
+def run_arm(arm: str, rnd: int, cfg: dict, workload: dict, out: Path, rate: float | None,
+            timeouts: Timeouts) -> dict:  # fmt: skip
     """One arm-run. rate is the fixed-rate bench's, None in round 0's baseline, which sets it."""
     import httpx
 
-    deadline = time.time() + timeout_s
     run_dir = out / f"r{rnd}_{arm}"
     run_dir.mkdir(parents=True, exist_ok=True)
     storage = run_dir / "hidden_states"
@@ -352,8 +375,9 @@ def run_arm(arm: str, rnd: int, cfg: dict, workload: dict, out: Path, rate: floa
     result = {"arm": arm, "round": rnd, "free_gpu_before": free_gpu_memory(), "command": command, "env": env}
     started = time.time()
     try:
-        with serve(command, env, run_dir / "server.log", deadline) as url:
+        with serve(command, env, run_dir / "server.log", timeouts.startup(rnd)) as url:
             result["startup_seconds"] = round(time.time() - started, 1)
+            deadline = time.time() + timeouts.measure
             if arm == "lens":
                 import torch
                 from vllm_lens.client import VLLMLensClient
@@ -363,7 +387,8 @@ def run_arm(arm: str, rnd: int, cfg: dict, workload: dict, out: Path, rate: floa
                 # vllm-lens's layer index is one below hulder's layer id (d1_local.md, check 5).
                 VLLMLensClient(url).register_hooks([make_probe_hook(weights, 0.0, cfg["layer"] - 1)])
             params = {"model": cfg["model"], "max_tokens": workload["gen_tokens"], "logprobs": True, "top_logprobs": 2}
-            result["generate"] = d1_local.asyncio.run(d1_local.chat_all(url, workload["gen_prompts"], 1, **params))
+            replies = d1_local.chat_all(url, workload["gen_prompts"], 1, **params)
+            result["generate"] = d1_local.asyncio.run(d1_local.asyncio.wait_for(replies, deadline - time.time()))
             dataset = run_dir / "bench.jsonl"
             dataset.write_text("".join(json.dumps({"prompt": p}) + "\n" for p in workload["bench_prompts"]))
             before = httpx.get(f"{url}/metrics").text
@@ -390,14 +415,14 @@ def run_arm(arm: str, rnd: int, cfg: dict, workload: dict, out: Path, rate: floa
     return result
 
 
-def run_all(cfg: dict, workload: dict, out: Path, rounds: int, timeout_s: float) -> dict:
+def run_all(cfg: dict, workload: dict, out: Path, rounds: int, timeouts: Timeouts) -> dict:
     """Every arm-run of the schedule in order, stopping at the first stop rule that fires."""
     runs, plan = {}, schedule(ARMS, rounds)
     results = {"schedule": plan, "runs": [], "stopped": None}
     rate = None
     for rnd, arm in plan:
         print(f"round {rnd}: {arm}", flush=True)
-        run = run_arm(arm, rnd, cfg, workload, out, rate, timeout_s)
+        run = run_arm(arm, rnd, cfg, workload, out, rate, timeouts)
         replies = run.pop("generate", None)
         results["runs"].append(run)
         if "error" in run:
@@ -467,7 +492,7 @@ def main(argv: list[str] | None = None) -> int:
         "output_len": 16,
     }
     args.out.mkdir(parents=True, exist_ok=True)
-    results = run_all(SMOKE, workload, args.out, rounds=1, timeout_s=900)
+    results = run_all(SMOKE, workload, args.out, rounds=1, timeouts=Timeouts(900, 900, 900))
     (args.out / "d1_l4.json").write_text(json.dumps(results, indent=2, default=str) + "\n")
     print(json.dumps({k: results[k] for k in ("stopped", "verdicts", "divergences")}, indent=2))
     return 0 if results["stopped"] is None else 1

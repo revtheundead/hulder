@@ -1,6 +1,9 @@
 """The D1 L4 run's pure parts: the interleaved schedule, the cost rule's verdicts, the generation
 stop rule and the startup facts read from a server log. CPU only."""
 
+import sys
+import time
+
 import d1_l4 as r
 import d1_local
 import pytest
@@ -129,3 +132,23 @@ def test_preflight_fails_clearly_when_the_model_isnt_in_the_hf_cache(tmp_path, m
     monkeypatch.setenv("HF_HUB_OFFLINE", "1")
     with pytest.raises(RuntimeError, match="isn't in the HF cache"):
         r.preflight("Qwen/Qwen3-4B", "1cfa9a7208912126459214e8b04321603b3df60c")
+
+
+def test_round_0_gets_the_cold_startup_timeout_and_later_rounds_the_warm_one():
+    timeouts = r.Timeouts(cold_startup=480, warm_startup=270, measure=240)
+    assert [timeouts.startup(rnd) for rnd in (0, 1, 2)] == [480, 270, 270]
+
+
+def test_the_worst_case_counts_every_arm_run_at_both_its_timeouts_and_the_stop_grace():
+    timeouts = r.Timeouts(cold_startup=400, warm_startup=200, measure=100)
+    per_round = [400 + 100 + r.STOP_GRACE_S, 200 + 100 + r.STOP_GRACE_S]
+    assert r.worst_case_seconds(timeouts, rounds=2) == len(r.ARMS) * sum(per_round)
+
+
+def test_serve_stops_a_server_that_doesnt_answer_within_its_startup_timeout(tmp_path):
+    pytest.importorskip("httpx")
+    command = [sys.executable, "-c", "import time; time.sleep(60)"]
+    started = time.time()
+    with pytest.raises(TimeoutError, match="1 s startup timeout"), r.serve(command, {}, tmp_path / "server.log", 1):
+        pass
+    assert time.time() - started < 10
