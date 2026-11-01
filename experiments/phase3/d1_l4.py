@@ -6,6 +6,12 @@ in turn on one GPU, interleaved over rounds, each arm-run in a fresh `vllm serve
 - b_noop: the same connector with its write removed (no_write_connector.py)
 - lens: vllm-lens 1.3.0 in eager mode, with a persistent hook scoring a linear probe
 
+A second experiment, ZERO_DRAFT, compares the baseline with b_zero_draft, B with a draft schedule of
+zero tokens at every batch size on Model Runner V2. Its first round is a calibration round, each arm
+running its greedy check and saturation bench only, and the fixed rate is 70% of the slower arm's
+saturation. Later rounds run all three, so throughput pairs one round more than latency. Its stop
+rules add a b_zero_draft arm-run off V2, where the setting doesn't work, or with any draft tokens.
+
 Each arm-run records the GPU's free memory before the server starts, the server's KV-cache size
 and maximum concurrency, a greedy generation check, a saturation bench (throughput), a fixed-rate
 bench at 70% of round 0's baseline saturation rate (TTFT and TPOT), the peak running requests and
@@ -31,6 +37,9 @@ small model and a tiny workload, needs vllm-lens layered on:
 
     source scripts/dev-env.sh
     uv run --with vllm-lens==1.3.0 python experiments/phase3/d1_l4.py --smoke --out .cache/d1-l4-smoke
+
+--smoke --zero-draft does the same for the zero-draft experiment, with a calibration round and one
+more, and without vllm-lens.
 """
 
 import argparse
@@ -54,6 +63,7 @@ HERE = Path(__file__).resolve().parent
 ARMS = ("baseline", "b_stock", "b_noop", "lens")
 BASELINE = "baseline"
 LENS = "lens"
+ZERO_DRAFT_ARM = "b_zero_draft"
 THRESHOLDS = {"throughput": 0.05, "p99_ttft": 0.10, "p99_tpot": 0.10}
 FIXED_RATE_FRACTION = 0.7
 # A greedy divergence starting where the reference's top two candidates are this close is a tie
@@ -72,6 +82,18 @@ STOP_GRACE_S = 30  # from SIGTERM to SIGKILL when a server is stopped
 # 128-token replies at an eager 60 ms a token. One that hasn't did not sustain the rate.
 SUSTAIN_GRACE_S = 30
 UNSUSTAINED = "did not sustain the fixed rate"
+
+
+class Experiment(NamedTuple):
+    """The arms, the rounds counting any calibration rounds, and how many of those there are."""
+
+    arms: tuple[str, ...]
+    rounds: int
+    calibration_rounds: int = 0
+
+
+COST = Experiment(ARMS, 3)
+ZERO_DRAFT = Experiment((BASELINE, ZERO_DRAFT_ARM), 4, calibration_rounds=1)
 
 
 def schedule(arms: tuple[str, ...], rounds: int) -> list[tuple[int, str]]:
@@ -93,15 +115,33 @@ class Timeouts(NamedTuple):
         return self.cold_startup if rnd == 0 else self.warm_startup
 
 
-def worst_case_seconds(timeouts: Timeouts, rounds: int) -> float:
+def worst_case_seconds(timeouts: Timeouts, rounds: int, arms: tuple[str, ...] = ARMS) -> float:
     """The longest the schedule can run: every arm-run at both its timeouts, then stopped."""
-    return sum(timeouts.startup(rnd) + timeouts.measure + STOP_GRACE_S for rnd, _ in schedule(ARMS, rounds))
+    return sum(timeouts.startup(rnd) + timeouts.measure + STOP_GRACE_S for rnd, _ in schedule(arms, rounds))
+
+
+def fixed_rate(saturations: list[float]) -> float:
+    """The fixed-rate bench's request rate, below every arm's saturation so none is measured past it."""
+    return FIXED_RATE_FRACTION * min(saturations)
+
+
+def zero_draft_stop(run: dict) -> str | None:
+    """Why a b_zero_draft arm-run stops the run, or None. The setting only works on V2, and on any
+    other runner, or if it stopped working, it would be measuring B under another name."""
+    if run["arm"] != ZERO_DRAFT_ARM:
+        return None
+    if run["startup"]["model_runner"] != "V2":
+        return f"its startup log isn't V2: {run['startup']['model_runner']}"
+    if drafts := run["counters"]["draft_tokens"]:
+        return f"{drafts} draft tokens"
+    return None
 
 
 def verdicts(runs: dict, baseline: str = BASELINE, measurement_timeouts: dict | None = None) -> dict:
     """The cost rule for every arm with a baseline in the same round. runs maps (round, arm) to
-    {"saturation": bench result, "fixed": bench result}, and measurement_timeouts maps an arm to its
-    rounds' measurement_timeout results. An arm that didn't sustain the fixed rate in any round
+    {"saturation": bench result, "fixed": bench result}, a calibration round having no "fixed", so
+    each metric reads the rounds that measured it. measurement_timeouts maps an arm to its rounds'
+    measurement_timeout results. An arm that didn't sustain the fixed rate in any round
     fails, and one that ran out of measurement time can't pass."""
     measurement_timeouts = measurement_timeouts or {}
     metrics = {
@@ -118,9 +158,10 @@ def verdicts(runs: dict, baseline: str = BASELINE, measurement_timeouts: dict | 
             continue
         result = {}
         for name, (bench, key, overhead) in metrics.items() if paired else ():
-            base = [runs[(r, baseline)][bench][key] for r in rounds]
+            base = [runs[(r, baseline)][bench][key] for r in rounds if bench in runs[(r, baseline)]]
             spread = (max(base) - min(base)) / (sum(base) / len(base))
-            overheads = [overhead(runs[(r, arm)][bench][key], runs[(r, baseline)][bench][key]) for r in paired]
+            measured = [r for r in paired if bench in runs[(r, arm)] and bench in runs[(r, baseline)]]
+            overheads = [overhead(runs[(r, arm)][bench][key], runs[(r, baseline)][bench][key]) for r in measured]
             threshold = THRESHOLDS[name]
             if min(overheads) > threshold + spread:
                 verdict = "fail"  # past the threshold in every round by more than the baseline moves
@@ -217,16 +258,19 @@ def measurement_timeout(stage: str, stage_seconds: float, rate: float | None, be
 
 
 def startup_facts(log: str) -> dict:
-    """The KV-cache size in tokens, the maximum concurrency and the model runner a server logged at
-    startup. vLLM 0.30.0 logs "Using V2 Model Runner" (gpu_worker.py:441) and nothing for V1, so a
-    server that sized its KV cache without that line ran V1. Before then the runner is unknown."""
+    """The KV-cache size in tokens, the maximum concurrency, the model runner and the scheduled-token
+    budget a server logged at startup. vLLM 0.30.0 logs "Using V2 Model Runner" (gpu_worker.py:441)
+    and nothing for V1, so a server that sized its KV cache without that line ran V1. Before then the
+    runner is unknown. It logs the budget only under a speculative config (config/vllm.py:2133)."""
     kv = re.search(r"GPU KV cache size: ([\d,]+) tokens", log)
     concurrency = re.search(r"Maximum concurrency for [\d,]+ tokens per request: ([\d.]+)x", log)
     runner = "V2" if "Using V2 Model Runner" in log else "V1" if kv else None
+    budget = re.search(r"max_num_scheduled_tokens is set to (\d+)", log)
     return {
         "kv_cache_tokens": int(kv.group(1).replace(",", "")) if kv else None,
         "max_concurrency": float(concurrency.group(1)) if concurrency else None,
         "model_runner": runner,
+        "scheduled_token_budget": int(budget.group(1)) if budget else None,
     }
 
 
@@ -307,12 +351,14 @@ def arm_command(arm: str, cfg: dict, storage: Path) -> tuple[list[str], dict]:
     command = [sys.executable, "-m", "vllm.entrypoints.cli.main", "serve", cfg["model"], *cfg["serve"]]
     command += ["--port", str(PORT)]
     env = {} if arm == "lens" else {"VLLM_LENS_DISABLE": "1"}
-    if arm in ("b_stock", "b_noop"):
+    if arm in ("b_stock", "b_noop", ZERO_DRAFT_ARM):
         speculative = {
             "method": "extract_hidden_states",
             "num_speculative_tokens": 1,
             "draft_model_config": {"hf_config": {"eagle_aux_hidden_state_layer_ids": [cfg["layer"]]}},
         }
+        if arm == ZERO_DRAFT_ARM:
+            speculative["num_speculative_tokens_per_batch_size"] = [[1, 1, 0]]
         transfer = {
             "kv_connector": "ExampleHiddenStatesConnector",
             "kv_role": "kv_producer",
@@ -428,8 +474,9 @@ def make_probe_hook(weights, bias: float, layer: int):
 
 
 def run_arm(arm: str, rnd: int, cfg: dict, workload: dict, out: Path, rate: float | None,
-            timeouts: Timeouts) -> dict:  # fmt: skip
-    """One arm-run. rate is the fixed-rate bench's, None in round 0's baseline, which sets it."""
+            timeouts: Timeouts, calibrate: bool = False) -> dict:  # fmt: skip
+    """One arm-run. rate is the fixed-rate bench's, None in round 0's baseline, which sets it. A
+    calibration arm-run stops after its saturation bench."""
     import httpx
 
     run_dir = out / f"r{rnd}_{arm}"
@@ -463,11 +510,12 @@ def run_arm(arm: str, rnd: int, cfg: dict, workload: dict, out: Path, rate: floa
             stage, stage_started = "saturation", time.time()
             n_sat = workload["saturation_prompts"]
             result["saturation"] = bench(url, cfg, workload, dataset, run_dir, "saturation", None, n_sat, deadline)
-            rate = rate or FIXED_RATE_FRACTION * result["saturation"]["request_throughput"]
-            n_fixed = min(len(workload["bench_prompts"]), max(1, round(rate * workload["fixed_seconds"])))
-            result["fixed_rate"] = rate
-            stage, stage_started = "fixed", time.time()
-            result["fixed"] = bench(url, cfg, workload, dataset, run_dir, "fixed", rate, n_fixed, deadline)
+            if not calibrate:
+                rate = rate or fixed_rate([result["saturation"]["request_throughput"]])
+                n_fixed = min(len(workload["bench_prompts"]), max(1, round(rate * workload["fixed_seconds"])))
+                result["fixed_rate"] = rate
+                stage, stage_started = "fixed", time.time()
+                result["fixed"] = bench(url, cfg, workload, dataset, run_dir, "fixed", rate, n_fixed, deadline)
             result["counters"] = d1_local.step_tokens(before, httpx.get(f"{url}/metrics").text)
             if arm == "lens":
                 result["hook_results"] = len(VLLMLensClient(url).collect_hook_results())
@@ -492,14 +540,15 @@ def run_arm(arm: str, rnd: int, cfg: dict, workload: dict, out: Path, rate: floa
     return result
 
 
-def run_all(cfg: dict, workload: dict, out: Path, rounds: int, timeouts: Timeouts) -> dict:
+def run_all(cfg: dict, workload: dict, out: Path, experiment: Experiment, timeouts: Timeouts) -> dict:
     """Every arm-run of the schedule in order, stopping at the first stop rule that fires."""
-    runs, replies, lens_timeouts, plan = {}, {}, [], schedule(ARMS, rounds)
+    runs, replies, lens_timeouts, plan = {}, {}, [], schedule(experiment.arms, experiment.rounds)
     results = {"schedule": plan, "runs": [], "stopped": None}
     rate = None
     for rnd, arm in plan:
         print(f"round {rnd}: {arm}", flush=True)
-        run = run_arm(arm, rnd, cfg, workload, out, rate, timeouts)
+        calibrate = rnd < experiment.calibration_rounds
+        run = run_arm(arm, rnd, cfg, workload, out, rate, timeouts, calibrate=calibrate)
         generated = run.pop("generate", None)
         results["runs"].append(run)
         # Lens runs eager, so it may not keep up with the baseline's fixed rate. That is its result.
@@ -510,14 +559,20 @@ def run_all(cfg: dict, workload: dict, out: Path, rounds: int, timeouts: Timeout
         if failed := sum(run[b]["failed"] for b in ("saturation", "fixed") if b in run):
             results["stopped"] = f"round {rnd} {arm}: {failed} failed requests"
             break
+        if reason := zero_draft_stop(run):
+            results["stopped"] = f"round {rnd} {arm}: {reason}"
+            break
         if lens_timed_out:
             lens_timeouts.append({"round": rnd, **run["timeout"]})
         else:
-            runs[(rnd, arm)] = {"saturation": run["saturation"], "fixed": run["fixed"]}
+            runs[(rnd, arm)] = {b: run[b] for b in ("saturation", "fixed") if b in run}
         if generated is not None:
             replies[(rnd, arm)] = generated
-        if rnd == 0 and arm == BASELINE:
+        if experiment.calibration_rounds == 0 and rnd == 0 and arm == BASELINE:
             rate = run["fixed_rate"]
+        if calibrate and len(results["runs"]) == experiment.calibration_rounds * len(experiment.arms):
+            saturations = [r["saturation"]["request_throughput"] for r in runs.values()]
+            rate = results["fixed_rate"] = fixed_rate(saturations)
         reference = replies[(0, BASELINE)]
         comparisons = {
             key: d1_local.compare_generations(reference, value)
@@ -543,7 +598,7 @@ def rejudge(results: dict) -> dict:
         if run["arm"] == LENS and "timeout" in run:
             timeouts.append({"round": run["round"], **run["timeout"]})
         elif "error" not in run:
-            runs[(run["round"], run["arm"])] = {"saturation": run["saturation"], "fixed": run["fixed"]}
+            runs[(run["round"], run["arm"])] = {b: run[b] for b in ("saturation", "fixed") if b in run}
     return {
         "verdicts": verdicts(runs, measurement_timeouts={LENS: timeouts} if timeouts else None),
         "divergences": divergence_table(results.get("generation", {})),
@@ -577,6 +632,9 @@ SMOKE = {
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--smoke", action="store_true", help="the whole path on the local GPU, tiny workload")
+    parser.add_argument(
+        "--zero-draft", action="store_true", help="smoke the zero-draft experiment: a calibration round and one more"
+    )
     parser.add_argument("--out", type=Path)
     parser.add_argument(
         "--rejudge", type=Path, help="print the verdicts and divergences recomputed from this d1_l4.json"
@@ -599,7 +657,8 @@ def main(argv: list[str] | None = None) -> int:
         "output_len": 16,
     }
     args.out.mkdir(parents=True, exist_ok=True)
-    results = run_all(SMOKE, workload, args.out, rounds=1, timeouts=Timeouts(900, 900, 900))
+    experiment = ZERO_DRAFT._replace(rounds=2) if args.zero_draft else COST._replace(rounds=1)
+    results = run_all(SMOKE, workload, args.out, experiment, timeouts=Timeouts(900, 900, 900))
     (args.out / "d1_l4.json").write_text(json.dumps(results, indent=2, default=str) + "\n")
     print(json.dumps({k: results[k] for k in ("stopped", "verdicts", "divergences")}, indent=2))
     return 0 if results["stopped"] is None else 1
