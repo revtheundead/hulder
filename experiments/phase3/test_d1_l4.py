@@ -465,7 +465,7 @@ def test_the_calibration_round_runs_no_fixed_rate_and_sets_the_rate_from_the_slo
     assert results["stopped"] is None
     assert [c["calibrate"] for c in calls] == [True, True] + [False] * 6
     assert [c["rate"] for c in calls[:2]] == [None, None]
-    assert {c["rate"] for c in calls[2:]} == {pytest.approx(8.4)}
+    assert [c["rate"] for c in calls[2:]] == [pytest.approx(8.4)] * 6
     assert results["fixed_rate"] == pytest.approx(8.4)
     assert "fixed" not in results["runs"][0]
     v = results["verdicts"]["b_zero_draft"]
