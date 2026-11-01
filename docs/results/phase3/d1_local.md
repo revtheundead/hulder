@@ -40,9 +40,48 @@ Prompt 17 diverges at its 47th generated token (index 46). In the plain server, 
 
 The difference is deterministic, not run-to-run noise. Two fresh plain servers gave 32 of 32 identical replies, two fresh B servers did too, and each plain server against each B server diverged on prompt 17 at token 46 alone, with the same margins. B computes its decode steps two tokens wide, so its numbers differ slightly from the plain server's, enough to break an exact tie.
 
+## Zero-draft B (2026-11-01)
+
+B on the L4 lost about 40% of its saturation throughput (`d1_l4.md`), and the draft token it schedules on every decode step is the leading suspect. On Model Runner V2, which the 2070 and the L4 both use, adding `"num_speculative_tokens_per_batch_size": [[1, 1, 0]]` to B's speculative config sets the draft count to 0 at every batch size. Results are in [`d1_zero_draft.json`](d1_zero_draft.json).
+
+```bash
+source scripts/dev-env.sh && uv run python experiments/phase3/d1_local.py --zero-draft --out .cache/d1-zero-draft
+uv run python experiments/phase3/d1_local.py --zero-draft-scores --out .cache/d1-zero-draft-scores-3
+```
+
+The first ran at `d6e6995ca9cb` and the second at `7c0dade77597`.
+
+**Zero-draft schedules no drafts and changes no reply.** On the 32 generation prompts at 16 tokens each, B drafted 479 tokens and accepted 1, and zero-draft drafted 0, one at a time and at concurrency 8. All 32 replies and saved token ids match B's.
+
+**One request at a time, the saved hidden states are bit-identical to B's.** That held for all 32 prompts, and two fresh B servers also matched bit for bit.
+
+**At concurrency 8 they differ slightly, and its probe scores stay within B's own range.** The 360 demo prompts were served at concurrency 8 with 16 tokens each, so decode steps share batches with prefills. B and zero-draft were each served three times, alternating, and scored against the offline reference.
+
+| | Flips | Mean \|Δscore\| | Max \|Δscore\| |
+|---|---|---|---|
+| Rerun floor | 0 | 0.000208 | 0.00205 |
+| B, 3 runs | 0 | 0.000255 to 0.000292 | 0.00187 to 0.00242 |
+| Zero-draft, 3 runs | 0 | 0.000259 to 0.000274 | 0.00242 to 0.00333 |
+
+Every run gets PASS from `hulder check`, and every run's shift exceeds the floor, B's included, as in check 1. Zero-draft passes the rule below. It has 0 flips and its mean |Δscore| stays within B's range.
+
+**The rule was revised after seeing the data.** The first rule had zero-draft no worse than a single B run on flips, mean and max. In that first comparison one zero-draft run came out at 0.000286 against B's 0.000276, a fail by 3.9%. A second zero-draft run came out at 0.000272. The first rule had no allowance for run-to-run noise, so it was replaced by B's range over three runs (`zero_draft_verdict`). Under the first rule, the third zero-draft run here (0.000259) would pass and the second (0.000274) would depend on which B run it met.
+
+**At concurrency 8, saved hidden states aren't deterministic across fresh servers, with or without the draft.** Per prompt, the last position's relative L2 difference is 0 for most rows and at most 0.0022 between any two of the six runs.
+
+| Pair of runs | Rows bit-identical, of 360 |
+|---|---|
+| B against B | 197 to 222 |
+| Zero-draft against zero-draft | 179 to 192 |
+| B against zero-draft | 140 to 237 |
+
+The 32-prompt check's two B servers matched bit for bit at concurrency 8, so it was too small to show this. The likely cause is that request arrival timing changes which prompts share a step from one server start to the next, the batch-composition effect in docs/design.md §5, which keeps capture at a fixed batch composition. That's not verified here. It means a served score moves between server starts by about as much as zero-draft moves it, and that the bundled rerun floor, captured at a fixed batch composition, understates serving's own noise.
+
 ## Where this falls short
 
 - Overhead isn't measured. Throughput and latency on the 2070 aren't representative (docs/design.md §8.1).
 - KV-cache capacity isn't comparable between server starts on this GPU. The plain server reported 60,128 tokens and the lens-disabled one 87,616 with the same flags. B's 53,776 is 10.6% below the plain server's, close to the 10.7% its hidden-state cache should cost for this model (3,072 bytes per token against 28,672 for KV), but the variation between starts is larger than that.
 - vllm-lens's extra shift (0.00047, about twice the floor) comes with eager mode, one request at a time and the completions endpoint at once, so its cause isn't separated.
 - One model, one GPU, 360 prompts and 32 generations.
+- Zero-draft's throughput isn't measured here, and B's 40% isn't yet attributed to the draft token.
+- Three runs per arm give a range, not an interval.
