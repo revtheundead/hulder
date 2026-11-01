@@ -51,6 +51,43 @@ def test_verdict_is_inconclusive_when_the_baseline_varies_by_more_than_half_a_th
     assert v["passes"] is None  # not settled while any metric is inconclusive
 
 
+def test_a_metric_fails_when_its_smallest_overhead_clears_the_threshold_plus_the_baseline_spread():
+    # The L4 run's throughput: about 40% in every round against a 2.64% baseline spread.
+    runs = {
+        (0, "baseline"): {"saturation": run(20.31, 0, 0), "fixed": run(7, 100.0, 20.0)},
+        (1, "baseline"): {"saturation": run(19.79, 0, 0), "fixed": run(7, 100.0, 20.0)},
+        (0, "b"): {"saturation": run(11.93, 0, 0), "fixed": run(7, 100.0, 20.0)},
+        (1, "b"): {"saturation": run(11.97, 0, 0), "fixed": run(7, 100.0, 20.0)},
+    }
+    v = r.verdicts(runs, "baseline")["b"]
+    assert v["throughput"]["baseline_spread"] > 0.05 / 2
+    assert v["throughput"]["verdict"] == "fail"  # 39.5% > 5% + 2.6%, however noisy the baseline
+    assert v["passes"] is False
+
+
+def test_a_metric_within_the_threshold_plus_the_spread_in_some_round_stays_inconclusive():
+    runs = {
+        (0, "baseline"): {"saturation": run(10.0, 0, 0), "fixed": run(7, 100.0, 20.0)},
+        (1, "baseline"): {"saturation": run(10.6, 0, 0), "fixed": run(7, 100.0, 20.0)},
+        (0, "b"): {"saturation": run(9.3, 0, 0), "fixed": run(7, 100.0, 20.0)},  # 7%, under 5% + 5.8%
+        (1, "b"): {"saturation": run(8.0, 0, 0), "fixed": run(7, 100.0, 20.0)},
+    }
+    assert r.verdicts(runs, "baseline")["b"]["throughput"]["verdict"] == "inconclusive"
+
+
+def test_a_failing_metric_fails_the_arm_even_when_another_is_inconclusive():
+    runs = {
+        (0, "baseline"): {"saturation": run(10.0, 0, 0), "fixed": run(7, 100.0, 20.0)},
+        (1, "baseline"): {"saturation": run(10.6, 0, 0), "fixed": run(7, 100.0, 20.0)},
+        (0, "b"): {"saturation": run(10.0, 0, 0), "fixed": run(7, 100.0, 30.0)},
+        (1, "b"): {"saturation": run(10.6, 0, 0), "fixed": run(7, 100.0, 30.0)},
+    }
+    v = r.verdicts(runs, "baseline")["b"]
+    assert v["throughput"]["verdict"] == "inconclusive"
+    assert v["p99_tpot"]["verdict"] == "fail"
+    assert v["passes"] is False
+
+
 def diverged(*margins):
     return {
         "identical": 32 - len(margins),
@@ -249,3 +286,23 @@ def test_a_lens_startup_failure_still_stops_the_run(monkeypatch, tmp_path):
     results = fake_run_all(monkeypatch, tmp_path, rounds=2, misbehaving={(0, "lens"): startup})
     assert results["stopped"].startswith("round 0 lens: TimeoutError")
     assert len(results["runs"]) == len(r.ARMS)
+
+
+def test_rejudge_recomputes_the_verdicts_from_a_finished_runs_records():
+    def record(rnd, arm, throughput):
+        return {"round": rnd, "arm": arm, "saturation": run(throughput, 0, 0), "fixed": run(7, 100.0, 20.0)}
+
+    lens_timeout = {"stage": "fixed", "completed": 1, "of": 9, "outcome": r.UNSUSTAINED}
+    results = {
+        "runs": [
+            record(0, "baseline", 10.0),
+            record(0, "b", 6.0),
+            {"round": 0, "arm": "lens", "saturation": run(2.0, 0, 0), "timeout": lens_timeout, "error": "x"},
+            record(1, "baseline", 10.0),
+            record(1, "b", 6.0),
+        ]
+    }
+    v = r.rejudge(results)
+    assert v["b"]["throughput"]["overheads"] == [pytest.approx(0.4), pytest.approx(0.4)]
+    assert v["b"]["passes"] is False
+    assert v["lens"] == {"measurement_timeouts": [{"round": 0, **lens_timeout}], "passes": False}

@@ -13,7 +13,10 @@ KV-cache use during the benches, and the spec-decode counters.
 
 The cost rule (verdicts): an arm passes when the worst round's paired overhead against that round's
 baseline is at most 5% for saturation throughput and 10% for fixed-rate p99 TTFT and p99 TPOT. A
-metric is inconclusive when the baseline's own range across rounds exceeds half its threshold.
+metric fails when its smallest overhead across rounds exceeds the threshold plus the baseline's own
+range across rounds. Otherwise it is inconclusive when that range exceeds half its threshold. An arm
+fails on any failing metric, and an inconclusive one leaves it undecided only if none fails. Both
+fail-first rules were decided after the 2026-10-31 L4 run (docs/results/phase3/d1_l4.md).
 
 Stop rules, checked after every arm-run: a server that doesn't answer /health within its startup
 timeout, a baseline or B measurement past its own timeout, a bench with failed requests, or an arm whose greedy replies diverge from round 0's baseline at more
@@ -114,7 +117,12 @@ def verdicts(runs: dict, baseline: str = BASELINE, measurement_timeouts: dict | 
             spread = (max(base) - min(base)) / (sum(base) / len(base))
             overheads = [overhead(runs[(r, arm)][bench][key], runs[(r, baseline)][bench][key]) for r in paired]
             threshold = THRESHOLDS[name]
-            verdict = "inconclusive" if spread > threshold / 2 else "fail" if max(overheads) > threshold else "pass"
+            if min(overheads) > threshold + spread:
+                verdict = "fail"  # past the threshold in every round by more than the baseline moves
+            elif spread > threshold / 2:
+                verdict = "inconclusive"
+            else:
+                verdict = "fail" if max(overheads) > threshold else "pass"
             result[name] = {
                 "overheads": overheads,
                 "upper": max(overheads),
@@ -123,7 +131,9 @@ def verdicts(runs: dict, baseline: str = BASELINE, measurement_timeouts: dict | 
                 "verdict": verdict,
             }
         settled = [m["verdict"] for m in result.values()]
-        passes = None if "inconclusive" in settled else all(v == "pass" for v in settled)
+        passes = (
+            False if "fail" in settled else None if "inconclusive" in settled else all(v == "pass" for v in settled)
+        )
         if timeouts:
             result["measurement_timeouts"] = timeouts
             passes = False if any(t["outcome"] == UNSUSTAINED for t in timeouts) else passes and None
@@ -506,6 +516,18 @@ def run_all(cfg: dict, workload: dict, out: Path, rounds: int, timeouts: Timeout
     return results
 
 
+def rejudge(results: dict) -> dict:
+    """The cost rule's verdicts recomputed from a finished run's d1_l4.json, for a run judged under
+    an earlier version of verdicts."""
+    runs, timeouts = {}, []
+    for run in results["runs"]:
+        if run["arm"] == LENS and "timeout" in run:
+            timeouts.append({"round": run["round"], **run["timeout"]})
+        elif "error" not in run:
+            runs[(run["round"], run["arm"])] = {"saturation": run["saturation"], "fixed": run["fixed"]}
+    return verdicts(runs, measurement_timeouts={LENS: timeouts} if timeouts else None)
+
+
 SMOKE = {
     "model": "Qwen/Qwen2.5-1.5B-Instruct",
     "tokenizer": "Qwen/Qwen2.5-1.5B-Instruct",
@@ -533,8 +555,14 @@ SMOKE = {
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--smoke", action="store_true", help="the whole path on the local GPU, tiny workload")
-    parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--out", type=Path)
+    parser.add_argument("--rejudge", type=Path, help="print the verdicts recomputed from this d1_l4.json")
     args = parser.parse_args(argv)
+    if args.rejudge:
+        print(json.dumps(rejudge(json.loads(args.rejudge.read_text())), indent=2))
+        return 0
+    if args.out is None:
+        parser.error("--out is required")
     if not args.smoke:
         raise SystemExit("the L4 run goes through d1_modal.py; here only --smoke runs")
     texts = [p["text"] for p in d1_local.prompts()]
