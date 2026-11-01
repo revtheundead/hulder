@@ -90,3 +90,25 @@ def test_compare_generations_counts_a_reply_that_is_a_prefix_of_the_other_as_div
     assert d.compare_generations([short], [longer])["diverged"] == [
         {"prompt": 0, "token": 1, "tokens": [None, "c"], "margins": [None, pytest.approx(0.4)]}
     ]
+
+
+def scored(flips, mean):
+    return {"flips": flips, "mean_abs_delta_score": mean, "max_abs_delta_score": 0.003}
+
+
+def test_zero_draft_passes_with_no_flips_and_every_runs_mean_within_bs_run_to_run_range():
+    b = [scored(0, 0.000270), scored(0, 0.000276), scored(0, 0.000290)]
+    verdict = d.zero_draft_verdict(b, [scored(0, 0.000286), scored(0, 0.000272), scored(0, 0.000280)])
+    assert verdict["b_range"] == [0.000270, 0.000290]
+    assert verdict["passes"] is True
+
+
+def test_zero_draft_below_bs_range_passes_since_closer_to_the_reference_is_no_worse():
+    b = [scored(0, 0.000270), scored(0, 0.000276)]
+    assert d.zero_draft_verdict(b, [scored(0, 0.000250)])["passes"] is True
+
+
+def test_zero_draft_fails_on_a_run_above_bs_range_or_on_any_flip():
+    b = [scored(0, 0.000270), scored(0, 0.000276)]
+    assert d.zero_draft_verdict(b, [scored(0, 0.000272), scored(0, 0.000277)])["passes"] is False
+    assert d.zero_draft_verdict(b, [scored(1, 0.000272)])["passes"] is False

@@ -217,13 +217,26 @@ def measurement_timeout(stage: str, stage_seconds: float, rate: float | None, be
 
 
 def startup_facts(log: str) -> dict:
-    """The KV-cache size in tokens and the maximum concurrency a server logged at startup."""
+    """The KV-cache size in tokens, the maximum concurrency and the model runner a server logged at
+    startup. vLLM 0.30.0 logs "Using V2 Model Runner" (gpu_worker.py:441) and nothing for V1, so a
+    server that sized its KV cache without that line ran V1. Before then the runner is unknown."""
     kv = re.search(r"GPU KV cache size: ([\d,]+) tokens", log)
     concurrency = re.search(r"Maximum concurrency for [\d,]+ tokens per request: ([\d.]+)x", log)
+    runner = "V2" if "Using V2 Model Runner" in log else "V1" if kv else None
     return {
         "kv_cache_tokens": int(kv.group(1).replace(",", "")) if kv else None,
         "max_concurrency": float(concurrency.group(1)) if concurrency else None,
+        "model_runner": runner,
     }
+
+
+def model_runners(results: dict) -> dict:
+    """Each arm's model runners across its arm-runs, for the manifest."""
+    runners: dict[str, set] = {}
+    for run in results["runs"]:
+        if runner := run.get("startup", {}).get("model_runner"):
+            runners.setdefault(run["arm"], set()).add(runner)
+    return {arm: sorted(found) for arm, found in runners.items()}
 
 
 def installed_packages() -> str:

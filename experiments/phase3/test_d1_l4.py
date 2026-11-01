@@ -140,8 +140,38 @@ LOG = """\
 
 
 def test_startup_facts_reads_kv_cache_size_and_maximum_concurrency():
-    assert r.startup_facts(LOG) == {"kv_cache_tokens": 53776, "max_concurrency": 26.26}
-    assert r.startup_facts("") == {"kv_cache_tokens": None, "max_concurrency": None}
+    assert r.startup_facts(LOG) | {"model_runner": None} == {
+        "kv_cache_tokens": 53776,
+        "max_concurrency": 26.26,
+        "model_runner": None,
+    }
+    assert r.startup_facts("")["kv_cache_tokens"] is None
+    assert r.startup_facts("")["max_concurrency"] is None
+
+
+V2_LINE = "(EngineCore pid=33) INFO 10-31 15:26:45 [gpu_worker.py:441] Using V2 Model Runner\n"
+
+
+def test_startup_facts_reads_the_model_runner_v2_from_its_log_line_and_v1_from_its_absence():
+    # vLLM 0.30.0 logs only the V2 runner (gpu_worker.py:441). A server that sized its KV cache
+    # without that line ran V1, as the L4 run's lens arm did.
+    # The KV-cache line comes after the runner is chosen, so without it the runner is unknown.
+    assert r.startup_facts(V2_LINE + LOG)["model_runner"] == "V2"
+    assert r.startup_facts(LOG)["model_runner"] == "V1"
+    assert r.startup_facts(V2_LINE)["model_runner"] == "V2"
+    assert r.startup_facts("")["model_runner"] is None
+
+
+def test_model_runners_lists_each_arms_runners_across_its_arm_runs():
+    results = {
+        "runs": [
+            {"arm": "baseline", "startup": {"model_runner": "V2"}},
+            {"arm": "lens", "startup": {"model_runner": "V1"}},
+            {"arm": "baseline", "startup": {"model_runner": "V2"}},
+            {"arm": "b_stock", "error": "the server didn't answer /health"},
+        ]
+    }
+    assert r.model_runners(results) == {"baseline": ["V2"], "lens": ["V1"]}
 
 
 def reply(*tokens_and_margins):
