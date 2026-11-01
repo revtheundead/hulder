@@ -65,7 +65,7 @@ The first ran at `d6e6995ca9cb` and the second at `7c0dade77597`.
 
 Every run gets PASS from `hulder check`, and every run's shift exceeds the floor, B's included, as in check 1. Zero-draft passes the rule below. It has 0 flips and its mean |Δscore| stays within B's range.
 
-**The rule was revised after seeing the data.** The first rule had zero-draft no worse than a single B run on flips, mean and max. In that first comparison one zero-draft run came out at 0.000286 against B's 0.000276, a fail by 3.9%. A second zero-draft run came out at 0.000272. The first rule had no allowance for run-to-run noise, so it was replaced by B's range over three runs (`zero_draft_verdict`). Under the first rule, the third zero-draft run here (0.000259) would pass and the second (0.000274) would depend on which B run it met.
+**The rule was revised after seeing the data.** The first rule had zero-draft no worse than a single B run on flips, mean and max. In that first comparison one zero-draft run came out at 0.000286 against B's 0.000276, a fail by 3.9%. A second zero-draft run came out at 0.000272. The first rule had no allowance for run-to-run noise, so it was replaced by B's range over three runs (`zero_draft_verdict`).
 
 **At concurrency 8, saved hidden states aren't deterministic across fresh servers, with or without the draft.** Per prompt, the last position's relative L2 difference is 0 for most rows and at most 0.0022 between any two of the six runs.
 
