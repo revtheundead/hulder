@@ -17,6 +17,8 @@ token with logprobs, so plain against B can be set against plain against plain.
 --no-write smoke-tests the L4 run's B no-op arm (no_write_connector.py).
 --zero-draft runs B with and without num_speculative_tokens_per_batch_size=[[1, 1, 0]], which
 should stop the per-step draft on Model Runner V2, and compares their drafts and saved hidden states.
+--zero-draft-scores scores B and zero-draft (served twice) against the offline reference at
+concurrency 8, where decode steps share batches with prefills.
 
 Checks 1 to 4 run in the project environment, check 5 with vllm-lens layered on:
 
@@ -476,6 +478,59 @@ def run_zero_draft(out: Path) -> dict:
     return {"zero_draft": {"counters": results, **comparisons}}
 
 
+def relative_l2(a: np.ndarray, b: np.ndarray) -> dict:
+    """Per-row ||a - b|| / ||b|| between two servers' last-position activations."""
+    a, b = a.astype(np.float64), b.astype(np.float64)
+    rel = np.linalg.norm(a - b, axis=1) / np.linalg.norm(b, axis=1)
+    return {
+        "rows": len(rel),
+        "rows_identical": int(np.sum(rel == 0)),
+        "median": float(np.median(rel)),
+        "max": float(rel.max()),
+    }
+
+
+def run_zero_draft_scores(out: Path) -> dict:
+    """The 360 demo prompts at concurrency 8 with 16 tokens each, so decode steps (with B's draft
+    or without one) share batches with other prompts' prefills. B once and zero-draft twice, each
+    scored with the demo probe against the offline reference, with the bundled rerun as the floor.
+    Zero-draft passes if it is no worse than B in flips, mean |Δscore| and max |Δscore|."""
+    import hulder
+
+    probe = hulder.Probe.load(DATA / "probe_demo.npz")
+    reference = hulder.Snapshot.load(DATA / "demo_fp16.npz")
+    rerun = hulder.Snapshot.load(DATA / "demo_fp16_run1.npz")
+    texts = [r["text"] for r in prompts()]
+    params = {"max_tokens": 16, "min_tokens": 16, "ignore_eos": True, "return_token_ids": True}
+    threshold = probe.metadata["threshold"]
+    reference_scores = hulder.apply_probe(probe, reference.activations)
+    storage = out / "hidden_states"
+    acts, scores = {}, {}
+    for name, zero in (("b", False), ("b_zero_draft_1", True), ("b_zero_draft_2", True)):
+        with server(f"scores_{name}", out, extraction(storage, zero_draft=zero)) as url:
+            responses = asyncio.run(chat_all(url, texts, 8, **params))
+            acts[name], _ = connector_acts(responses)
+        scores[name] = {
+            **shift(reference_scores, hulder.apply_probe(probe, acts[name]), threshold),
+            "against_reference": against_reference(acts[name], probe, reference, rerun),
+        }
+    shutil.rmtree(storage, ignore_errors=True)
+    floor = shift(reference_scores, hulder.apply_probe(probe, rerun.activations), threshold)
+    keys = ("flips", "mean_abs_delta_score", "max_abs_delta_score")
+    passes = {
+        name: all(scores[name][k] <= scores["b"][k] for k in keys) for name in ("b_zero_draft_1", "b_zero_draft_2")
+    }
+    pairs = (("b", "b_zero_draft_1"), ("b", "b_zero_draft_2"), ("b_zero_draft_1", "b_zero_draft_2"))
+    return {
+        "zero_draft_scores": {
+            "rerun_floor": floor,
+            "scores": scores,
+            "relative_l2": {f"{a}_vs_{b}": relative_l2(acts[b], acts[a]) for a, b in pairs},
+            "passes": passes,
+        }
+    }
+
+
 def cleanup(response: dict) -> None:
     from vllm.distributed.kv_transfer.kv_connector.v1.example_hidden_states_connector import (
         cleanup_hidden_states,
@@ -528,6 +583,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--repeats", action="store_true", help="run plain and B twice each and compare generations")
     parser.add_argument("--no-write", action="store_true", help="smoke-test the L4 run's B no-op connector")
     parser.add_argument("--zero-draft", action="store_true", help="B with and without a zero-token draft schedule")
+    parser.add_argument(
+        "--zero-draft-scores", action="store_true", help="probe scores of B and zero-draft at concurrency 8"
+    )
     args = parser.parse_args(argv)
     args.out.mkdir(parents=True, exist_ok=True)
     print(f"{shutil.disk_usage(args.out).free / 1e9:.0f} GB free in {args.out}", flush=True)
@@ -542,6 +600,8 @@ def main(argv: list[str] | None = None) -> int:
         if args.no_write
         else run_zero_draft
         if args.zero_draft
+        else run_zero_draft_scores
+        if args.zero_draft_scores
         else run_main
     )
     results.update(run(args.out))
