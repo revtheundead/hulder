@@ -430,6 +430,10 @@ def compare_saved(a: list[dict], b: list[dict]) -> dict:
         "hidden_states_identical": sum(same_states),
         "shape": list(a[0]["hidden_states"].shape) if a else None,
         "max_abs_difference": max(differ, default=0.0),
+        "last_position_max_abs_difference": max(
+            (x["hidden_states"][-1].float() - y["hidden_states"][-1].float()).abs().max().item()
+            for x, y in zip(a, b, strict=True)
+        ),
     }
 
 
@@ -437,14 +441,16 @@ def run_zero_draft(out: Path) -> dict:
     """B as on the L4 against B with a zero-token draft schedule. On each server: the 32 generation
     prompts one at a time with 16 tokens (prefill alone in its step, so batch composition can't
     move the saved states), then the same prompts at concurrency 8, with the draft counters over
-    each phase from /metrics."""
+    each phase from /metrics. A second plain B server is the control for what concurrency alone
+    changes between two fresh servers."""
     import httpx
 
     texts = [r["text"] for r in prompts()][:N_GENERATE]
     params = {"max_tokens": 16, "min_tokens": 16, "ignore_eos": True, "return_token_ids": True}
     storage = out / "hidden_states"
     saved, results = {}, {}
-    for name, zero in (("b", False), ("b_zero_draft", True)):
+    names = ("b", "b_repeat", "b_zero_draft")
+    for name, zero in zip(names, (False, False, True), strict=True):
         with server(f"zero_draft_{name}", out, extraction(storage, zero_draft=zero)) as url:
             arm = {}
             for phase, concurrency in (("sequential", 1), ("concurrent", 8)):
@@ -455,14 +461,19 @@ def run_zero_draft(out: Path) -> dict:
                 saved[(name, phase)] = saved_hidden_states(responses)
             results[name] = arm
     shutil.rmtree(storage, ignore_errors=True)
-    comparison = {}
-    for phase in ("sequential", "concurrent"):
-        texts_b, texts_z = (results[n][phase].pop("texts") for n in ("b", "b_zero_draft"))
-        comparison[phase] = {
-            **compare_saved(saved[("b", phase)], saved[("b_zero_draft", phase)]),
-            "replies_identical": sum(x == y for x, y in zip(texts_b, texts_z, strict=True)),
+    replies = {(n, phase): results[n][phase].pop("texts") for n in names for phase in ("sequential", "concurrent")}
+    comparisons = {}
+    for other in ("b_repeat", "b_zero_draft"):
+        comparisons[f"b_vs_{other}"] = {
+            phase: {
+                **compare_saved(saved[("b", phase)], saved[(other, phase)]),
+                "replies_identical": sum(
+                    x == y for x, y in zip(replies[("b", phase)], replies[(other, phase)], strict=True)
+                ),
+            }
+            for phase in ("sequential", "concurrent")
         }
-    return {"zero_draft": {"counters": results, "b_vs_b_zero_draft": comparison}}
+    return {"zero_draft": {"counters": results, **comparisons}}
 
 
 def cleanup(response: dict) -> None:
