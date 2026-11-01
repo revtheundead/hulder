@@ -106,6 +106,29 @@ def test_generation_fails_only_on_more_non_tie_divergences_than_plain_against_pl
     assert r.generation_fails(diverged(None), plain_vs_plain=[diverged()]) is True  # a reply ended early
 
 
+def test_the_tie_bound_is_two_bf16_logit_steps():
+    assert r.BF16_LOGIT_STEP == 2**-3  # bf16's spacing at |logit| 16 to 32
+    assert r.TIE_STEPS == 2
+    assert r.TIE_BOUND == 0.25
+
+
+@pytest.mark.parametrize(
+    "margin, expected",
+    [
+        (0.0, "exact tie"),
+        (0.125, "within bound"),  # one step
+        (0.24999994039535522, "within bound"),  # two steps less float32 rounding: the L4's prompt 13
+        (0.25, "within bound"),  # two steps exactly, inclusive
+        (0.25 + 5e-7, "within bound"),  # two steps plus float32 rounding, inside the 1e-6 tolerance
+        (0.25 + 2e-6, "change"),
+        (0.375, "change"),  # three steps
+        (None, "change"),  # a reply ended early
+    ],
+)
+def test_a_divergence_within_two_bf16_steps_up_to_float_rounding_is_within_bound(margin, expected):
+    assert r.divergence_class(margin) == expected
+
+
 def test_generation_is_undecided_before_any_plain_against_plain_comparison():
     assert r.generation_fails(diverged(2 * r.TIE_BOUND), plain_vs_plain=[]) is None
 
@@ -300,9 +323,13 @@ def test_rejudge_recomputes_the_verdicts_from_a_finished_runs_records():
             {"round": 0, "arm": "lens", "saturation": run(2.0, 0, 0), "timeout": lens_timeout, "error": "x"},
             record(1, "baseline", 10.0),
             record(1, "b", 6.0),
-        ]
+        ],
+        "generation": {"r0_b": diverged(0.0, 0.25 + 5e-7), "r1_baseline": diverged()},
     }
-    v = r.rejudge(results)
+    rejudged = r.rejudge(results)
+    assert rejudged["divergences"]["counts"]["r0_b"] == {"exact tie": 1, "within bound": 1, "change": 0}
+    assert rejudged["divergences"]["tie_bound"] == {"steps": 2, "step": 0.125, "tolerance": 1e-6}
+    v = rejudged["verdicts"]
     assert v["b"]["throughput"]["overheads"] == [pytest.approx(0.4), pytest.approx(0.4)]
     assert v["b"]["passes"] is False
     assert v["lens"] == {"measurement_timeouts": [{"round": 0, **lens_timeout}], "passes": False}
