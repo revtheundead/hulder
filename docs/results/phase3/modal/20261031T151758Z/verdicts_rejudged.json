@@ -1,0 +1,106 @@
+{
+  "b_noop": {
+    "throughput": {
+      "overheads": [
+        0.40769490900319594,
+        0.3863994149817831,
+        0.39977284974535765
+      ],
+      "upper": 0.40769490900319594,
+      "threshold": 0.05,
+      "baseline_spread": 0.026383435108291876,
+      "verdict": "fail"
+    },
+    "p99_ttft": {
+      "overheads": [
+        1.2944360520043867,
+        1.2365247575601512,
+        1.3124199708832314
+      ],
+      "upper": 1.3124199708832314,
+      "threshold": 0.1,
+      "baseline_spread": 0.02213839877048615,
+      "verdict": "fail"
+    },
+    "p99_tpot": {
+      "overheads": [
+        1.607430703941632,
+        1.5634300829747794,
+        1.5880429756299033
+      ],
+      "upper": 1.607430703941632,
+      "threshold": 0.1,
+      "baseline_spread": 0.012215252662462091,
+      "verdict": "fail"
+    },
+    "passes": false
+  },
+  "b_stock": {
+    "throughput": {
+      "overheads": [
+        0.4128287069586879,
+        0.3991473901561865,
+        0.39511626136774636
+      ],
+      "upper": 0.4128287069586879,
+      "threshold": 0.05,
+      "baseline_spread": 0.026383435108291876,
+      "verdict": "fail"
+    },
+    "p99_ttft": {
+      "overheads": [
+        1.421007465463127,
+        1.1776094258449477,
+        1.296495056623618
+      ],
+      "upper": 1.421007465463127,
+      "threshold": 0.1,
+      "baseline_spread": 0.02213839877048615,
+      "verdict": "fail"
+    },
+    "p99_tpot": {
+      "overheads": [
+        1.6296661915074901,
+        1.483450041904355,
+        1.6007526506137513
+      ],
+      "upper": 1.6296661915074901,
+      "threshold": 0.1,
+      "baseline_spread": 0.012215252662462091,
+      "verdict": "fail"
+    },
+    "passes": false
+  },
+  "lens": {
+    "measurement_timeouts": [
+      {
+        "round": 0,
+        "stage": "fixed",
+        "stage_seconds": 81.5,
+        "bench_seconds": 52,
+        "completed": 118,
+        "of": 1066,
+        "outcome": "did not sustain the fixed rate"
+      },
+      {
+        "round": 1,
+        "stage": "fixed",
+        "stage_seconds": 85.9,
+        "bench_seconds": 56,
+        "completed": 141,
+        "of": 1066,
+        "outcome": "did not sustain the fixed rate"
+      },
+      {
+        "round": 2,
+        "stage": "fixed",
+        "stage_seconds": 85.5,
+        "bench_seconds": 55,
+        "completed": 149,
+        "of": 1066,
+        "outcome": "did not sustain the fixed rate"
+      }
+    ],
+    "passes": false
+  }
+}
