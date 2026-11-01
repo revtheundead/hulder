@@ -15,6 +15,8 @@ prefix caching off, against the bundled demo snapshots and probe (layer 20, posi
 --repeats runs check 2's generation on two fresh plain servers and two fresh B servers, token by
 token with logprobs, so plain against B can be set against plain against plain.
 --no-write smoke-tests the L4 run's B no-op arm (no_write_connector.py).
+--zero-draft runs B with and without num_speculative_tokens_per_batch_size=[[1, 1, 0]], which
+should stop the per-step draft on Model Runner V2, and compares their drafts and saved hidden states.
 
 Checks 1 to 4 run in the project environment, check 5 with vllm-lens layered on:
 
@@ -113,11 +115,13 @@ def messages(text: str) -> list[dict]:
     return [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": text}]
 
 
-def extraction(storage: Path) -> list[str]:
+def extraction(storage: Path, zero_draft: bool = False) -> list[str]:
     speculative = {
         "method": "extract_hidden_states",
         "num_speculative_tokens": 1,
         "draft_model_config": {"hf_config": {"eagle_aux_hidden_state_layer_ids": [LAYER]}},
+        # Every batch size from 1 up drafts 0 tokens: (1, 1, 0) is carried forward to max_num_seqs.
+        **({"num_speculative_tokens_per_batch_size": [[1, 1, 0]]} if zero_draft else {}),
     }
     transfer = {
         "kv_connector": "ExampleHiddenStatesConnector",
@@ -392,6 +396,75 @@ def run_no_write(out: Path) -> dict:
     }
 
 
+def saved_hidden_states(responses: list[dict]) -> list[dict]:
+    """Each response's connector file as tensors on the CPU. Deletes the files."""
+    from vllm.distributed.kv_transfer.kv_connector.v1.example_hidden_states_connector import (
+        cleanup_hidden_states,
+        load_hidden_states,
+    )
+
+    saved = []
+    for response in responses:
+        path = response["kv_transfer_params"]["hidden_states_path"]
+        data = load_hidden_states(path)
+        saved.append({key: data[key].cpu() for key in ("hidden_states", "token_ids")})
+        cleanup_hidden_states(path)
+    return saved
+
+
+def compare_saved(a: list[dict], b: list[dict]) -> dict:
+    """How many prompts' saved token ids and hidden states are bit-identical between two servers,
+    and the largest absolute difference among the rest."""
+    import torch
+
+    same_ids = sum(torch.equal(x["token_ids"], y["token_ids"]) for x, y in zip(a, b, strict=True))
+    same_states = [torch.equal(x["hidden_states"], y["hidden_states"]) for x, y in zip(a, b, strict=True)]
+    differ = [
+        (x["hidden_states"].float() - y["hidden_states"].float()).abs().max().item()
+        for x, y, same in zip(a, b, same_states, strict=True)
+        if not same and x["hidden_states"].shape == y["hidden_states"].shape
+    ]
+    return {
+        "of": len(a),
+        "token_ids_identical": same_ids,
+        "hidden_states_identical": sum(same_states),
+        "shape": list(a[0]["hidden_states"].shape) if a else None,
+        "max_abs_difference": max(differ, default=0.0),
+    }
+
+
+def run_zero_draft(out: Path) -> dict:
+    """B as on the L4 against B with a zero-token draft schedule. On each server: the 32 generation
+    prompts one at a time with 16 tokens (prefill alone in its step, so batch composition can't
+    move the saved states), then the same prompts at concurrency 8, with the draft counters over
+    each phase from /metrics."""
+    import httpx
+
+    texts = [r["text"] for r in prompts()][:N_GENERATE]
+    params = {"max_tokens": 16, "min_tokens": 16, "ignore_eos": True, "return_token_ids": True}
+    storage = out / "hidden_states"
+    saved, results = {}, {}
+    for name, zero in (("b", False), ("b_zero_draft", True)):
+        with server(f"zero_draft_{name}", out, extraction(storage, zero_draft=zero)) as url:
+            arm = {}
+            for phase, concurrency in (("sequential", 1), ("concurrent", 8)):
+                before = httpx.get(f"{url}/metrics").text
+                responses = asyncio.run(chat_all(url, texts, concurrency, **params))
+                arm[phase] = step_tokens(before, httpx.get(f"{url}/metrics").text)
+                arm[phase]["texts"] = [r["choices"][0]["message"]["content"] for r in responses]
+                saved[(name, phase)] = saved_hidden_states(responses)
+            results[name] = arm
+    shutil.rmtree(storage, ignore_errors=True)
+    comparison = {}
+    for phase in ("sequential", "concurrent"):
+        texts_b, texts_z = (results[n][phase].pop("texts") for n in ("b", "b_zero_draft"))
+        comparison[phase] = {
+            **compare_saved(saved[("b", phase)], saved[("b_zero_draft", phase)]),
+            "replies_identical": sum(x == y for x, y in zip(texts_b, texts_z, strict=True)),
+        }
+    return {"zero_draft": {"counters": results, "b_vs_b_zero_draft": comparison}}
+
+
 def cleanup(response: dict) -> None:
     from vllm.distributed.kv_transfer.kv_connector.v1.example_hidden_states_connector import (
         cleanup_hidden_states,
@@ -443,12 +516,23 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--lens", action="store_true", help="run check 5, under uv run --with " + VLLM_LENS)
     parser.add_argument("--repeats", action="store_true", help="run plain and B twice each and compare generations")
     parser.add_argument("--no-write", action="store_true", help="smoke-test the L4 run's B no-op connector")
+    parser.add_argument("--zero-draft", action="store_true", help="B with and without a zero-token draft schedule")
     args = parser.parse_args(argv)
     args.out.mkdir(parents=True, exist_ok=True)
     print(f"{shutil.disk_usage(args.out).free / 1e9:.0f} GB free in {args.out}", flush=True)
     path = args.out / "d1_local.json"
     results = json.loads(path.read_text()) if path.exists() else {}
-    run = run_lens if args.lens else run_repeats if args.repeats else run_no_write if args.no_write else run_main
+    run = (
+        run_lens
+        if args.lens
+        else run_repeats
+        if args.repeats
+        else run_no_write
+        if args.no_write
+        else run_zero_draft
+        if args.zero_draft
+        else run_main
+    )
     results.update(run(args.out))
     results["versions"] = {
         "vllm": version("vllm"),
