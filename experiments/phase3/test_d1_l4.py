@@ -1,6 +1,7 @@
 """The D1 L4 run's pure parts: the interleaved schedule, the cost rule's verdicts, the generation
 stop rule and the startup facts read from a server log. CPU only."""
 
+import json
 import sys
 import time
 
@@ -140,10 +141,11 @@ LOG = """\
 
 
 def test_startup_facts_reads_kv_cache_size_and_maximum_concurrency():
-    assert r.startup_facts(LOG) | {"model_runner": None} == {
+    assert r.startup_facts(LOG) | {"model_runner": None, "scheduled_token_budget": None} == {
         "kv_cache_tokens": 53776,
         "max_concurrency": 26.26,
         "model_runner": None,
+        "scheduled_token_budget": None,
     }
     assert r.startup_facts("")["kv_cache_tokens"] is None
     assert r.startup_facts("")["max_concurrency"] is None
@@ -286,14 +288,14 @@ def fake_run_all(monkeypatch, tmp_path, rounds, misbehaving):
     """run_all over a fake run_arm, where misbehaving maps (round, arm) to the run's error fields."""
     monkeypatch.setattr(r.d1_local, "compare_generations", lambda a, b: {"diverged": []})
 
-    def run_arm(arm, rnd, cfg, workload, out, rate, timeouts):
+    def run_arm(arm, rnd, cfg, workload, out, rate, timeouts, calibrate=False):
         run = {"arm": arm, "round": rnd, "generate": ["reply"], "saturation": bench_result(), "fixed_rate": 7.0}
         if (rnd, arm) in misbehaving:
             return {**run, **misbehaving[(rnd, arm)]}
         return {**run, "fixed": bench_result()}
 
     monkeypatch.setattr(r, "run_arm", run_arm)
-    return r.run_all({}, {}, tmp_path, rounds=rounds, timeouts=r.Timeouts(480, 270, 240))
+    return r.run_all({}, {}, tmp_path, r.Experiment(r.ARMS, rounds), timeouts=r.Timeouts(480, 270, 240))
 
 
 def timed_out(outcome="did not sustain the fixed rate"):
@@ -363,3 +365,145 @@ def test_rejudge_recomputes_the_verdicts_from_a_finished_runs_records():
     assert v["b"]["throughput"]["overheads"] == [pytest.approx(0.4), pytest.approx(0.4)]
     assert v["b"]["passes"] is False
     assert v["lens"] == {"measurement_timeouts": [{"round": 0, **lens_timeout}], "passes": False}
+
+
+BUDGET_LINE = (
+    "(EngineCore pid=1) WARNING 11-01 10:00:00 [vllm.py:2135] max_num_scheduled_tokens is set to 2048 based on"
+    " the speculative decoding settings. This may lead to suboptimal performance.\n"
+)
+
+
+def test_startup_facts_reads_the_scheduled_token_budget_only_when_vllm_logs_it():
+    # vLLM 0.30.0 logs it only under a speculative config (config/vllm.py:2133), so a server without
+    # one records None, not its budget.
+    assert r.startup_facts(BUDGET_LINE + LOG)["scheduled_token_budget"] == 2048
+    assert r.startup_facts(LOG)["scheduled_token_budget"] is None
+
+
+def test_the_zero_draft_arm_is_the_stock_connector_with_a_zero_token_draft_schedule(tmp_path):
+    cfg = {"model": "m", "serve": [], "layer": 18}
+    command, env = r.arm_command("b_zero_draft", cfg, tmp_path)
+    stock, _ = r.arm_command("b_stock", cfg, tmp_path)
+    speculative = json.loads(command[command.index("--speculative-config") + 1])
+    assert speculative.pop("num_speculative_tokens_per_batch_size") == [[1, 1, 0]]
+    assert speculative == json.loads(stock[stock.index("--speculative-config") + 1])
+    transfer = command[command.index("--kv-transfer-config") + 1]
+    assert transfer == stock[stock.index("--kv-transfer-config") + 1]
+    assert json.loads(transfer)["kv_connector"] == "ExampleHiddenStatesConnector"
+    assert env == {"VLLM_LENS_DISABLE": "1"}
+
+
+def test_the_fixed_rate_is_70_percent_of_the_slowest_arms_saturation():
+    assert r.fixed_rate([20.0, 12.0]) == pytest.approx(8.4)
+    assert r.fixed_rate([20.0, 20.0]) == pytest.approx(14.0)
+
+
+def test_the_zero_draft_experiment_alternates_the_two_arms_over_a_calibration_round_and_three_more():
+    assert r.ZERO_DRAFT.calibration_rounds == 1
+    assert r.schedule(r.ZERO_DRAFT.arms, r.ZERO_DRAFT.rounds) == [
+        (0, "baseline"), (0, "b_zero_draft"),
+        (1, "b_zero_draft"), (1, "baseline"),
+        (2, "baseline"), (2, "b_zero_draft"),
+        (3, "b_zero_draft"), (3, "baseline"),
+    ]  # fmt: skip
+
+
+def test_the_zero_draft_worst_case_is_the_drafts_two_cold_and_six_warm_arm_runs():
+    timeouts = r.Timeouts(cold_startup=480, warm_startup=270, measure=240)
+    assert r.worst_case_seconds(timeouts, r.ZERO_DRAFT.rounds, r.ZERO_DRAFT.arms) == 2 * 750 + 6 * 540
+
+
+def test_verdicts_pair_throughput_over_every_round_and_latency_over_the_rounds_that_measured_it():
+    def calibration(throughput):
+        return {"saturation": run(throughput, 0, 0)}
+
+    def measured(throughput, ttft):
+        return {"saturation": run(throughput, 0, 0), "fixed": run(7, ttft, 20.0)}
+
+    runs = {
+        (0, "baseline"): calibration(10.0),
+        (0, "b"): calibration(9.9),
+        (1, "baseline"): measured(10.0, 100.0),
+        (1, "b"): measured(9.8, 102.0),
+        (2, "baseline"): measured(10.0, 100.0),
+        (2, "b"): measured(9.7, 104.0),
+    }
+    v = r.verdicts(runs)["b"]
+    assert v["throughput"]["overheads"] == [pytest.approx(0.01), pytest.approx(0.02), pytest.approx(0.03)]
+    assert v["p99_ttft"]["overheads"] == [pytest.approx(0.02), pytest.approx(0.04)]
+    assert v["passes"] is True
+
+
+def calibrated_run_all(monkeypatch, tmp_path, misbehaving=()):
+    """run_all over a fake run_arm on the zero-draft experiment, returning its results and calls.
+    misbehaving maps (round, arm) to fields merged into that arm-run's result."""
+    monkeypatch.setattr(r.d1_local, "compare_generations", lambda a, b: {"diverged": []})
+    calls = []
+    saturation = {"baseline": 20.0, "b_zero_draft": 12.0}
+    misbehaving = dict(misbehaving)
+
+    def run_arm(arm, rnd, cfg, workload, out, rate, timeouts, calibrate=False):
+        calls.append({"arm": arm, "round": rnd, "rate": rate, "calibrate": calibrate})
+        result = {
+            "arm": arm,
+            "round": rnd,
+            "generate": ["reply"],
+            "saturation": bench_result(saturation[arm]),
+            "counters": {"draft_tokens": 0},
+            "startup": {"model_runner": "V2"},
+        }
+        if not calibrate:
+            result |= {"fixed": bench_result(), "fixed_rate": rate}
+        return {**result, **misbehaving.get((rnd, arm), {})}
+
+    monkeypatch.setattr(r, "run_arm", run_arm)
+    return r.run_all({}, {}, tmp_path, r.ZERO_DRAFT, r.Timeouts(480, 270, 240)), calls
+
+
+def test_the_calibration_round_runs_no_fixed_rate_and_sets_the_rate_from_the_slower_arm(monkeypatch, tmp_path):
+    results, calls = calibrated_run_all(monkeypatch, tmp_path)
+    assert results["stopped"] is None
+    assert [c["calibrate"] for c in calls] == [True, True] + [False] * 6
+    assert [c["rate"] for c in calls[:2]] == [None, None]
+    assert {c["rate"] for c in calls[2:]} == {pytest.approx(8.4)}
+    assert results["fixed_rate"] == pytest.approx(8.4)
+    assert "fixed" not in results["runs"][0]
+    v = results["verdicts"]["b_zero_draft"]
+    assert len(v["throughput"]["overheads"]) == 4
+    assert len(v["p99_ttft"]["overheads"]) == 3
+
+
+@pytest.mark.parametrize(
+    "fields, reason",
+    [
+        ({"startup": {"model_runner": "V1"}}, "startup log isn't V2"),
+        ({"startup": {"model_runner": None}}, "startup log isn't V2"),
+        ({"counters": {"draft_tokens": 3}}, "3 draft tokens"),
+    ],
+)
+def test_a_zero_draft_arm_run_off_v2_or_with_draft_tokens_stops_the_run(monkeypatch, tmp_path, fields, reason):
+    for key in ((0, "b_zero_draft"), (2, "b_zero_draft")):
+        results, calls = calibrated_run_all(monkeypatch, tmp_path, {key: fields})
+        assert reason in results["stopped"]
+        assert results["stopped"].startswith(f"round {key[0]} b_zero_draft")
+        assert (calls[-1]["round"], calls[-1]["arm"]) == key
+
+
+def test_the_zero_draft_stop_rules_dont_apply_to_the_baseline(monkeypatch, tmp_path):
+    fields = {"startup": {"model_runner": "V1"}, "counters": {"draft_tokens": 3}}
+    results, _ = calibrated_run_all(monkeypatch, tmp_path, {(1, "baseline"): fields})
+    assert results["stopped"] is None
+
+
+def test_rejudge_reads_a_run_with_a_calibration_round():
+    results = {
+        "runs": [
+            {"round": 0, "arm": "baseline", "saturation": run(10.0, 0, 0)},
+            {"round": 0, "arm": "b", "saturation": run(9.0, 0, 0)},
+            {"round": 1, "arm": "baseline", "saturation": run(10.0, 0, 0), "fixed": run(7, 100.0, 20.0)},
+            {"round": 1, "arm": "b", "saturation": run(9.0, 0, 0), "fixed": run(7, 100.0, 20.0)},
+        ],
+    }
+    v = r.rejudge(results)["verdicts"]["b"]
+    assert len(v["throughput"]["overheads"]) == 2
+    assert len(v["p99_ttft"]["overheads"]) == 1
