@@ -1,0 +1,714 @@
+{
+  "verdicts": {
+    "b_noop": {
+      "throughput": {
+        "overheads": [
+          0.40769490900319594,
+          0.3863994149817831,
+          0.39977284974535765
+        ],
+        "upper": 0.40769490900319594,
+        "threshold": 0.05,
+        "baseline_spread": 0.026383435108291876,
+        "verdict": "fail"
+      },
+      "p99_ttft": {
+        "overheads": [
+          1.2944360520043867,
+          1.2365247575601512,
+          1.3124199708832314
+        ],
+        "upper": 1.3124199708832314,
+        "threshold": 0.1,
+        "baseline_spread": 0.02213839877048615,
+        "verdict": "fail"
+      },
+      "p99_tpot": {
+        "overheads": [
+          1.607430703941632,
+          1.5634300829747794,
+          1.5880429756299033
+        ],
+        "upper": 1.607430703941632,
+        "threshold": 0.1,
+        "baseline_spread": 0.012215252662462091,
+        "verdict": "fail"
+      },
+      "passes": false
+    },
+    "b_stock": {
+      "throughput": {
+        "overheads": [
+          0.4128287069586879,
+          0.3991473901561865,
+          0.39511626136774636
+        ],
+        "upper": 0.4128287069586879,
+        "threshold": 0.05,
+        "baseline_spread": 0.026383435108291876,
+        "verdict": "fail"
+      },
+      "p99_ttft": {
+        "overheads": [
+          1.421007465463127,
+          1.1776094258449477,
+          1.296495056623618
+        ],
+        "upper": 1.421007465463127,
+        "threshold": 0.1,
+        "baseline_spread": 0.02213839877048615,
+        "verdict": "fail"
+      },
+      "p99_tpot": {
+        "overheads": [
+          1.6296661915074901,
+          1.483450041904355,
+          1.6007526506137513
+        ],
+        "upper": 1.6296661915074901,
+        "threshold": 0.1,
+        "baseline_spread": 0.012215252662462091,
+        "verdict": "fail"
+      },
+      "passes": false
+    },
+    "lens": {
+      "measurement_timeouts": [
+        {
+          "round": 0,
+          "stage": "fixed",
+          "stage_seconds": 81.5,
+          "bench_seconds": 52,
+          "completed": 118,
+          "of": 1066,
+          "outcome": "did not sustain the fixed rate"
+        },
+        {
+          "round": 1,
+          "stage": "fixed",
+          "stage_seconds": 85.9,
+          "bench_seconds": 56,
+          "completed": 141,
+          "of": 1066,
+          "outcome": "did not sustain the fixed rate"
+        },
+        {
+          "round": 2,
+          "stage": "fixed",
+          "stage_seconds": 85.5,
+          "bench_seconds": 55,
+          "completed": 149,
+          "of": 1066,
+          "outcome": "did not sustain the fixed rate"
+        }
+      ],
+      "passes": false
+    }
+  },
+  "divergences": {
+    "tie_bound": {
+      "steps": 2,
+      "step": 0.125,
+      "tolerance": 1e-06
+    },
+    "rows": [
+      {
+        "run": "r0_b_noop",
+        "prompt": 5,
+        "token": 35,
+        "tokens": [
+          " users",
+          " if"
+        ],
+        "reference_margin": 0.125,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      },
+      {
+        "run": "r0_b_noop",
+        "prompt": 8,
+        "token": 63,
+        "tokens": [
+          " Also",
+          " I"
+        ],
+        "reference_margin": 0.125,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      },
+      {
+        "run": "r0_b_noop",
+        "prompt": 9,
+        "token": 48,
+        "tokens": [
+          ".",
+          " first"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.125,
+        "class": "exact tie"
+      },
+      {
+        "run": "r0_b_noop",
+        "prompt": 12,
+        "token": 6,
+        "tokens": [
+          " is",
+          " wants"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.25,
+        "class": "exact tie"
+      },
+      {
+        "run": "r0_b_noop",
+        "prompt": 13,
+        "token": 59,
+        "tokens": [
+          " wait",
+          " since"
+        ],
+        "reference_margin": 0.24999994039535522,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      },
+      {
+        "run": "r0_b_stock",
+        "prompt": 5,
+        "token": 35,
+        "tokens": [
+          " users",
+          " if"
+        ],
+        "reference_margin": 0.125,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      },
+      {
+        "run": "r0_b_stock",
+        "prompt": 8,
+        "token": 63,
+        "tokens": [
+          " Also",
+          " I"
+        ],
+        "reference_margin": 0.125,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      },
+      {
+        "run": "r0_b_stock",
+        "prompt": 9,
+        "token": 48,
+        "tokens": [
+          ".",
+          " first"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.125,
+        "class": "exact tie"
+      },
+      {
+        "run": "r0_b_stock",
+        "prompt": 12,
+        "token": 6,
+        "tokens": [
+          " is",
+          " wants"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.25,
+        "class": "exact tie"
+      },
+      {
+        "run": "r0_b_stock",
+        "prompt": 13,
+        "token": 59,
+        "tokens": [
+          " wait",
+          " since"
+        ],
+        "reference_margin": 0.24999994039535522,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      },
+      {
+        "run": "r0_lens",
+        "prompt": 1,
+        "token": 24,
+        "tokens": [
+          ".",
+          " about"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.25,
+        "class": "exact tie"
+      },
+      {
+        "run": "r0_lens",
+        "prompt": 5,
+        "token": 35,
+        "tokens": [
+          " users",
+          " if"
+        ],
+        "reference_margin": 0.125,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      },
+      {
+        "run": "r0_lens",
+        "prompt": 8,
+        "token": 30,
+        "tokens": [
+          " First",
+          " Let"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.25,
+        "class": "exact tie"
+      },
+      {
+        "run": "r0_lens",
+        "prompt": 9,
+        "token": 48,
+        "tokens": [
+          ".",
+          " first"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.125,
+        "class": "exact tie"
+      },
+      {
+        "run": "r0_lens",
+        "prompt": 12,
+        "token": 61,
+        "tokens": [
+          " outlining",
+          " defining"
+        ],
+        "reference_margin": 0.125,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      },
+      {
+        "run": "r1_b_noop",
+        "prompt": 5,
+        "token": 35,
+        "tokens": [
+          " users",
+          " if"
+        ],
+        "reference_margin": 0.125,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      },
+      {
+        "run": "r1_b_noop",
+        "prompt": 8,
+        "token": 63,
+        "tokens": [
+          " Also",
+          " I"
+        ],
+        "reference_margin": 0.125,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      },
+      {
+        "run": "r1_b_noop",
+        "prompt": 9,
+        "token": 48,
+        "tokens": [
+          ".",
+          " first"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.125,
+        "class": "exact tie"
+      },
+      {
+        "run": "r1_b_noop",
+        "prompt": 12,
+        "token": 6,
+        "tokens": [
+          " is",
+          " wants"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.25,
+        "class": "exact tie"
+      },
+      {
+        "run": "r1_b_noop",
+        "prompt": 13,
+        "token": 59,
+        "tokens": [
+          " wait",
+          " since"
+        ],
+        "reference_margin": 0.24999994039535522,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      },
+      {
+        "run": "r1_b_stock",
+        "prompt": 5,
+        "token": 35,
+        "tokens": [
+          " users",
+          " if"
+        ],
+        "reference_margin": 0.125,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      },
+      {
+        "run": "r1_b_stock",
+        "prompt": 8,
+        "token": 63,
+        "tokens": [
+          " Also",
+          " I"
+        ],
+        "reference_margin": 0.125,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      },
+      {
+        "run": "r1_b_stock",
+        "prompt": 9,
+        "token": 48,
+        "tokens": [
+          ".",
+          " first"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.125,
+        "class": "exact tie"
+      },
+      {
+        "run": "r1_b_stock",
+        "prompt": 12,
+        "token": 6,
+        "tokens": [
+          " is",
+          " wants"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.25,
+        "class": "exact tie"
+      },
+      {
+        "run": "r1_b_stock",
+        "prompt": 13,
+        "token": 59,
+        "tokens": [
+          " wait",
+          " since"
+        ],
+        "reference_margin": 0.24999994039535522,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      },
+      {
+        "run": "r1_lens",
+        "prompt": 1,
+        "token": 24,
+        "tokens": [
+          ".",
+          " about"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.25,
+        "class": "exact tie"
+      },
+      {
+        "run": "r1_lens",
+        "prompt": 5,
+        "token": 35,
+        "tokens": [
+          " users",
+          " if"
+        ],
+        "reference_margin": 0.125,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      },
+      {
+        "run": "r1_lens",
+        "prompt": 8,
+        "token": 30,
+        "tokens": [
+          " First",
+          " Let"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.25,
+        "class": "exact tie"
+      },
+      {
+        "run": "r1_lens",
+        "prompt": 9,
+        "token": 48,
+        "tokens": [
+          ".",
+          " first"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.125,
+        "class": "exact tie"
+      },
+      {
+        "run": "r1_lens",
+        "prompt": 12,
+        "token": 61,
+        "tokens": [
+          " outlining",
+          " defining"
+        ],
+        "reference_margin": 0.125,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      },
+      {
+        "run": "r2_b_noop",
+        "prompt": 5,
+        "token": 35,
+        "tokens": [
+          " users",
+          " if"
+        ],
+        "reference_margin": 0.125,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      },
+      {
+        "run": "r2_b_noop",
+        "prompt": 8,
+        "token": 63,
+        "tokens": [
+          " Also",
+          " I"
+        ],
+        "reference_margin": 0.125,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      },
+      {
+        "run": "r2_b_noop",
+        "prompt": 9,
+        "token": 48,
+        "tokens": [
+          ".",
+          " first"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.125,
+        "class": "exact tie"
+      },
+      {
+        "run": "r2_b_noop",
+        "prompt": 12,
+        "token": 6,
+        "tokens": [
+          " is",
+          " wants"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.25,
+        "class": "exact tie"
+      },
+      {
+        "run": "r2_b_noop",
+        "prompt": 13,
+        "token": 59,
+        "tokens": [
+          " wait",
+          " since"
+        ],
+        "reference_margin": 0.24999994039535522,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      },
+      {
+        "run": "r2_b_stock",
+        "prompt": 5,
+        "token": 35,
+        "tokens": [
+          " users",
+          " if"
+        ],
+        "reference_margin": 0.125,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      },
+      {
+        "run": "r2_b_stock",
+        "prompt": 8,
+        "token": 63,
+        "tokens": [
+          " Also",
+          " I"
+        ],
+        "reference_margin": 0.125,
+        "arm_margin": 0.125,
+        "class": "within bound"
+      },
+      {
+        "run": "r2_b_stock",
+        "prompt": 9,
+        "token": 48,
+        "tokens": [
+          ".",
+          " first"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.125,
+        "class": "exact tie"
+      },
+      {
+        "run": "r2_b_stock",
+        "prompt": 12,
+        "token": 6,
+        "tokens": [
+          " is",
+          " wants"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.25,
+        "class": "exact tie"
+      },
+      {
+        "run": "r2_b_stock",
+        "prompt": 13,
+        "token": 59,
+        "tokens": [
+          " wait",
+          " since"
+        ],
+        "reference_margin": 0.24999994039535522,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      },
+      {
+        "run": "r2_lens",
+        "prompt": 1,
+        "token": 24,
+        "tokens": [
+          ".",
+          " about"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.25,
+        "class": "exact tie"
+      },
+      {
+        "run": "r2_lens",
+        "prompt": 5,
+        "token": 35,
+        "tokens": [
+          " users",
+          " if"
+        ],
+        "reference_margin": 0.125,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      },
+      {
+        "run": "r2_lens",
+        "prompt": 8,
+        "token": 30,
+        "tokens": [
+          " First",
+          " Let"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.25,
+        "class": "exact tie"
+      },
+      {
+        "run": "r2_lens",
+        "prompt": 9,
+        "token": 48,
+        "tokens": [
+          ".",
+          " first"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.125,
+        "class": "exact tie"
+      },
+      {
+        "run": "r2_lens",
+        "prompt": 12,
+        "token": 61,
+        "tokens": [
+          " outlining",
+          " defining"
+        ],
+        "reference_margin": 0.125,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      }
+    ],
+    "counts": {
+      "r0_b_noop": {
+        "exact tie": 2,
+        "within bound": 3,
+        "change": 0
+      },
+      "r0_b_stock": {
+        "exact tie": 2,
+        "within bound": 3,
+        "change": 0
+      },
+      "r0_lens": {
+        "exact tie": 3,
+        "within bound": 2,
+        "change": 0
+      },
+      "r1_b_noop": {
+        "exact tie": 2,
+        "within bound": 3,
+        "change": 0
+      },
+      "r1_b_stock": {
+        "exact tie": 2,
+        "within bound": 3,
+        "change": 0
+      },
+      "r1_baseline": {
+        "exact tie": 0,
+        "within bound": 0,
+        "change": 0
+      },
+      "r1_lens": {
+        "exact tie": 3,
+        "within bound": 2,
+        "change": 0
+      },
+      "r2_b_noop": {
+        "exact tie": 2,
+        "within bound": 3,
+        "change": 0
+      },
+      "r2_b_stock": {
+        "exact tie": 2,
+        "within bound": 3,
+        "change": 0
+      },
+      "r2_baseline": {
+        "exact tie": 0,
+        "within bound": 0,
+        "change": 0
+      },
+      "r2_lens": {
+        "exact tie": 3,
+        "within bound": 2,
+        "change": 0
+      }
+    }
+  }
+}
