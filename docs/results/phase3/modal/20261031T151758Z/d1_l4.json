@@ -1,0 +1,2341 @@
+{
+  "schedule": [
+    [
+      0,
+      "baseline"
+    ],
+    [
+      0,
+      "b_stock"
+    ],
+    [
+      0,
+      "b_noop"
+    ],
+    [
+      0,
+      "lens"
+    ],
+    [
+      1,
+      "b_stock"
+    ],
+    [
+      1,
+      "b_noop"
+    ],
+    [
+      1,
+      "lens"
+    ],
+    [
+      1,
+      "baseline"
+    ],
+    [
+      2,
+      "b_noop"
+    ],
+    [
+      2,
+      "lens"
+    ],
+    [
+      2,
+      "baseline"
+    ],
+    [
+      2,
+      "b_stock"
+    ]
+  ],
+  "runs": [
+    {
+      "arm": "baseline",
+      "round": 0,
+      "free_gpu_before": {
+        "used_mib": 4,
+        "free_mib": 22589
+      },
+      "command": [
+        "/.uv/.venv/bin/python",
+        "-m",
+        "vllm.entrypoints.cli.main",
+        "serve",
+        "Qwen/Qwen3-4B",
+        "--revision",
+        "1cfa9a7208912126459214e8b04321603b3df60c",
+        "--dtype",
+        "bfloat16",
+        "--max-model-len",
+        "2048",
+        "--enable-chunked-prefill",
+        "--no-enable-prefix-caching",
+        "--seed",
+        "0",
+        "--port",
+        "8766"
+      ],
+      "env": {
+        "VLLM_LENS_DISABLE": "1"
+      },
+      "startup_seconds": 102.1,
+      "saturation": {
+        "duration": 14.76796742099998,
+        "completed": 300,
+        "failed": 0,
+        "request_throughput": 20.31423766370187,
+        "output_throughput": 2600.2224209538394,
+        "total_token_throughput": 2990.2557840969157,
+        "max_concurrent_requests": 300,
+        "mean_ttft_ms": 2345.687879266668,
+        "p50_ttft_ms": 1285.6011584999862,
+        "p99_ttft_ms": 9836.110017860008,
+        "mean_tpot_ms": 63.71424728367453,
+        "p50_tpot_ms": 67.16517365354319,
+        "p99_tpot_ms": 69.63081913228349,
+        "p50_itl_ms": 64.00949700000069,
+        "p99_itl_ms": 156.12579228001232,
+        "p99_e2el_ms": 14717.718137930013
+      },
+      "fixed_rate": 14.219966364591308,
+      "fixed": {
+        "duration": 80.25415830599997,
+        "completed": 1066,
+        "failed": 0,
+        "request_throughput": 13.282800823048488,
+        "output_throughput": 1700.1985053502065,
+        "total_token_throughput": 1958.1539862495965,
+        "max_concurrent_requests": 123,
+        "mean_ttft_ms": 149.4300407767368,
+        "p50_ttft_ms": 149.8263320000035,
+        "p99_ttft_ms": 196.33307965000301,
+        "mean_tpot_ms": 49.40987462215804,
+        "p50_tpot_ms": 49.78945877165362,
+        "p99_tpot_ms": 52.38581215511813,
+        "p50_itl_ms": 45.32990399997061,
+        "p99_itl_ms": 64.89727011999321,
+        "p99_e2el_ms": 6819.483139450033
+      },
+      "counters": {
+        "steps": 1928,
+        "tokens": 201310,
+        "draft_tokens": 0,
+        "accepted_tokens": 0
+      },
+      "peaks": {
+        "running": 256.0,
+        "kv_cache_usage": 0.433788270011066
+      },
+      "seconds": 290.1,
+      "startup": {
+        "kv_cache_tokens": 86768,
+        "max_concurrency": 42.37
+      }
+    },
+    {
+      "arm": "b_stock",
+      "round": 0,
+      "free_gpu_before": {
+        "used_mib": 4,
+        "free_mib": 22589
+      },
+      "command": [
+        "/.uv/.venv/bin/python",
+        "-m",
+        "vllm.entrypoints.cli.main",
+        "serve",
+        "Qwen/Qwen3-4B",
+        "--revision",
+        "1cfa9a7208912126459214e8b04321603b3df60c",
+        "--dtype",
+        "bfloat16",
+        "--max-model-len",
+        "2048",
+        "--enable-chunked-prefill",
+        "--no-enable-prefix-caching",
+        "--seed",
+        "0",
+        "--port",
+        "8766",
+        "--speculative-config",
+        "{\"method\": \"extract_hidden_states\", \"num_speculative_tokens\": 1, \"draft_model_config\": {\"hf_config\": {\"eagle_aux_hidden_state_layer_ids\": [18]}}}",
+        "--kv-transfer-config",
+        "{\"kv_connector\": \"ExampleHiddenStatesConnector\", \"kv_role\": \"kv_producer\", \"kv_connector_extra_config\": {\"shared_storage_path\": \"/tmp/d1/r0_b_stock/hidden_states\"}}"
+      ],
+      "env": {
+        "VLLM_LENS_DISABLE": "1"
+      },
+      "startup_seconds": 154.2,
+      "saturation": {
+        "duration": 25.151037858999928,
+        "completed": 300,
+        "failed": 0,
+        "request_throughput": 11.92793719614435,
+        "output_throughput": 1526.7759611064769,
+        "total_token_throughput": 1755.7923552724483,
+        "max_concurrent_requests": 300,
+        "mean_ttft_ms": 3719.0060641433365,
+        "p50_ttft_ms": 1313.9788500000122,
+        "p99_ttft_ms": 19178.60436456007,
+        "mean_tpot_ms": 127.2612789250393,
+        "p50_tpot_ms": 140.4590609763778,
+        "p99_tpot_ms": 142.19534071196864,
+        "p50_itl_ms": 136.33496900001774,
+        "p99_itl_ms": 195.3389892399764,
+        "p99_e2el_ms": 25102.14847097003
+      },
+      "fixed_rate": 14.219966364591308,
+      "fixed": {
+        "duration": 86.13341960399998,
+        "completed": 1066,
+        "failed": 0,
+        "request_throughput": 12.376148594830614,
+        "output_throughput": 1584.1470201383186,
+        "total_token_throughput": 1824.4950766206669,
+        "max_concurrent_requests": 272,
+        "mean_ttft_ms": 311.7824784015026,
+        "p50_ttft_ms": 324.99644699998953,
+        "p99_ttft_ms": 475.3238515500241,
+        "mean_tpot_ms": 111.70087739088652,
+        "p50_tpot_ms": 118.11911744488171,
+        "p99_tpot_ms": 137.7571991389763,
+        "p50_itl_ms": 120.1511079999591,
+        "p99_itl_ms": 144.51858599995376,
+        "p99_e2el_ms": 17886.16091659997
+      },
+      "counters": {
+        "steps": 1166,
+        "tokens": 201310,
+        "draft_tokens": 173438,
+        "accepted_tokens": 45
+      },
+      "peaks": {
+        "running": 256.0,
+        "kv_cache_usage": 0.5118513773222293
+      },
+      "seconds": 358.9,
+      "startup": {
+        "kv_cache_tokens": 74944,
+        "max_concurrency": 36.59
+      }
+    },
+    {
+      "arm": "b_noop",
+      "round": 0,
+      "free_gpu_before": {
+        "used_mib": 4,
+        "free_mib": 22589
+      },
+      "command": [
+        "/.uv/.venv/bin/python",
+        "-m",
+        "vllm.entrypoints.cli.main",
+        "serve",
+        "Qwen/Qwen3-4B",
+        "--revision",
+        "1cfa9a7208912126459214e8b04321603b3df60c",
+        "--dtype",
+        "bfloat16",
+        "--max-model-len",
+        "2048",
+        "--enable-chunked-prefill",
+        "--no-enable-prefix-caching",
+        "--seed",
+        "0",
+        "--port",
+        "8766",
+        "--speculative-config",
+        "{\"method\": \"extract_hidden_states\", \"num_speculative_tokens\": 1, \"draft_model_config\": {\"hf_config\": {\"eagle_aux_hidden_state_layer_ids\": [18]}}}",
+        "--kv-transfer-config",
+        "{\"kv_connector\": \"NoWriteHiddenStatesConnector\", \"kv_role\": \"kv_producer\", \"kv_connector_extra_config\": {\"shared_storage_path\": \"/tmp/d1/r0_b_noop/hidden_states\", \"use_synchronization_lock\": false}, \"kv_connector_module_path\": \"no_write_connector\"}"
+      ],
+      "env": {
+        "VLLM_LENS_DISABLE": "1",
+        "PYTHONPATH": "/root/experiments/phase3:/pkg/:/root/"
+      },
+      "startup_seconds": 86.1,
+      "saturation": {
+        "duration": 24.933041511000056,
+        "completed": 300,
+        "failed": 0,
+        "request_throughput": 12.032226387929642,
+        "output_throughput": 1540.1249776549942,
+        "total_token_throughput": 1771.143724303243,
+        "max_concurrent_requests": 300,
+        "mean_ttft_ms": 3661.7839187900004,
+        "p50_ttft_ms": 1357.488938500012,
+        "p99_ttft_ms": 19003.6744102,
+        "mean_tpot_ms": 126.17186279099738,
+        "p50_tpot_ms": 138.8031192086614,
+        "p99_tpot_ms": 140.97720783385884,
+        "p50_itl_ms": 134.92934399994283,
+        "p99_itl_ms": 197.25458038007486,
+        "p99_e2el_ms": 24884.706402419928
+      },
+      "fixed_rate": 14.219966364591308,
+      "fixed": {
+        "duration": 86.00090777000003,
+        "completed": 1066,
+        "failed": 0,
+        "request_throughput": 12.395217999918092,
+        "output_throughput": 1586.5879039895158,
+        "total_token_throughput": 1827.3062933275123,
+        "max_concurrent_requests": 271,
+        "mean_ttft_ms": 306.5238823545961,
+        "p50_ttft_ms": 320.4563615000211,
+        "p99_ttft_ms": 450.4736961500157,
+        "mean_tpot_ms": 110.91956596915394,
+        "p50_tpot_ms": 117.20527177165351,
+        "p99_tpot_ms": 136.59237506417378,
+        "p50_itl_ms": 119.52499849996912,
+        "p99_itl_ms": 146.92121650996225,
+        "p99_e2el_ms": 17729.588362900016
+      },
+      "counters": {
+        "steps": 1168,
+        "tokens": 201310,
+        "draft_tokens": 173438,
+        "accepted_tokens": 47
+      },
+      "peaks": {
+        "running": 256.0,
+        "kv_cache_usage": 0.44550304878048785
+      },
+      "seconds": 289.3,
+      "startup": {
+        "kv_cache_tokens": 83984,
+        "max_concurrency": 41.01
+      }
+    },
+    {
+      "arm": "lens",
+      "round": 0,
+      "free_gpu_before": {
+        "used_mib": 4,
+        "free_mib": 22589
+      },
+      "command": [
+        "/.uv/.venv/bin/python",
+        "-m",
+        "vllm.entrypoints.cli.main",
+        "serve",
+        "Qwen/Qwen3-4B",
+        "--revision",
+        "1cfa9a7208912126459214e8b04321603b3df60c",
+        "--dtype",
+        "bfloat16",
+        "--max-model-len",
+        "2048",
+        "--enable-chunked-prefill",
+        "--no-enable-prefix-caching",
+        "--seed",
+        "0",
+        "--port",
+        "8766"
+      ],
+      "env": {},
+      "startup_seconds": 222.3,
+      "saturation": {
+        "duration": 61.07042904900004,
+        "completed": 300,
+        "failed": 0,
+        "request_throughput": 4.912361099662393,
+        "output_throughput": 628.7822207567863,
+        "total_token_throughput": 723.0995538703042,
+        "max_concurrent_requests": 300,
+        "mean_ttft_ms": 8377.450625160005,
+        "p50_ttft_ms": 1798.8214859999516,
+        "p99_ttft_ms": 46747.79052953986,
+        "mean_tpot_ms": 317.44434080963254,
+        "p50_tpot_ms": 352.8933035984254,
+        "p99_tpot_ms": 354.73225430952766,
+        "p50_itl_ms": 351.3350799998989,
+        "p99_itl_ms": 383.62091960991387,
+        "p99_e2el_ms": 61023.02193628005
+      },
+      "fixed_rate": 14.219966364591308,
+      "error": "TimeoutExpired: Command '['/.uv/.venv/bin/python', '-m', 'vllm.entrypoints.cli.main', 'bench', 'serve', '--backend', 'openai-chat', '--endpoint', '/v1/chat/completions', '--base-url', 'http://127.0.0.1:8766', '--model', 'Qwen/Qwen3-4B', '--tokenizer', '/__modal/volumes/vo-jLVhGKA1eUYgYxMUijaSbV/hf/hub/models--Qwen--Qwen3-4B/snapshots/1cfa9a7208912126459214e8b04321603b3df60c', '--dataset-name', 'custom', '--dataset-path', '/tmp/d1/r0_lens/bench.jsonl', '--skip-chat-template', '--custom-output-len', '128', '--ignore-eos', '--temperature', '0', '--num-prompts', '1066', '--request-rate', '14.220', '--seed', '0', '--percentile-metrics', 'ttft,tpot,itl,e2el', '--metric-percentiles', '50,99', '--save-result', '--result-dir', '/tmp/d1/r0_lens', '--result-filename', 'fixed.json']' timed out after 80.62039323070098 seconds",
+      "timeout": {
+        "stage": "fixed",
+        "stage_seconds": 81.5,
+        "bench_seconds": 52,
+        "completed": 118,
+        "of": 1066,
+        "outcome": "did not sustain the fixed rate"
+      },
+      "peaks": {
+        "running": 256.0,
+        "kv_cache_usage": 0.4290909090909091
+      },
+      "seconds": 463.1,
+      "startup": {
+        "kv_cache_tokens": 88016,
+        "max_concurrency": 42.98
+      }
+    },
+    {
+      "arm": "b_stock",
+      "round": 1,
+      "free_gpu_before": {
+        "used_mib": 4,
+        "free_mib": 22589
+      },
+      "command": [
+        "/.uv/.venv/bin/python",
+        "-m",
+        "vllm.entrypoints.cli.main",
+        "serve",
+        "Qwen/Qwen3-4B",
+        "--revision",
+        "1cfa9a7208912126459214e8b04321603b3df60c",
+        "--dtype",
+        "bfloat16",
+        "--max-model-len",
+        "2048",
+        "--enable-chunked-prefill",
+        "--no-enable-prefix-caching",
+        "--seed",
+        "0",
+        "--port",
+        "8766",
+        "--speculative-config",
+        "{\"method\": \"extract_hidden_states\", \"num_speculative_tokens\": 1, \"draft_model_config\": {\"hf_config\": {\"eagle_aux_hidden_state_layer_ids\": [18]}}}",
+        "--kv-transfer-config",
+        "{\"kv_connector\": \"ExampleHiddenStatesConnector\", \"kv_role\": \"kv_producer\", \"kv_connector_extra_config\": {\"shared_storage_path\": \"/tmp/d1/r1_b_stock/hidden_states\"}}"
+      ],
+      "env": {
+        "VLLM_LENS_DISABLE": "1"
+      },
+      "startup_seconds": 94.1,
+      "saturation": {
+        "duration": 25.154367094999998,
+        "completed": 300,
+        "failed": 0,
+        "request_throughput": 11.926358507331788,
+        "output_throughput": 1526.5738889384688,
+        "total_token_throughput": 1755.559972279239,
+        "max_concurrent_requests": 300,
+        "mean_ttft_ms": 3724.9042731433324,
+        "p50_ttft_ms": 1229.8031885001137,
+        "p99_ttft_ms": 19176.215411860016,
+        "mean_tpot_ms": 127.49279037811026,
+        "p50_tpot_ms": 141.12142805118125,
+        "p99_tpot_ms": 142.4231502922042,
+        "p50_itl_ms": 136.9766244999937,
+        "p99_itl_ms": 195.2288894300159,
+        "p99_e2el_ms": 25099.587986840026
+      },
+      "fixed_rate": 14.219966364591308,
+      "fixed": {
+        "duration": 85.74905298499993,
+        "completed": 1066,
+        "failed": 0,
+        "request_throughput": 12.43162417416406,
+        "output_throughput": 1591.2478942929997,
+        "total_token_throughput": 1832.6733010974503,
+        "max_concurrent_requests": 260,
+        "mean_ttft_ms": 285.3717292954932,
+        "p50_ttft_ms": 290.2030279999508,
+        "p99_ttft_ms": 437.1418196000716,
+        "mean_tpot_ms": 102.9351367585056,
+        "p50_tpot_ms": 102.50751760236287,
+        "p99_tpot_ms": 131.69777061771612,
+        "p50_itl_ms": 99.55750100004934,
+        "p99_itl_ms": 142.26300077001952,
+        "p99_e2el_ms": 17094.588312950018
+      },
+      "counters": {
+        "steps": 1216,
+        "tokens": 201310,
+        "draft_tokens": 173436,
+        "accepted_tokens": 46
+      },
+      "peaks": {
+        "running": 256.0,
+        "kv_cache_usage": 0.4902820121951219
+      },
+      "seconds": 296.5,
+      "startup": {
+        "kv_cache_tokens": 83984,
+        "max_concurrency": 41.01
+      }
+    },
+    {
+      "arm": "b_noop",
+      "round": 1,
+      "free_gpu_before": {
+        "used_mib": 4,
+        "free_mib": 22589
+      },
+      "command": [
+        "/.uv/.venv/bin/python",
+        "-m",
+        "vllm.entrypoints.cli.main",
+        "serve",
+        "Qwen/Qwen3-4B",
+        "--revision",
+        "1cfa9a7208912126459214e8b04321603b3df60c",
+        "--dtype",
+        "bfloat16",
+        "--max-model-len",
+        "2048",
+        "--enable-chunked-prefill",
+        "--no-enable-prefix-caching",
+        "--seed",
+        "0",
+        "--port",
+        "8766",
+        "--speculative-config",
+        "{\"method\": \"extract_hidden_states\", \"num_speculative_tokens\": 1, \"draft_model_config\": {\"hf_config\": {\"eagle_aux_hidden_state_layer_ids\": [18]}}}",
+        "--kv-transfer-config",
+        "{\"kv_connector\": \"NoWriteHiddenStatesConnector\", \"kv_role\": \"kv_producer\", \"kv_connector_extra_config\": {\"shared_storage_path\": \"/tmp/d1/r1_b_noop/hidden_states\", \"use_synchronization_lock\": false}, \"kv_connector_module_path\": \"no_write_connector\"}"
+      ],
+      "env": {
+        "VLLM_LENS_DISABLE": "1",
+        "PYTHONPATH": "/root/experiments/phase3:/pkg/:/root/"
+      },
+      "startup_seconds": 84.1,
+      "saturation": {
+        "duration": 24.63176777700005,
+        "completed": 300,
+        "failed": 0,
+        "request_throughput": 12.179393810302379,
+        "output_throughput": 1558.9624077187045,
+        "total_token_throughput": 1792.8067688765102,
+        "max_concurrent_requests": 300,
+        "mean_ttft_ms": 3639.168167013345,
+        "p50_ttft_ms": 1127.3009425000282,
+        "p99_ttft_ms": 18712.27347913996,
+        "mean_tpot_ms": 124.17725149690284,
+        "p50_tpot_ms": 137.7599017716544,
+        "p99_tpot_ms": 138.80119526133743,
+        "p50_itl_ms": 132.08297150004,
+        "p99_itl_ms": 192.21775504991228,
+        "p99_e2el_ms": 24574.233854399994
+      },
+      "fixed_rate": 14.219966364591308,
+      "fixed": {
+        "duration": 85.93120843999986,
+        "completed": 1066,
+        "failed": 0,
+        "request_throughput": 12.4052718372315,
+        "output_throughput": 1587.874795165632,
+        "total_token_throughput": 1828.7884326650376,
+        "max_concurrent_requests": 272,
+        "mean_ttft_ms": 310.68201900750955,
+        "p50_ttft_ms": 324.84030300008726,
+        "p99_ttft_ms": 448.9687133500069,
+        "mean_tpot_ms": 111.68994735826031,
+        "p50_tpot_ms": 118.49044447244094,
+        "p99_tpot_ms": 135.93912555748017,
+        "p50_itl_ms": 119.96006699996542,
+        "p99_itl_ms": 148.19474174005788,
+        "p99_e2el_ms": 17639.496811949935
+      },
+      "counters": {
+        "steps": 1160,
+        "tokens": 201310,
+        "draft_tokens": 173434,
+        "accepted_tokens": 48
+      },
+      "peaks": {
+        "running": 256.0,
+        "kv_cache_usage": 0.4493140243902439
+      },
+      "seconds": 293.5,
+      "startup": {
+        "kv_cache_tokens": 83984,
+        "max_concurrency": 41.01
+      }
+    },
+    {
+      "arm": "lens",
+      "round": 1,
+      "free_gpu_before": {
+        "used_mib": 4,
+        "free_mib": 22589
+      },
+      "command": [
+        "/.uv/.venv/bin/python",
+        "-m",
+        "vllm.entrypoints.cli.main",
+        "serve",
+        "Qwen/Qwen3-4B",
+        "--revision",
+        "1cfa9a7208912126459214e8b04321603b3df60c",
+        "--dtype",
+        "bfloat16",
+        "--max-model-len",
+        "2048",
+        "--enable-chunked-prefill",
+        "--no-enable-prefix-caching",
+        "--seed",
+        "0",
+        "--port",
+        "8766"
+      ],
+      "env": {},
+      "startup_seconds": 70.1,
+      "saturation": {
+        "duration": 60.61990132400024,
+        "completed": 300,
+        "failed": 0,
+        "request_throughput": 4.9488698174641526,
+        "output_throughput": 633.4553366354115,
+        "total_token_throughput": 728.4736371307232,
+        "max_concurrent_requests": 300,
+        "mean_ttft_ms": 8334.308452123345,
+        "p50_ttft_ms": 1748.0721314996117,
+        "p99_ttft_ms": 46656.88049762002,
+        "mean_tpot_ms": 316.60474577396326,
+        "p50_tpot_ms": 352.5354021496069,
+        "p99_tpot_ms": 354.488501065513,
+        "p50_itl_ms": 347.5980385001094,
+        "p99_itl_ms": 398.490584379806,
+        "p99_e2el_ms": 60572.62023127993
+      },
+      "fixed_rate": 14.219966364591308,
+      "error": "TimeoutExpired: Command '['/.uv/.venv/bin/python', '-m', 'vllm.entrypoints.cli.main', 'bench', 'serve', '--backend', 'openai-chat', '--endpoint', '/v1/chat/completions', '--base-url', 'http://127.0.0.1:8766', '--model', 'Qwen/Qwen3-4B', '--tokenizer', '/__modal/volumes/vo-jLVhGKA1eUYgYxMUijaSbV/hf/hub/models--Qwen--Qwen3-4B/snapshots/1cfa9a7208912126459214e8b04321603b3df60c', '--dataset-name', 'custom', '--dataset-path', '/tmp/d1/r1_lens/bench.jsonl', '--skip-chat-template', '--custom-output-len', '128', '--ignore-eos', '--temperature', '0', '--num-prompts', '1066', '--request-rate', '14.220', '--seed', '0', '--percentile-metrics', 'ttft,tpot,itl,e2el', '--metric-percentiles', '50,99', '--save-result', '--result-dir', '/tmp/d1/r1_lens', '--result-filename', 'fixed.json']' timed out after 84.9685789038067 seconds",
+      "timeout": {
+        "stage": "fixed",
+        "stage_seconds": 85.9,
+        "bench_seconds": 56,
+        "completed": 141,
+        "of": 1066,
+        "outcome": "did not sustain the fixed rate"
+      },
+      "peaks": {
+        "running": 256.0,
+        "kv_cache_usage": 0.42527272727272725
+      },
+      "seconds": 311.0,
+      "startup": {
+        "kv_cache_tokens": 88016,
+        "max_concurrency": 42.98
+      }
+    },
+    {
+      "arm": "baseline",
+      "round": 1,
+      "free_gpu_before": {
+        "used_mib": 4,
+        "free_mib": 22589
+      },
+      "command": [
+        "/.uv/.venv/bin/python",
+        "-m",
+        "vllm.entrypoints.cli.main",
+        "serve",
+        "Qwen/Qwen3-4B",
+        "--revision",
+        "1cfa9a7208912126459214e8b04321603b3df60c",
+        "--dtype",
+        "bfloat16",
+        "--max-model-len",
+        "2048",
+        "--enable-chunked-prefill",
+        "--no-enable-prefix-caching",
+        "--seed",
+        "0",
+        "--port",
+        "8766"
+      ],
+      "env": {
+        "VLLM_LENS_DISABLE": "1"
+      },
+      "startup_seconds": 92.1,
+      "saturation": {
+        "duration": 15.114067118000094,
+        "completed": 300,
+        "failed": 0,
+        "request_throughput": 19.849058341332565,
+        "output_throughput": 2540.6794676905683,
+        "total_token_throughput": 2921.7813878441534,
+        "max_concurrent_requests": 300,
+        "mean_ttft_ms": 2392.3066844399987,
+        "p50_ttft_ms": 1233.6305285000435,
+        "p99_ttft_ms": 10186.92196632991,
+        "mean_tpot_ms": 66.16338433501313,
+        "p50_tpot_ms": 70.31560688188964,
+        "p99_tpot_ms": 72.39932908567165,
+        "p50_itl_ms": 66.26149199973952,
+        "p99_itl_ms": 166.28908155978934,
+        "p99_e2el_ms": 15060.970148719962
+      },
+      "fixed_rate": 14.219966364591308,
+      "fixed": {
+        "duration": 80.22729951200017,
+        "completed": 1066,
+        "failed": 0,
+        "request_throughput": 13.28724768855707,
+        "output_throughput": 1700.767704135305,
+        "total_token_throughput": 1958.809544330904,
+        "max_concurrent_requests": 123,
+        "mean_ttft_ms": 150.71503319511814,
+        "p50_ttft_ms": 150.96857649973572,
+        "p99_ttft_ms": 200.74390495001347,
+        "mean_tpot_ms": 49.70332046752151,
+        "p50_tpot_ms": 50.324700311021864,
+        "p99_tpot_ms": 53.0301670641733,
+        "p50_itl_ms": 45.694494999906965,
+        "p99_itl_ms": 66.10838923009851,
+        "p99_e2el_ms": 6880.546537250302
+      },
+      "counters": {
+        "steps": 1918,
+        "tokens": 201310,
+        "draft_tokens": 0,
+        "accepted_tokens": 0
+      },
+      "peaks": {
+        "running": 256.0,
+        "kv_cache_usage": 0.4238288454444854
+      },
+      "seconds": 286.4,
+      "startup": {
+        "kv_cache_tokens": 86768,
+        "max_concurrency": 42.37
+      }
+    },
+    {
+      "arm": "b_noop",
+      "round": 2,
+      "free_gpu_before": {
+        "used_mib": 4,
+        "free_mib": 22589
+      },
+      "command": [
+        "/.uv/.venv/bin/python",
+        "-m",
+        "vllm.entrypoints.cli.main",
+        "serve",
+        "Qwen/Qwen3-4B",
+        "--revision",
+        "1cfa9a7208912126459214e8b04321603b3df60c",
+        "--dtype",
+        "bfloat16",
+        "--max-model-len",
+        "2048",
+        "--enable-chunked-prefill",
+        "--no-enable-prefix-caching",
+        "--seed",
+        "0",
+        "--port",
+        "8766",
+        "--speculative-config",
+        "{\"method\": \"extract_hidden_states\", \"num_speculative_tokens\": 1, \"draft_model_config\": {\"hf_config\": {\"eagle_aux_hidden_state_layer_ids\": [18]}}}",
+        "--kv-transfer-config",
+        "{\"kv_connector\": \"NoWriteHiddenStatesConnector\", \"kv_role\": \"kv_producer\", \"kv_connector_extra_config\": {\"shared_storage_path\": \"/tmp/d1/r2_b_noop/hidden_states\", \"use_synchronization_lock\": false}, \"kv_connector_module_path\": \"no_write_connector\"}"
+      ],
+      "env": {
+        "VLLM_LENS_DISABLE": "1",
+        "PYTHONPATH": "/root/experiments/phase3:/pkg/:/root/"
+      },
+      "startup_seconds": 88.1,
+      "saturation": {
+        "duration": 25.25954553299971,
+        "completed": 300,
+        "failed": 0,
+        "request_throughput": 11.876698240990615,
+        "output_throughput": 1520.2173748467987,
+        "total_token_throughput": 1748.2499810738186,
+        "max_concurrent_requests": 300,
+        "mean_ttft_ms": 3870.7942147900003,
+        "p50_ttft_ms": 1412.1371789999557,
+        "p99_ttft_ms": 19309.57825081991,
+        "mean_tpot_ms": 127.09278440845145,
+        "p50_tpot_ms": 140.65887097244135,
+        "p99_tpot_ms": 142.13940682275575,
+        "p50_itl_ms": 135.4248259999622,
+        "p99_itl_ms": 193.91513539994776,
+        "p99_e2el_ms": 25209.910918810012
+      },
+      "fixed_rate": 14.219966364591308,
+      "fixed": {
+        "duration": 85.98563241400007,
+        "completed": 1066,
+        "failed": 0,
+        "request_throughput": 12.397420011606908,
+        "output_throughput": 1586.8697614856842,
+        "total_token_throughput": 1827.6309144690672,
+        "max_concurrent_requests": 273,
+        "mean_ttft_ms": 316.01427615477814,
+        "p50_ttft_ms": 330.3403099998832,
+        "p99_ttft_ms": 463.9617434999307,
+        "mean_tpot_ms": 112.58017457555663,
+        "p50_tpot_ms": 120.71145574803117,
+        "p99_tpot_ms": 136.73692681259772,
+        "p50_itl_ms": 121.60819100017761,
+        "p99_itl_ms": 144.44443853967638,
+        "p99_e2el_ms": 17767.438580649876
+      },
+      "counters": {
+        "steps": 1163,
+        "tokens": 201310,
+        "draft_tokens": 173436,
+        "accepted_tokens": 46
+      },
+      "peaks": {
+        "running": 256.0,
+        "kv_cache_usage": 0.44664634146341464
+      },
+      "seconds": 294.0,
+      "startup": {
+        "kv_cache_tokens": 83984,
+        "max_concurrency": 41.01
+      }
+    },
+    {
+      "arm": "lens",
+      "round": 2,
+      "free_gpu_before": {
+        "used_mib": 4,
+        "free_mib": 22589
+      },
+      "command": [
+        "/.uv/.venv/bin/python",
+        "-m",
+        "vllm.entrypoints.cli.main",
+        "serve",
+        "Qwen/Qwen3-4B",
+        "--revision",
+        "1cfa9a7208912126459214e8b04321603b3df60c",
+        "--dtype",
+        "bfloat16",
+        "--max-model-len",
+        "2048",
+        "--enable-chunked-prefill",
+        "--no-enable-prefix-caching",
+        "--seed",
+        "0",
+        "--port",
+        "8766"
+      ],
+      "env": {},
+      "startup_seconds": 72.1,
+      "saturation": {
+        "duration": 61.330653041000005,
+        "completed": 300,
+        "failed": 0,
+        "request_throughput": 4.891518109214453,
+        "output_throughput": 626.11431797945,
+        "total_token_throughput": 720.0314656763675,
+        "max_concurrent_requests": 300,
+        "mean_ttft_ms": 8609.754999916664,
+        "p50_ttft_ms": 2200.3837809998004,
+        "p99_ttft_ms": 47188.09945335007,
+        "mean_tpot_ms": 318.57927338338584,
+        "p50_tpot_ms": 353.3507844409438,
+        "p99_tpot_ms": 357.5268423721255,
+        "p50_itl_ms": 350.8300389999022,
+        "p99_itl_ms": 393.94666985992444,
+        "p99_e2el_ms": 61280.39054733027
+      },
+      "fixed_rate": 14.219966364591308,
+      "error": "TimeoutExpired: Command '['/.uv/.venv/bin/python', '-m', 'vllm.entrypoints.cli.main', 'bench', 'serve', '--backend', 'openai-chat', '--endpoint', '/v1/chat/completions', '--base-url', 'http://127.0.0.1:8766', '--model', 'Qwen/Qwen3-4B', '--tokenizer', '/__modal/volumes/vo-jLVhGKA1eUYgYxMUijaSbV/hf/hub/models--Qwen--Qwen3-4B/snapshots/1cfa9a7208912126459214e8b04321603b3df60c', '--dataset-name', 'custom', '--dataset-path', '/tmp/d1/r2_lens/bench.jsonl', '--skip-chat-template', '--custom-output-len', '128', '--ignore-eos', '--temperature', '0', '--num-prompts', '1066', '--request-rate', '14.220', '--seed', '0', '--percentile-metrics', 'ttft,tpot,itl,e2el', '--metric-percentiles', '50,99', '--save-result', '--result-dir', '/tmp/d1/r2_lens', '--result-filename', 'fixed.json']' timed out after 84.65712679362468 seconds",
+      "timeout": {
+        "stage": "fixed",
+        "stage_seconds": 85.5,
+        "bench_seconds": 55,
+        "completed": 149,
+        "of": 1066,
+        "outcome": "did not sustain the fixed rate"
+      },
+      "peaks": {
+        "running": 256.0,
+        "kv_cache_usage": 0.43000000000000005
+      },
+      "seconds": 312.9,
+      "startup": {
+        "kv_cache_tokens": 88016,
+        "max_concurrency": 42.98
+      }
+    },
+    {
+      "arm": "baseline",
+      "round": 2,
+      "free_gpu_before": {
+        "used_mib": 4,
+        "free_mib": 22589
+      },
+      "command": [
+        "/.uv/.venv/bin/python",
+        "-m",
+        "vllm.entrypoints.cli.main",
+        "serve",
+        "Qwen/Qwen3-4B",
+        "--revision",
+        "1cfa9a7208912126459214e8b04321603b3df60c",
+        "--dtype",
+        "bfloat16",
+        "--max-model-len",
+        "2048",
+        "--enable-chunked-prefill",
+        "--no-enable-prefix-caching",
+        "--seed",
+        "0",
+        "--port",
+        "8766"
+      ],
+      "env": {
+        "VLLM_LENS_DISABLE": "1"
+      },
+      "startup_seconds": 88.1,
+      "saturation": {
+        "duration": 15.161465031999796,
+        "completed": 300,
+        "failed": 0,
+        "request_throughput": 19.78700602922078,
+        "output_throughput": 2532.73677174026,
+        "total_token_throughput": 2912.6472875012987,
+        "max_concurrent_requests": 300,
+        "mean_ttft_ms": 2388.1474981166607,
+        "p50_ttft_ms": 1214.851645499948,
+        "p99_ttft_ms": 10233.92567935005,
+        "mean_tpot_ms": 66.48482407314971,
+        "p50_tpot_ms": 70.8131349330716,
+        "p99_tpot_ms": 72.4711224644886,
+        "p50_itl_ms": 66.31952649991035,
+        "p99_itl_ms": 171.82148130000317,
+        "p99_e2el_ms": 15112.80764689986
+      },
+      "fixed_rate": 14.219966364591308,
+      "fixed": {
+        "duration": 80.22578725699987,
+        "completed": 1066,
+        "failed": 0,
+        "request_throughput": 13.287498152995555,
+        "output_throughput": 1700.799763583431,
+        "total_token_throughput": 1958.8464678642133,
+        "max_concurrent_requests": 123,
+        "mean_ttft_ms": 149.6424899568518,
+        "p50_ttft_ms": 149.3887224999071,
+        "p99_ttft_ms": 200.63904885007545,
+        "mean_tpot_ms": 49.719222312508315,
+        "p50_tpot_ms": 50.38753389763899,
+        "p99_tpot_ms": 52.83410209960572,
+        "p50_itl_ms": 45.59157149992643,
+        "p99_itl_ms": 65.68446559002041,
+        "p99_e2el_ms": 6873.615832799896
+      },
+      "counters": {
+        "steps": 1917,
+        "tokens": 201310,
+        "draft_tokens": 0,
+        "accepted_tokens": 0
+      },
+      "peaks": {
+        "running": 256.0,
+        "kv_cache_usage": 0.4269642198450756
+      },
+      "seconds": 276.1,
+      "startup": {
+        "kv_cache_tokens": 86768,
+        "max_concurrency": 42.37
+      }
+    },
+    {
+      "arm": "b_stock",
+      "round": 2,
+      "free_gpu_before": {
+        "used_mib": 4,
+        "free_mib": 22589
+      },
+      "command": [
+        "/.uv/.venv/bin/python",
+        "-m",
+        "vllm.entrypoints.cli.main",
+        "serve",
+        "Qwen/Qwen3-4B",
+        "--revision",
+        "1cfa9a7208912126459214e8b04321603b3df60c",
+        "--dtype",
+        "bfloat16",
+        "--max-model-len",
+        "2048",
+        "--enable-chunked-prefill",
+        "--no-enable-prefix-caching",
+        "--seed",
+        "0",
+        "--port",
+        "8766",
+        "--speculative-config",
+        "{\"method\": \"extract_hidden_states\", \"num_speculative_tokens\": 1, \"draft_model_config\": {\"hf_config\": {\"eagle_aux_hidden_state_layer_ids\": [18]}}}",
+        "--kv-transfer-config",
+        "{\"kv_connector\": \"ExampleHiddenStatesConnector\", \"kv_role\": \"kv_producer\", \"kv_connector_extra_config\": {\"shared_storage_path\": \"/tmp/d1/r2_b_stock/hidden_states\"}}"
+      ],
+      "env": {
+        "VLLM_LENS_DISABLE": "1"
+      },
+      "startup_seconds": 84.1,
+      "saturation": {
+        "duration": 25.06508947700013,
+        "completed": 300,
+        "failed": 0,
+        "request_throughput": 11.96883818329401,
+        "output_throughput": 1532.0112874616332,
+        "total_token_throughput": 1761.812980580878,
+        "max_concurrent_requests": 300,
+        "mean_ttft_ms": 3704.6972462899957,
+        "p50_ttft_ms": 1127.4173464998967,
+        "p99_ttft_ms": 19050.6456330997,
+        "mean_tpot_ms": 126.76559638097117,
+        "p50_tpot_ms": 140.89024297637715,
+        "p99_tpot_ms": 141.54935873936873,
+        "p50_itl_ms": 134.50941099972624,
+        "p99_itl_ms": 204.41983884007644,
+        "p99_e2el_ms": 24990.009123760035
+      },
+      "fixed_rate": 14.219966364591308,
+      "fixed": {
+        "duration": 86.11448826099968,
+        "completed": 1066,
+        "failed": 0,
+        "request_throughput": 12.378869357838127,
+        "output_throughput": 1584.4952778032803,
+        "total_token_throughput": 1824.8961722178815,
+        "max_concurrent_requests": 273,
+        "mean_ttft_ms": 311.5073462288864,
+        "p50_ttft_ms": 330.0996744999338,
+        "p99_ttft_ms": 460.7665838498629,
+        "mean_tpot_ms": 112.31354312910877,
+        "p50_tpot_ms": 119.47928065354412,
+        "p99_tpot_ms": 137.40843107834715,
+        "p50_itl_ms": 121.28676499969515,
+        "p99_itl_ms": 145.0545450400023,
+        "p99_e2el_ms": 17849.692644900075
+      },
+      "counters": {
+        "steps": 1161,
+        "tokens": 201310,
+        "draft_tokens": 173440,
+        "accepted_tokens": 42
+      },
+      "peaks": {
+        "running": 256.0,
+        "kv_cache_usage": 0.4594131097560976
+      },
+      "seconds": 287.1,
+      "startup": {
+        "kv_cache_tokens": 83984,
+        "max_concurrency": 41.01
+      }
+    }
+  ],
+  "stopped": null,
+  "generation": {
+    "r0_b_stock": {
+      "identical": 11,
+      "of": 16,
+      "diverged": [
+        {
+          "prompt": 5,
+          "token": 35,
+          "tokens": [
+            " users",
+            " if"
+          ],
+          "margins": [
+            0.125,
+            0.0
+          ]
+        },
+        {
+          "prompt": 8,
+          "token": 63,
+          "tokens": [
+            " Also",
+            " I"
+          ],
+          "margins": [
+            0.125,
+            0.0
+          ]
+        },
+        {
+          "prompt": 9,
+          "token": 48,
+          "tokens": [
+            ".",
+            " first"
+          ],
+          "margins": [
+            0.0,
+            0.125
+          ]
+        },
+        {
+          "prompt": 12,
+          "token": 6,
+          "tokens": [
+            " is",
+            " wants"
+          ],
+          "margins": [
+            0.0,
+            0.25
+          ]
+        },
+        {
+          "prompt": 13,
+          "token": 59,
+          "tokens": [
+            " wait",
+            " since"
+          ],
+          "margins": [
+            0.24999994039535522,
+            0.0
+          ]
+        }
+      ]
+    },
+    "r0_b_noop": {
+      "identical": 11,
+      "of": 16,
+      "diverged": [
+        {
+          "prompt": 5,
+          "token": 35,
+          "tokens": [
+            " users",
+            " if"
+          ],
+          "margins": [
+            0.125,
+            0.0
+          ]
+        },
+        {
+          "prompt": 8,
+          "token": 63,
+          "tokens": [
+            " Also",
+            " I"
+          ],
+          "margins": [
+            0.125,
+            0.0
+          ]
+        },
+        {
+          "prompt": 9,
+          "token": 48,
+          "tokens": [
+            ".",
+            " first"
+          ],
+          "margins": [
+            0.0,
+            0.125
+          ]
+        },
+        {
+          "prompt": 12,
+          "token": 6,
+          "tokens": [
+            " is",
+            " wants"
+          ],
+          "margins": [
+            0.0,
+            0.25
+          ]
+        },
+        {
+          "prompt": 13,
+          "token": 59,
+          "tokens": [
+            " wait",
+            " since"
+          ],
+          "margins": [
+            0.24999994039535522,
+            0.0
+          ]
+        }
+      ]
+    },
+    "r0_lens": {
+      "identical": 11,
+      "of": 16,
+      "diverged": [
+        {
+          "prompt": 1,
+          "token": 24,
+          "tokens": [
+            ".",
+            " about"
+          ],
+          "margins": [
+            0.0,
+            0.25
+          ]
+        },
+        {
+          "prompt": 5,
+          "token": 35,
+          "tokens": [
+            " users",
+            " if"
+          ],
+          "margins": [
+            0.125,
+            0.0
+          ]
+        },
+        {
+          "prompt": 8,
+          "token": 30,
+          "tokens": [
+            " First",
+            " Let"
+          ],
+          "margins": [
+            0.0,
+            0.25
+          ]
+        },
+        {
+          "prompt": 9,
+          "token": 48,
+          "tokens": [
+            ".",
+            " first"
+          ],
+          "margins": [
+            0.0,
+            0.125
+          ]
+        },
+        {
+          "prompt": 12,
+          "token": 61,
+          "tokens": [
+            " outlining",
+            " defining"
+          ],
+          "margins": [
+            0.125,
+            0.0
+          ]
+        }
+      ]
+    },
+    "r1_b_stock": {
+      "identical": 11,
+      "of": 16,
+      "diverged": [
+        {
+          "prompt": 5,
+          "token": 35,
+          "tokens": [
+            " users",
+            " if"
+          ],
+          "margins": [
+            0.125,
+            0.0
+          ]
+        },
+        {
+          "prompt": 8,
+          "token": 63,
+          "tokens": [
+            " Also",
+            " I"
+          ],
+          "margins": [
+            0.125,
+            0.0
+          ]
+        },
+        {
+          "prompt": 9,
+          "token": 48,
+          "tokens": [
+            ".",
+            " first"
+          ],
+          "margins": [
+            0.0,
+            0.125
+          ]
+        },
+        {
+          "prompt": 12,
+          "token": 6,
+          "tokens": [
+            " is",
+            " wants"
+          ],
+          "margins": [
+            0.0,
+            0.25
+          ]
+        },
+        {
+          "prompt": 13,
+          "token": 59,
+          "tokens": [
+            " wait",
+            " since"
+          ],
+          "margins": [
+            0.24999994039535522,
+            0.0
+          ]
+        }
+      ]
+    },
+    "r1_b_noop": {
+      "identical": 11,
+      "of": 16,
+      "diverged": [
+        {
+          "prompt": 5,
+          "token": 35,
+          "tokens": [
+            " users",
+            " if"
+          ],
+          "margins": [
+            0.125,
+            0.0
+          ]
+        },
+        {
+          "prompt": 8,
+          "token": 63,
+          "tokens": [
+            " Also",
+            " I"
+          ],
+          "margins": [
+            0.125,
+            0.0
+          ]
+        },
+        {
+          "prompt": 9,
+          "token": 48,
+          "tokens": [
+            ".",
+            " first"
+          ],
+          "margins": [
+            0.0,
+            0.125
+          ]
+        },
+        {
+          "prompt": 12,
+          "token": 6,
+          "tokens": [
+            " is",
+            " wants"
+          ],
+          "margins": [
+            0.0,
+            0.25
+          ]
+        },
+        {
+          "prompt": 13,
+          "token": 59,
+          "tokens": [
+            " wait",
+            " since"
+          ],
+          "margins": [
+            0.24999994039535522,
+            0.0
+          ]
+        }
+      ]
+    },
+    "r1_lens": {
+      "identical": 11,
+      "of": 16,
+      "diverged": [
+        {
+          "prompt": 1,
+          "token": 24,
+          "tokens": [
+            ".",
+            " about"
+          ],
+          "margins": [
+            0.0,
+            0.25
+          ]
+        },
+        {
+          "prompt": 5,
+          "token": 35,
+          "tokens": [
+            " users",
+            " if"
+          ],
+          "margins": [
+            0.125,
+            0.0
+          ]
+        },
+        {
+          "prompt": 8,
+          "token": 30,
+          "tokens": [
+            " First",
+            " Let"
+          ],
+          "margins": [
+            0.0,
+            0.25
+          ]
+        },
+        {
+          "prompt": 9,
+          "token": 48,
+          "tokens": [
+            ".",
+            " first"
+          ],
+          "margins": [
+            0.0,
+            0.125
+          ]
+        },
+        {
+          "prompt": 12,
+          "token": 61,
+          "tokens": [
+            " outlining",
+            " defining"
+          ],
+          "margins": [
+            0.125,
+            0.0
+          ]
+        }
+      ]
+    },
+    "r1_baseline": {
+      "identical": 16,
+      "of": 16,
+      "diverged": []
+    },
+    "r2_b_noop": {
+      "identical": 11,
+      "of": 16,
+      "diverged": [
+        {
+          "prompt": 5,
+          "token": 35,
+          "tokens": [
+            " users",
+            " if"
+          ],
+          "margins": [
+            0.125,
+            0.0
+          ]
+        },
+        {
+          "prompt": 8,
+          "token": 63,
+          "tokens": [
+            " Also",
+            " I"
+          ],
+          "margins": [
+            0.125,
+            0.0
+          ]
+        },
+        {
+          "prompt": 9,
+          "token": 48,
+          "tokens": [
+            ".",
+            " first"
+          ],
+          "margins": [
+            0.0,
+            0.125
+          ]
+        },
+        {
+          "prompt": 12,
+          "token": 6,
+          "tokens": [
+            " is",
+            " wants"
+          ],
+          "margins": [
+            0.0,
+            0.25
+          ]
+        },
+        {
+          "prompt": 13,
+          "token": 59,
+          "tokens": [
+            " wait",
+            " since"
+          ],
+          "margins": [
+            0.24999994039535522,
+            0.0
+          ]
+        }
+      ]
+    },
+    "r2_lens": {
+      "identical": 11,
+      "of": 16,
+      "diverged": [
+        {
+          "prompt": 1,
+          "token": 24,
+          "tokens": [
+            ".",
+            " about"
+          ],
+          "margins": [
+            0.0,
+            0.25
+          ]
+        },
+        {
+          "prompt": 5,
+          "token": 35,
+          "tokens": [
+            " users",
+            " if"
+          ],
+          "margins": [
+            0.125,
+            0.0
+          ]
+        },
+        {
+          "prompt": 8,
+          "token": 30,
+          "tokens": [
+            " First",
+            " Let"
+          ],
+          "margins": [
+            0.0,
+            0.25
+          ]
+        },
+        {
+          "prompt": 9,
+          "token": 48,
+          "tokens": [
+            ".",
+            " first"
+          ],
+          "margins": [
+            0.0,
+            0.125
+          ]
+        },
+        {
+          "prompt": 12,
+          "token": 61,
+          "tokens": [
+            " outlining",
+            " defining"
+          ],
+          "margins": [
+            0.125,
+            0.0
+          ]
+        }
+      ]
+    },
+    "r2_baseline": {
+      "identical": 16,
+      "of": 16,
+      "diverged": []
+    },
+    "r2_b_stock": {
+      "identical": 11,
+      "of": 16,
+      "diverged": [
+        {
+          "prompt": 5,
+          "token": 35,
+          "tokens": [
+            " users",
+            " if"
+          ],
+          "margins": [
+            0.125,
+            0.0
+          ]
+        },
+        {
+          "prompt": 8,
+          "token": 63,
+          "tokens": [
+            " Also",
+            " I"
+          ],
+          "margins": [
+            0.125,
+            0.125
+          ]
+        },
+        {
+          "prompt": 9,
+          "token": 48,
+          "tokens": [
+            ".",
+            " first"
+          ],
+          "margins": [
+            0.0,
+            0.125
+          ]
+        },
+        {
+          "prompt": 12,
+          "token": 6,
+          "tokens": [
+            " is",
+            " wants"
+          ],
+          "margins": [
+            0.0,
+            0.25
+          ]
+        },
+        {
+          "prompt": 13,
+          "token": 59,
+          "tokens": [
+            " wait",
+            " since"
+          ],
+          "margins": [
+            0.24999994039535522,
+            0.0
+          ]
+        }
+      ]
+    }
+  },
+  "verdicts": {
+    "b_noop": {
+      "throughput": {
+        "overheads": [
+          0.40769490900319594,
+          0.3863994149817831,
+          0.39977284974535765
+        ],
+        "upper": 0.40769490900319594,
+        "threshold": 0.05,
+        "baseline_spread": 0.026383435108291876,
+        "verdict": "inconclusive"
+      },
+      "p99_ttft": {
+        "overheads": [
+          1.2944360520043867,
+          1.2365247575601512,
+          1.3124199708832314
+        ],
+        "upper": 1.3124199708832314,
+        "threshold": 0.1,
+        "baseline_spread": 0.02213839877048615,
+        "verdict": "fail"
+      },
+      "p99_tpot": {
+        "overheads": [
+          1.607430703941632,
+          1.5634300829747794,
+          1.5880429756299033
+        ],
+        "upper": 1.607430703941632,
+        "threshold": 0.1,
+        "baseline_spread": 0.012215252662462091,
+        "verdict": "fail"
+      },
+      "passes": null
+    },
+    "b_stock": {
+      "throughput": {
+        "overheads": [
+          0.4128287069586879,
+          0.3991473901561865,
+          0.39511626136774636
+        ],
+        "upper": 0.4128287069586879,
+        "threshold": 0.05,
+        "baseline_spread": 0.026383435108291876,
+        "verdict": "inconclusive"
+      },
+      "p99_ttft": {
+        "overheads": [
+          1.421007465463127,
+          1.1776094258449477,
+          1.296495056623618
+        ],
+        "upper": 1.421007465463127,
+        "threshold": 0.1,
+        "baseline_spread": 0.02213839877048615,
+        "verdict": "fail"
+      },
+      "p99_tpot": {
+        "overheads": [
+          1.6296661915074901,
+          1.483450041904355,
+          1.6007526506137513
+        ],
+        "upper": 1.6296661915074901,
+        "threshold": 0.1,
+        "baseline_spread": 0.012215252662462091,
+        "verdict": "fail"
+      },
+      "passes": null
+    },
+    "lens": {
+      "measurement_timeouts": [
+        {
+          "round": 0,
+          "stage": "fixed",
+          "stage_seconds": 81.5,
+          "bench_seconds": 52,
+          "completed": 118,
+          "of": 1066,
+          "outcome": "did not sustain the fixed rate"
+        },
+        {
+          "round": 1,
+          "stage": "fixed",
+          "stage_seconds": 85.9,
+          "bench_seconds": 56,
+          "completed": 141,
+          "of": 1066,
+          "outcome": "did not sustain the fixed rate"
+        },
+        {
+          "round": 2,
+          "stage": "fixed",
+          "stage_seconds": 85.5,
+          "bench_seconds": 55,
+          "completed": 149,
+          "of": 1066,
+          "outcome": "did not sustain the fixed rate"
+        }
+      ],
+      "passes": false
+    }
+  },
+  "divergences": {
+    "tie_bound": 0.25,
+    "rows": [
+      {
+        "run": "r0_b_noop",
+        "prompt": 5,
+        "token": 35,
+        "tokens": [
+          " users",
+          " if"
+        ],
+        "reference_margin": 0.125,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      },
+      {
+        "run": "r0_b_noop",
+        "prompt": 8,
+        "token": 63,
+        "tokens": [
+          " Also",
+          " I"
+        ],
+        "reference_margin": 0.125,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      },
+      {
+        "run": "r0_b_noop",
+        "prompt": 9,
+        "token": 48,
+        "tokens": [
+          ".",
+          " first"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.125,
+        "class": "exact tie"
+      },
+      {
+        "run": "r0_b_noop",
+        "prompt": 12,
+        "token": 6,
+        "tokens": [
+          " is",
+          " wants"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.25,
+        "class": "exact tie"
+      },
+      {
+        "run": "r0_b_noop",
+        "prompt": 13,
+        "token": 59,
+        "tokens": [
+          " wait",
+          " since"
+        ],
+        "reference_margin": 0.24999994039535522,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      },
+      {
+        "run": "r0_b_stock",
+        "prompt": 5,
+        "token": 35,
+        "tokens": [
+          " users",
+          " if"
+        ],
+        "reference_margin": 0.125,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      },
+      {
+        "run": "r0_b_stock",
+        "prompt": 8,
+        "token": 63,
+        "tokens": [
+          " Also",
+          " I"
+        ],
+        "reference_margin": 0.125,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      },
+      {
+        "run": "r0_b_stock",
+        "prompt": 9,
+        "token": 48,
+        "tokens": [
+          ".",
+          " first"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.125,
+        "class": "exact tie"
+      },
+      {
+        "run": "r0_b_stock",
+        "prompt": 12,
+        "token": 6,
+        "tokens": [
+          " is",
+          " wants"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.25,
+        "class": "exact tie"
+      },
+      {
+        "run": "r0_b_stock",
+        "prompt": 13,
+        "token": 59,
+        "tokens": [
+          " wait",
+          " since"
+        ],
+        "reference_margin": 0.24999994039535522,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      },
+      {
+        "run": "r0_lens",
+        "prompt": 1,
+        "token": 24,
+        "tokens": [
+          ".",
+          " about"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.25,
+        "class": "exact tie"
+      },
+      {
+        "run": "r0_lens",
+        "prompt": 5,
+        "token": 35,
+        "tokens": [
+          " users",
+          " if"
+        ],
+        "reference_margin": 0.125,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      },
+      {
+        "run": "r0_lens",
+        "prompt": 8,
+        "token": 30,
+        "tokens": [
+          " First",
+          " Let"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.25,
+        "class": "exact tie"
+      },
+      {
+        "run": "r0_lens",
+        "prompt": 9,
+        "token": 48,
+        "tokens": [
+          ".",
+          " first"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.125,
+        "class": "exact tie"
+      },
+      {
+        "run": "r0_lens",
+        "prompt": 12,
+        "token": 61,
+        "tokens": [
+          " outlining",
+          " defining"
+        ],
+        "reference_margin": 0.125,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      },
+      {
+        "run": "r1_b_noop",
+        "prompt": 5,
+        "token": 35,
+        "tokens": [
+          " users",
+          " if"
+        ],
+        "reference_margin": 0.125,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      },
+      {
+        "run": "r1_b_noop",
+        "prompt": 8,
+        "token": 63,
+        "tokens": [
+          " Also",
+          " I"
+        ],
+        "reference_margin": 0.125,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      },
+      {
+        "run": "r1_b_noop",
+        "prompt": 9,
+        "token": 48,
+        "tokens": [
+          ".",
+          " first"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.125,
+        "class": "exact tie"
+      },
+      {
+        "run": "r1_b_noop",
+        "prompt": 12,
+        "token": 6,
+        "tokens": [
+          " is",
+          " wants"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.25,
+        "class": "exact tie"
+      },
+      {
+        "run": "r1_b_noop",
+        "prompt": 13,
+        "token": 59,
+        "tokens": [
+          " wait",
+          " since"
+        ],
+        "reference_margin": 0.24999994039535522,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      },
+      {
+        "run": "r1_b_stock",
+        "prompt": 5,
+        "token": 35,
+        "tokens": [
+          " users",
+          " if"
+        ],
+        "reference_margin": 0.125,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      },
+      {
+        "run": "r1_b_stock",
+        "prompt": 8,
+        "token": 63,
+        "tokens": [
+          " Also",
+          " I"
+        ],
+        "reference_margin": 0.125,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      },
+      {
+        "run": "r1_b_stock",
+        "prompt": 9,
+        "token": 48,
+        "tokens": [
+          ".",
+          " first"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.125,
+        "class": "exact tie"
+      },
+      {
+        "run": "r1_b_stock",
+        "prompt": 12,
+        "token": 6,
+        "tokens": [
+          " is",
+          " wants"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.25,
+        "class": "exact tie"
+      },
+      {
+        "run": "r1_b_stock",
+        "prompt": 13,
+        "token": 59,
+        "tokens": [
+          " wait",
+          " since"
+        ],
+        "reference_margin": 0.24999994039535522,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      },
+      {
+        "run": "r1_lens",
+        "prompt": 1,
+        "token": 24,
+        "tokens": [
+          ".",
+          " about"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.25,
+        "class": "exact tie"
+      },
+      {
+        "run": "r1_lens",
+        "prompt": 5,
+        "token": 35,
+        "tokens": [
+          " users",
+          " if"
+        ],
+        "reference_margin": 0.125,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      },
+      {
+        "run": "r1_lens",
+        "prompt": 8,
+        "token": 30,
+        "tokens": [
+          " First",
+          " Let"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.25,
+        "class": "exact tie"
+      },
+      {
+        "run": "r1_lens",
+        "prompt": 9,
+        "token": 48,
+        "tokens": [
+          ".",
+          " first"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.125,
+        "class": "exact tie"
+      },
+      {
+        "run": "r1_lens",
+        "prompt": 12,
+        "token": 61,
+        "tokens": [
+          " outlining",
+          " defining"
+        ],
+        "reference_margin": 0.125,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      },
+      {
+        "run": "r2_b_noop",
+        "prompt": 5,
+        "token": 35,
+        "tokens": [
+          " users",
+          " if"
+        ],
+        "reference_margin": 0.125,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      },
+      {
+        "run": "r2_b_noop",
+        "prompt": 8,
+        "token": 63,
+        "tokens": [
+          " Also",
+          " I"
+        ],
+        "reference_margin": 0.125,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      },
+      {
+        "run": "r2_b_noop",
+        "prompt": 9,
+        "token": 48,
+        "tokens": [
+          ".",
+          " first"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.125,
+        "class": "exact tie"
+      },
+      {
+        "run": "r2_b_noop",
+        "prompt": 12,
+        "token": 6,
+        "tokens": [
+          " is",
+          " wants"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.25,
+        "class": "exact tie"
+      },
+      {
+        "run": "r2_b_noop",
+        "prompt": 13,
+        "token": 59,
+        "tokens": [
+          " wait",
+          " since"
+        ],
+        "reference_margin": 0.24999994039535522,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      },
+      {
+        "run": "r2_b_stock",
+        "prompt": 5,
+        "token": 35,
+        "tokens": [
+          " users",
+          " if"
+        ],
+        "reference_margin": 0.125,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      },
+      {
+        "run": "r2_b_stock",
+        "prompt": 8,
+        "token": 63,
+        "tokens": [
+          " Also",
+          " I"
+        ],
+        "reference_margin": 0.125,
+        "arm_margin": 0.125,
+        "class": "within bound"
+      },
+      {
+        "run": "r2_b_stock",
+        "prompt": 9,
+        "token": 48,
+        "tokens": [
+          ".",
+          " first"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.125,
+        "class": "exact tie"
+      },
+      {
+        "run": "r2_b_stock",
+        "prompt": 12,
+        "token": 6,
+        "tokens": [
+          " is",
+          " wants"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.25,
+        "class": "exact tie"
+      },
+      {
+        "run": "r2_b_stock",
+        "prompt": 13,
+        "token": 59,
+        "tokens": [
+          " wait",
+          " since"
+        ],
+        "reference_margin": 0.24999994039535522,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      },
+      {
+        "run": "r2_lens",
+        "prompt": 1,
+        "token": 24,
+        "tokens": [
+          ".",
+          " about"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.25,
+        "class": "exact tie"
+      },
+      {
+        "run": "r2_lens",
+        "prompt": 5,
+        "token": 35,
+        "tokens": [
+          " users",
+          " if"
+        ],
+        "reference_margin": 0.125,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      },
+      {
+        "run": "r2_lens",
+        "prompt": 8,
+        "token": 30,
+        "tokens": [
+          " First",
+          " Let"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.25,
+        "class": "exact tie"
+      },
+      {
+        "run": "r2_lens",
+        "prompt": 9,
+        "token": 48,
+        "tokens": [
+          ".",
+          " first"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.125,
+        "class": "exact tie"
+      },
+      {
+        "run": "r2_lens",
+        "prompt": 12,
+        "token": 61,
+        "tokens": [
+          " outlining",
+          " defining"
+        ],
+        "reference_margin": 0.125,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      }
+    ],
+    "counts": {
+      "r0_b_noop": {
+        "exact tie": 2,
+        "within bound": 3,
+        "change": 0
+      },
+      "r0_b_stock": {
+        "exact tie": 2,
+        "within bound": 3,
+        "change": 0
+      },
+      "r0_lens": {
+        "exact tie": 3,
+        "within bound": 2,
+        "change": 0
+      },
+      "r1_b_noop": {
+        "exact tie": 2,
+        "within bound": 3,
+        "change": 0
+      },
+      "r1_b_stock": {
+        "exact tie": 2,
+        "within bound": 3,
+        "change": 0
+      },
+      "r1_baseline": {
+        "exact tie": 0,
+        "within bound": 0,
+        "change": 0
+      },
+      "r1_lens": {
+        "exact tie": 3,
+        "within bound": 2,
+        "change": 0
+      },
+      "r2_b_noop": {
+        "exact tie": 2,
+        "within bound": 3,
+        "change": 0
+      },
+      "r2_b_stock": {
+        "exact tie": 2,
+        "within bound": 3,
+        "change": 0
+      },
+      "r2_baseline": {
+        "exact tie": 0,
+        "within bound": 0,
+        "change": 0
+      },
+      "r2_lens": {
+        "exact tie": 3,
+        "within bound": 2,
+        "change": 0
+      }
+    }
+  }
+}

@@ -13,7 +13,10 @@ KV-cache use during the benches, and the spec-decode counters.
 
 The cost rule (verdicts): an arm passes when the worst round's paired overhead against that round's
 baseline is at most 5% for saturation throughput and 10% for fixed-rate p99 TTFT and p99 TPOT. A
-metric is inconclusive when the baseline's own range across rounds exceeds half its threshold.
+metric fails when its smallest overhead across rounds exceeds the threshold plus the baseline's own
+range across rounds. Otherwise it is inconclusive when that range exceeds half its threshold. An arm
+fails on any failing metric, and an inconclusive one leaves it undecided only if none fails. Both
+fail-first rules were decided after the 2026-10-31 L4 run (docs/results/phase3/d1_l4.md).
 
 Stop rules, checked after every arm-run: a server that doesn't answer /health within its startup
 timeout, a baseline or B measurement past its own timeout, a bench with failed requests, or an arm whose greedy replies diverge from round 0's baseline at more
@@ -56,8 +59,13 @@ FIXED_RATE_FRACTION = 0.7
 # A greedy divergence starting where the reference's top two candidates are this close is a tie
 # broken by rounding, not a change. The top two logprobs differ by exactly the difference of their
 # logits, so the gap moves in steps of the logits' rounding: 2^-6 at |logit| 16 to 32 in fp16, as
-# measured locally, and 0.125 to 0.25 in bf16 at |logit| 16 to 64. So two bf16 steps at 16 to 32.
-TIE_BOUND = 0.25
+# measured locally, and 0.125 to 0.25 in bf16 at |logit| 16 to 64. So two bf16 steps at 16 to 32,
+# inclusive, with a tolerance for the float32 rounding of the logprobs themselves (the L4's prompt 13
+# came back at 0.24999994).
+BF16_LOGIT_STEP = 2**-3
+TIE_STEPS = 2
+TIE_TOLERANCE = 1e-6
+TIE_BOUND = TIE_STEPS * BF16_LOGIT_STEP
 PORT = 8766
 STOP_GRACE_S = 30  # from SIGTERM to SIGKILL when a server is stopped
 # A fixed-rate bench keeping up has completed every request that arrived this long ago: about four
@@ -114,7 +122,12 @@ def verdicts(runs: dict, baseline: str = BASELINE, measurement_timeouts: dict | 
             spread = (max(base) - min(base)) / (sum(base) / len(base))
             overheads = [overhead(runs[(r, arm)][bench][key], runs[(r, baseline)][bench][key]) for r in paired]
             threshold = THRESHOLDS[name]
-            verdict = "inconclusive" if spread > threshold / 2 else "fail" if max(overheads) > threshold else "pass"
+            if min(overheads) > threshold + spread:
+                verdict = "fail"  # past the threshold in every round by more than the baseline moves
+            elif spread > threshold / 2:
+                verdict = "inconclusive"
+            else:
+                verdict = "fail" if max(overheads) > threshold else "pass"
             result[name] = {
                 "overheads": overheads,
                 "upper": max(overheads),
@@ -123,7 +136,9 @@ def verdicts(runs: dict, baseline: str = BASELINE, measurement_timeouts: dict | 
                 "verdict": verdict,
             }
         settled = [m["verdict"] for m in result.values()]
-        passes = None if "inconclusive" in settled else all(v == "pass" for v in settled)
+        passes = (
+            False if "fail" in settled else None if "inconclusive" in settled else all(v == "pass" for v in settled)
+        )
         if timeouts:
             result["measurement_timeouts"] = timeouts
             passes = False if any(t["outcome"] == UNSUSTAINED for t in timeouts) else passes and None
@@ -136,7 +151,7 @@ def divergence_class(reference_margin: float | None) -> str:
     """A first divergence by the reference's top-two margin there. None means a reply ended early."""
     if reference_margin == 0:
         return "exact tie"
-    if reference_margin is not None and reference_margin <= TIE_BOUND:
+    if reference_margin is not None and reference_margin <= TIE_BOUND + TIE_TOLERANCE:
         return "within bound"
     return "change"
 
@@ -176,7 +191,8 @@ def divergence_table(generation: dict) -> dict:
     counts = {run: dict.fromkeys(classes, 0) for run in sorted(generation)}
     for row in rows:
         counts[row["run"]][row["class"]] += 1
-    return {"tie_bound": TIE_BOUND, "rows": rows, "counts": counts}
+    tie_bound = {"steps": TIE_STEPS, "step": BF16_LOGIT_STEP, "tolerance": TIE_TOLERANCE}
+    return {"tie_bound": tie_bound, "rows": rows, "counts": counts}
 
 
 def measurement_timeout(stage: str, stage_seconds: float, rate: float | None, bench_log: str | None) -> dict:
@@ -506,6 +522,21 @@ def run_all(cfg: dict, workload: dict, out: Path, rounds: int, timeouts: Timeout
     return results
 
 
+def rejudge(results: dict) -> dict:
+    """The cost rule's verdicts and the divergence table recomputed from a finished run's
+    d1_l4.json, for a run judged under earlier versions of them."""
+    runs, timeouts = {}, []
+    for run in results["runs"]:
+        if run["arm"] == LENS and "timeout" in run:
+            timeouts.append({"round": run["round"], **run["timeout"]})
+        elif "error" not in run:
+            runs[(run["round"], run["arm"])] = {"saturation": run["saturation"], "fixed": run["fixed"]}
+    return {
+        "verdicts": verdicts(runs, measurement_timeouts={LENS: timeouts} if timeouts else None),
+        "divergences": divergence_table(results.get("generation", {})),
+    }
+
+
 SMOKE = {
     "model": "Qwen/Qwen2.5-1.5B-Instruct",
     "tokenizer": "Qwen/Qwen2.5-1.5B-Instruct",
@@ -533,8 +564,16 @@ SMOKE = {
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--smoke", action="store_true", help="the whole path on the local GPU, tiny workload")
-    parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--out", type=Path)
+    parser.add_argument(
+        "--rejudge", type=Path, help="print the verdicts and divergences recomputed from this d1_l4.json"
+    )
     args = parser.parse_args(argv)
+    if args.rejudge:
+        print(json.dumps(rejudge(json.loads(args.rejudge.read_text())), indent=2))
+        return 0
+    if args.out is None:
+        parser.error("--out is required")
     if not args.smoke:
         raise SystemExit("the L4 run goes through d1_modal.py; here only --smoke runs")
     texts = [p["text"] for p in d1_local.prompts()]
