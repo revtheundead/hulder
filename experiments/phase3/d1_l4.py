@@ -92,6 +92,7 @@ SUSTAIN_GRACE_S = 30
 UNSUSTAINED = "did not sustain the fixed rate"
 SCORE_OUTPUT_TOKENS = 16  # as the 2070's check, so decode steps share batches with prefills
 COLLECT_ENV_FILE = "collect_env.txt"
+IMAGE_UV_DIR = "/.uv"  # where Modal's uv_sync leaves uv, not on PATH
 # Outside the arm-runs: the GPU query, collect_env, the comparisons and committing the compile cache.
 MEASURE_SLACK_S = 5 * 60
 COLLECT_ENV_TIMEOUT_S = 60  # it took 23 s on the 2070, and this comes out of MEASURE_SLACK_S
@@ -768,7 +769,9 @@ def record_environment(out: Path, persist: Path, commit, command: list[str] | No
     """`python -m vllm.collect_env` as out/collect_env.txt, also written under persist and committed,
     so a function timeout or crash doesn't lose it. Nothing here stops the run: a failure goes in the
     file and the record it returns. Output goes straight to the file and the process has its own
-    group, so a child left holding it open can't hold up the first server."""
+    group, so a child left holding it open can't hold up the first server. With no pip in the venv it
+    falls back to `uv pip list` at 0.30.0 and crashes if that fails (collect_env.py:672), so it gets
+    the image's uv and this venv."""
     path = out / COLLECT_ENV_FILE
     started = time.time()
     record: dict = {"returncode": None}
@@ -780,6 +783,11 @@ def record_environment(out: Path, persist: Path, commit, command: list[str] | No
                 stdout=file,
                 stderr=subprocess.STDOUT,
                 start_new_session=True,
+                env={
+                    **os.environ,
+                    "PATH": f"{IMAGE_UV_DIR}{os.pathsep}{os.environ['PATH']}",
+                    "VIRTUAL_ENV": sys.prefix,
+                },
             )
         except OSError as error:
             note = f"collect_env couldn't run: {error}"

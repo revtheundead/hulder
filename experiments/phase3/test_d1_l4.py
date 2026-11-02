@@ -2,6 +2,7 @@
 stop rule and the startup facts read from a server log. CPU only."""
 
 import json
+import os
 import sys
 import time
 
@@ -642,6 +643,18 @@ def test_a_volume_that_cant_commit_doesnt_stop_the_run(tmp_path):
     assert record["returncode"] == 0
     assert "the Volume is unavailable" in record["persist_error"]
     assert "PyTorch version" in (out / r.COLLECT_ENV_FILE).read_text()
+
+
+def test_collect_env_finds_the_images_uv_and_lists_this_environments_packages(tmp_path):
+    # Without pip it falls back to `uv pip list`, and crashes if that fails. /.uv isn't on the image's PATH,
+    # and with VIRTUAL_ENV unset uv lists the interpreter's packages rather than the venv's.
+    script = "import os; print(os.environ['PATH']); print(os.environ['VIRTUAL_ENV'])"
+    out = tmp_path / "out"
+    out.mkdir()
+    r.record_environment(out, tmp_path / "env", lambda: None, [sys.executable, "-c", script])
+    path, venv = (out / r.COLLECT_ENV_FILE).read_text().splitlines()
+    assert path.split(os.pathsep)[0] == "/.uv"
+    assert venv == sys.prefix
 
 
 def test_collect_env_fits_in_the_measure_calls_slack_so_the_worst_case_doesnt_move():
