@@ -803,8 +803,9 @@ def test_each_round_sends_the_prompts_in_its_own_order():
 
 
 def test_the_score_stage_saves_only_the_last_position_rows_back_in_prompt_order(monkeypatch, tmp_path):
-    fake_server(monkeypatch)
-    facts = r.score_stage("url", {"model": "m"}, SCORE_WORKLOAD, 1, tmp_path, 60)
+    seen = fake_server(monkeypatch)
+    facts = r.score_stage("url", {"model": "m"}, SCORE_WORKLOAD, 3, tmp_path, 60)
+    assert seen["texts"] != SCORE_WORKLOAD["score_prompts"]  # or this couldn't show the rows being put back
     assert facts["rows"] == 4
     saved = np.load(tmp_path / "score.npz")
     assert saved["ids"].tolist() == ["a", "b", "c", "d"]
