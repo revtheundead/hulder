@@ -100,7 +100,7 @@ Both round 3 stages have no row bit-identical to `kept/`, against 158 to 311 in 
 | Zero-draft | Rounds 1, 2 | (1, 24), (5, 35), (8, 30), (9, 48) |
 | Zero-draft | Rounds 0, 3 | (7, 36), (8, 38), (9, 48), (13, 11) |
 
-So the different greedy divergence that `d1_zero_draft_l4.md` reported in its round 0 recurs here, at the same prompts and tokens. Over the two runs, 3 of zero-draft's 8 servers show the second pattern. `b_stock` shows its second pattern on 1 of 4 here, and none of the 6 baseline servers compared differ from their round 0's. That's too few to say whether the speculative config matters.
+So the different greedy divergence that `d1_zero_draft_l4.md` reported in its round 0 recurs here, at the same prompts and tokens. **Across the two runs, 4 of 12 extraction servers changed numerical path, against 0 of 6 baseline servers.** That's 3 of zero-draft's 8 and 1 of `b_stock`'s 4, read from these greedy patterns. It's an observation too small to test, so it doesn't say whether extraction makes a path change more likely. The earlier cost run (`d1_l4.md`) points the same way but dilutes it: its 6 `b_stock` and `b_noop` servers all kept the usual pattern and its 2 baseline servers compared matched, which makes 4 of 18 against 0 of 8.
 
 **The size of the shift doesn't change, only how many rows have none.** Rows that aren't bit-identical move about the same in every stage, and the same as the floor's:
 
@@ -136,9 +136,17 @@ No divergence reaches a change, so the generation rule passes.
 
 ## Environment
 
-**`python -m vllm.collect_env` didn't produce a report on the L4.** It exited 1 in the run and again alone on a second L4 ([`modal/20261102T192211Z/`](modal/20261102T192211Z/)), with the same traceback, an `AttributeError` at `collect_env.py:672` at 0.30.0. The venv has no pip, so it falls back to `uv pip list`, and it crashes when that command fails. Putting the image's uv on the process's `PATH` and setting `VIRTUAL_ENV` didn't fix it. Why `uv pip list` fails in the container isn't known, because `collect_env` discards the error.
+**`python -m vllm.collect_env` failed on the L4 until uv's cache was turned off.** It exited 1 in the run and again alone on a second L4 ([`modal/20261102T192211Z/`](modal/20261102T192211Z/)), with an `AttributeError` at `collect_env.py:672` at 0.30.0. The venv has no pip, so it falls back to `uv pip list`, discards any error and crashes when that command fails. Putting the image's uv on `PATH` and setting `VIRTUAL_ENV` didn't fix it.
 
-What the records do hold: NVIDIA L4, driver 610.57.04, 23034 MiB, from `nvidia-smi`, and the image's full package list in `packages.txt`. The arm-runs don't depend on any of this.
+A CPU check in the same environment found the cause ([`modal/20261102T202134Z/`](modal/20261102T202134Z/)). uv exits 2 with "Could not acquire lock", because its cache is on the Modal Volume through `XDG_CACHE_HOME` and it can't persist a temporary file there. With `UV_NO_CACHE=1`, or a cache under `/tmp`, it lists 209 packages. With `UV_NO_CACHE=1` added, a third L4 exited 0 in 10.7 s ([`modal/20261102T202226Z/`](modal/20261102T202226Z/)). The failure came before the arm-runs and doesn't touch them.
+
+```bash
+source scripts/dev-env.sh && uv run --with modal==1.6.1 modal run experiments/phase3/d1_modal.py --spent-usd 0.0 --environment-only
+```
+
+**That report comes from a later container than the run's**, on the same image definition, so it describes the image and not the run's own container. It gives Debian 12, glibc 2.36, GCC 12.2, Python 3.12.14 under gVisor, torch 2.13.0+cu130 built for CUDA 13.0, numpy 2.3.5, transformers 5.18.0, triton 3.7.1, flashinfer-python 0.6.18.post1 and vLLM 0.30.0. Every library version it lists matches `packages.txt`. It sees 20 CPUs in a container asked for 4, with `OMP_NUM_THREADS` and `MKL_NUM_THREADS` at 4. It couldn't collect the driver or CUDA runtime version, so those come from `nvidia-smi`: NVIDIA L4, driver 610.57.04, 23034 MiB. The raw report stays local.
+
+**`packages.txt` isn't exactly the venv's list.** It reads package metadata from everything on the Python path, and 13 names appear twice at different versions, `aiohttp` 3.12.7 and 3.14.3 among them. uv lists 209 packages in the venv, the file holds 226 lines for 213 names, and the run's pre-flight counted 238. Where the extras come from, and which version of a doubled name a server imported, wasn't recorded. No library in `collect_env`'s list is doubled.
 
 The 2070 used for the local checks is on driver 621.01 (WDDM), CUDA UMD 13.5, 8192 MiB, read from `nvidia-smi` on Windows, since `collect_env` can't read the driver under WSL.
 
@@ -153,7 +161,7 @@ The 2070 used for the local checks is on driver 621.01 (WDDM), CUDA UMD 13.5, 81
 | Arm-run, rounds 1 to 3, `b_stock` | 328 to 342 |
 | Score stage, against a 120 s timeout | 35 to 55 |
 
-**Estimated cost $2.33, from the call's 6,751 s of wall time.** It's an upper estimate. The 12 arm-runs took 3,307 s, and the first server started about 57 minutes after the call did. That wait looks like queueing for a GPU, which wouldn't be charged, but this run didn't record it separately. The same rate over the arm-runs alone gives about $1.14. The second L4 call supports that reading: it returned after 1,952 s of wall time despite a 180 s function timeout, so most of its time wasn't spent in the container.
+**Estimated cost $2.33, from the call's 6,751 s of wall time.** It's an upper estimate. The 12 arm-runs took 3,307 s, and the first server started about 57 minutes after the call did. That wait looks like queueing for a GPU, which wouldn't be charged, but this run didn't record it separately. The same rate over the arm-runs alone gives about $1.14. The two later L4 calls support that reading. They returned after 1,952 s and 4,117 s of wall time despite a 180 s function timeout, so most of their time wasn't spent in the container. By wall time they estimate $0.67 and $1.42, and that timeout should hold each to about $0.18.
 
 ## Where this falls short
 
