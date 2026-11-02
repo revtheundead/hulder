@@ -164,6 +164,34 @@ def test_startup_facts_reads_the_model_runner_v2_from_its_log_line_and_v1_from_i
     assert r.startup_facts("")["model_runner"] is None
 
 
+ARGS_LINE = "(APIServer pid=1) INFO 11-01 23:06:23 [api_utils.py:286] non-default args: {'async_scheduling': %s}\n"
+DISABLED_LINE = (
+    "(APIServer pid=1) WARNING 11-01 23:06:23 [vllm.py:1458] Async scheduling not supported with "
+    "foo-based speculative decoding and will be disabled.\n"
+)
+
+
+def test_startup_facts_reads_async_scheduling_from_the_args_a_disabling_warning_or_the_default():
+    # vLLM 0.30.0 logs no line for the resolved value. It's on unless the flag or a warning says
+    # otherwise (config/vllm.py:1438-1487). Before the engine has started, it's unknown.
+    assert r.startup_facts(LOG)["async_scheduling"] is True
+    assert r.startup_facts(ARGS_LINE % "False" + LOG)["async_scheduling"] is False
+    assert r.startup_facts(ARGS_LINE % "True" + LOG)["async_scheduling"] is True
+    assert r.startup_facts(DISABLED_LINE + LOG)["async_scheduling"] is False
+    assert r.startup_facts("")["async_scheduling"] is None
+
+
+def test_async_scheduling_lists_every_arm_run_by_name_for_the_manifest():
+    results = {
+        "runs": [
+            {"arm": "baseline", "round": 0, "startup": {"async_scheduling": True}},
+            {"arm": "b_zero_draft", "round": 0, "startup": {"async_scheduling": False}},
+            {"arm": "b_stock", "round": 1, "error": "the server didn't answer /health"},
+        ]
+    }
+    assert r.async_scheduling(results) == {"r0_baseline": True, "r0_b_zero_draft": False, "r1_b_stock": None}
+
+
 def test_model_runners_lists_each_arms_runners_across_its_arm_runs():
     results = {
         "runs": [

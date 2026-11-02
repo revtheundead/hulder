@@ -96,6 +96,11 @@ def scored(flips, mean):
     return {"flips": flips, "mean_abs_delta_score": mean, "max_abs_delta_score": 0.003}
 
 
+def test_extraction_turns_async_scheduling_off_only_when_asked():
+    assert "--no-async-scheduling" not in d.extraction(Path("/tmp/x"), zero_draft=True)
+    assert "--no-async-scheduling" in d.extraction(Path("/tmp/x"), zero_draft=True, async_scheduling=False)
+
+
 def test_zero_draft_passes_with_no_flips_and_every_runs_mean_within_bs_run_to_run_range():
     b = [scored(0, 0.000270), scored(0, 0.000276), scored(0, 0.000290)]
     verdict = d.zero_draft_verdict(b, [scored(0, 0.000286), scored(0, 0.000272), scored(0, 0.000280)])
