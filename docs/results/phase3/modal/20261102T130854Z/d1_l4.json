@@ -1,0 +1,2202 @@
+{
+  "schedule": [
+    [
+      0,
+      "baseline"
+    ],
+    [
+      0,
+      "b_stock"
+    ],
+    [
+      0,
+      "b_zero_draft"
+    ],
+    [
+      1,
+      "b_stock"
+    ],
+    [
+      1,
+      "b_zero_draft"
+    ],
+    [
+      1,
+      "baseline"
+    ],
+    [
+      2,
+      "b_zero_draft"
+    ],
+    [
+      2,
+      "baseline"
+    ],
+    [
+      2,
+      "b_stock"
+    ],
+    [
+      3,
+      "baseline"
+    ],
+    [
+      3,
+      "b_stock"
+    ],
+    [
+      3,
+      "b_zero_draft"
+    ]
+  ],
+  "runs": [
+    {
+      "arm": "baseline",
+      "round": 0,
+      "free_gpu_before": {
+        "used_mib": 5,
+        "free_mib": 22587
+      },
+      "command": [
+        "/.uv/.venv/bin/python",
+        "-m",
+        "vllm.entrypoints.cli.main",
+        "serve",
+        "Qwen/Qwen3-4B",
+        "--revision",
+        "1cfa9a7208912126459214e8b04321603b3df60c",
+        "--dtype",
+        "bfloat16",
+        "--max-model-len",
+        "2048",
+        "--enable-chunked-prefill",
+        "--no-enable-prefix-caching",
+        "--seed",
+        "0",
+        "--port",
+        "8766"
+      ],
+      "env": {
+        "VLLM_LENS_DISABLE": "1"
+      },
+      "startup_seconds": 100.1,
+      "saturation": {
+        "duration": 14.612495388000013,
+        "completed": 300,
+        "failed": 0,
+        "request_throughput": 20.530374315557644,
+        "output_throughput": 2627.8879123913784,
+        "total_token_throughput": 3022.0710992500854,
+        "max_concurrent_requests": 300,
+        "mean_ttft_ms": 2327.7823094333326,
+        "p50_ttft_ms": 1063.657911000007,
+        "p99_ttft_ms": 9691.55061448999,
+        "mean_tpot_ms": 62.946037470997375,
+        "p50_tpot_ms": 67.6387515944882,
+        "p99_tpot_ms": 68.43272273984259,
+        "p50_itl_ms": 62.660722499998656,
+        "p99_itl_ms": 151.7273403499829,
+        "p99_e2el_ms": 14550.757370169988
+      },
+      "counters": {
+        "steps": 272,
+        "tokens": 44160,
+        "draft_tokens": 0,
+        "accepted_tokens": 0
+      },
+      "peaks": {
+        "running": 256.0,
+        "kv_cache_usage": 0.433234968646256
+      },
+      "seconds": 180.5,
+      "startup": {
+        "kv_cache_tokens": 86768,
+        "max_concurrency": 42.37,
+        "model_runner": "V2",
+        "scheduled_token_budget": null,
+        "async_scheduling": true
+      }
+    },
+    {
+      "arm": "b_stock",
+      "round": 0,
+      "free_gpu_before": {
+        "used_mib": 5,
+        "free_mib": 22587
+      },
+      "command": [
+        "/.uv/.venv/bin/python",
+        "-m",
+        "vllm.entrypoints.cli.main",
+        "serve",
+        "Qwen/Qwen3-4B",
+        "--revision",
+        "1cfa9a7208912126459214e8b04321603b3df60c",
+        "--dtype",
+        "bfloat16",
+        "--max-model-len",
+        "2048",
+        "--enable-chunked-prefill",
+        "--no-enable-prefix-caching",
+        "--seed",
+        "0",
+        "--port",
+        "8766",
+        "--speculative-config",
+        "{\"method\": \"extract_hidden_states\", \"num_speculative_tokens\": 1, \"draft_model_config\": {\"hf_config\": {\"eagle_aux_hidden_state_layer_ids\": [18]}}}",
+        "--kv-transfer-config",
+        "{\"kv_connector\": \"ExampleHiddenStatesConnector\", \"kv_role\": \"kv_producer\", \"kv_connector_extra_config\": {\"shared_storage_path\": \"/tmp/d1/r0_b_stock/hidden_states\"}}"
+      ],
+      "env": {
+        "VLLM_LENS_DISABLE": "1"
+      },
+      "startup_seconds": 90.1,
+      "saturation": {
+        "duration": 24.007355799000038,
+        "completed": 300,
+        "failed": 0,
+        "request_throughput": 12.496170028541655,
+        "output_throughput": 1599.509763653332,
+        "total_token_throughput": 1839.4362282013317,
+        "max_concurrent_requests": 300,
+        "mean_ttft_ms": 3583.7550477,
+        "p50_ttft_ms": 1379.725124999993,
+        "p99_ttft_ms": 18142.503359749953,
+        "mean_tpot_ms": 120.18473104826772,
+        "p50_tpot_ms": 131.86513518897638,
+        "p99_tpot_ms": 134.17268887771672,
+        "p50_itl_ms": 127.8102709999871,
+        "p99_itl_ms": 177.29800707998152,
+        "p99_e2el_ms": 23949.15736229995
+      },
+      "counters": {
+        "steps": 271,
+        "tokens": 44160,
+        "draft_tokens": 38087,
+        "accepted_tokens": 14
+      },
+      "peaks": {
+        "running": 256.0,
+        "kv_cache_usage": 0.463795731707317
+      },
+      "seconds": 180.6,
+      "startup": {
+        "kv_cache_tokens": 83984,
+        "max_concurrency": 41.01,
+        "model_runner": "V2",
+        "scheduled_token_budget": 2048,
+        "async_scheduling": true
+      }
+    },
+    {
+      "arm": "b_zero_draft",
+      "round": 0,
+      "free_gpu_before": {
+        "used_mib": 5,
+        "free_mib": 22587
+      },
+      "command": [
+        "/.uv/.venv/bin/python",
+        "-m",
+        "vllm.entrypoints.cli.main",
+        "serve",
+        "Qwen/Qwen3-4B",
+        "--revision",
+        "1cfa9a7208912126459214e8b04321603b3df60c",
+        "--dtype",
+        "bfloat16",
+        "--max-model-len",
+        "2048",
+        "--enable-chunked-prefill",
+        "--no-enable-prefix-caching",
+        "--seed",
+        "0",
+        "--port",
+        "8766",
+        "--speculative-config",
+        "{\"method\": \"extract_hidden_states\", \"num_speculative_tokens\": 1, \"draft_model_config\": {\"hf_config\": {\"eagle_aux_hidden_state_layer_ids\": [18]}}, \"num_speculative_tokens_per_batch_size\": [[1, 1, 0]]}",
+        "--kv-transfer-config",
+        "{\"kv_connector\": \"ExampleHiddenStatesConnector\", \"kv_role\": \"kv_producer\", \"kv_connector_extra_config\": {\"shared_storage_path\": \"/tmp/d1/r0_b_zero_draft/hidden_states\"}}"
+      ],
+      "env": {
+        "VLLM_LENS_DISABLE": "1"
+      },
+      "startup_seconds": 90.1,
+      "saturation": {
+        "duration": 14.997042424000028,
+        "completed": 300,
+        "failed": 0,
+        "request_throughput": 20.003944212353815,
+        "output_throughput": 2560.5048591812883,
+        "total_token_throughput": 2944.5805880584817,
+        "max_concurrent_requests": 300,
+        "mean_ttft_ms": 2352.8245169166644,
+        "p50_ttft_ms": 1191.8272825000145,
+        "p99_ttft_ms": 9940.075232310033,
+        "mean_tpot_ms": 64.54201203485563,
+        "p50_tpot_ms": 67.71069579527573,
+        "p99_tpot_ms": 69.98245326023631,
+        "p50_itl_ms": 64.36036499997044,
+        "p99_itl_ms": 154.72186470004215,
+        "p99_e2el_ms": 14946.67889069005
+      },
+      "counters": {
+        "steps": 271,
+        "tokens": 44160,
+        "draft_tokens": 0,
+        "accepted_tokens": 0
+      },
+      "peaks": {
+        "running": 256.0,
+        "kv_cache_usage": 0.4706554878048781
+      },
+      "seconds": 168.8,
+      "startup": {
+        "kv_cache_tokens": 83984,
+        "max_concurrency": 41.01,
+        "model_runner": "V2",
+        "scheduled_token_budget": 2048,
+        "async_scheduling": true
+      }
+    },
+    {
+      "arm": "b_stock",
+      "round": 1,
+      "free_gpu_before": {
+        "used_mib": 5,
+        "free_mib": 22587
+      },
+      "command": [
+        "/.uv/.venv/bin/python",
+        "-m",
+        "vllm.entrypoints.cli.main",
+        "serve",
+        "Qwen/Qwen3-4B",
+        "--revision",
+        "1cfa9a7208912126459214e8b04321603b3df60c",
+        "--dtype",
+        "bfloat16",
+        "--max-model-len",
+        "2048",
+        "--enable-chunked-prefill",
+        "--no-enable-prefix-caching",
+        "--seed",
+        "0",
+        "--port",
+        "8766",
+        "--speculative-config",
+        "{\"method\": \"extract_hidden_states\", \"num_speculative_tokens\": 1, \"draft_model_config\": {\"hf_config\": {\"eagle_aux_hidden_state_layer_ids\": [18]}}}",
+        "--kv-transfer-config",
+        "{\"kv_connector\": \"ExampleHiddenStatesConnector\", \"kv_role\": \"kv_producer\", \"kv_connector_extra_config\": {\"shared_storage_path\": \"/tmp/d1/r1_b_stock/hidden_states\"}}"
+      ],
+      "env": {
+        "VLLM_LENS_DISABLE": "1"
+      },
+      "startup_seconds": 88.1,
+      "saturation": {
+        "duration": 24.095468280999967,
+        "completed": 300,
+        "failed": 0,
+        "request_throughput": 12.450473943955654,
+        "output_throughput": 1593.6606648263237,
+        "total_token_throughput": 1832.7097645502722,
+        "max_concurrent_requests": 300,
+        "mean_ttft_ms": 3597.024535893335,
+        "p50_ttft_ms": 1297.1216835000519,
+        "p99_ttft_ms": 18219.70229955001,
+        "mean_tpot_ms": 120.7893818266929,
+        "p50_tpot_ms": 133.086707992126,
+        "p99_tpot_ms": 134.57609776149556,
+        "p50_itl_ms": 128.32932400004893,
+        "p99_itl_ms": 213.2910583800458,
+        "p99_e2el_ms": 24042.057358240003
+      },
+      "fixed_rate": 8.747319019979159,
+      "fixed": {
+        "duration": 80.35143902800007,
+        "completed": 656,
+        "failed": 0,
+        "request_throughput": 8.16413505390244,
+        "output_throughput": 1045.0092868995123,
+        "total_token_throughput": 1204.1725844671316,
+        "max_concurrent_requests": 82,
+        "mean_ttft_ms": 144.49047444817054,
+        "p50_ttft_ms": 144.45215199992845,
+        "p99_ttft_ms": 186.39657889996786,
+        "mean_tpot_ms": 51.26051661639381,
+        "p50_tpot_ms": 51.861094539370114,
+        "p99_tpot_ms": 56.85491595787384,
+        "p50_itl_ms": 51.00709499998857,
+        "p99_itl_ms": 60.01025875002935,
+        "p99_e2el_ms": 7376.617184250028
+      },
+      "counters": {
+        "steps": 1889,
+        "tokens": 140917,
+        "draft_tokens": 121374,
+        "accepted_tokens": 38
+      },
+      "score": {
+        "rows": 2101,
+        "concurrency": 64,
+        "seconds": 55.4,
+        "counters": {
+          "steps": 615,
+          "tokens": 105976,
+          "draft_tokens": 31507,
+          "accepted_tokens": 8
+        }
+      },
+      "peaks": {
+        "running": 256.0,
+        "kv_cache_usage": 0.45331554878048785
+      },
+      "seconds": 342.1,
+      "startup": {
+        "kv_cache_tokens": 83984,
+        "max_concurrency": 41.01,
+        "model_runner": "V2",
+        "scheduled_token_budget": 2048,
+        "async_scheduling": true
+      }
+    },
+    {
+      "arm": "b_zero_draft",
+      "round": 1,
+      "free_gpu_before": {
+        "used_mib": 5,
+        "free_mib": 22587
+      },
+      "command": [
+        "/.uv/.venv/bin/python",
+        "-m",
+        "vllm.entrypoints.cli.main",
+        "serve",
+        "Qwen/Qwen3-4B",
+        "--revision",
+        "1cfa9a7208912126459214e8b04321603b3df60c",
+        "--dtype",
+        "bfloat16",
+        "--max-model-len",
+        "2048",
+        "--enable-chunked-prefill",
+        "--no-enable-prefix-caching",
+        "--seed",
+        "0",
+        "--port",
+        "8766",
+        "--speculative-config",
+        "{\"method\": \"extract_hidden_states\", \"num_speculative_tokens\": 1, \"draft_model_config\": {\"hf_config\": {\"eagle_aux_hidden_state_layer_ids\": [18]}}, \"num_speculative_tokens_per_batch_size\": [[1, 1, 0]]}",
+        "--kv-transfer-config",
+        "{\"kv_connector\": \"ExampleHiddenStatesConnector\", \"kv_role\": \"kv_producer\", \"kv_connector_extra_config\": {\"shared_storage_path\": \"/tmp/d1/r1_b_zero_draft/hidden_states\"}}"
+      ],
+      "env": {
+        "VLLM_LENS_DISABLE": "1"
+      },
+      "startup_seconds": 90.1,
+      "saturation": {
+        "duration": 15.067745686999842,
+        "completed": 300,
+        "failed": 0,
+        "request_throughput": 19.910078536753787,
+        "output_throughput": 2548.4900527044847,
+        "total_token_throughput": 2930.7635606101576,
+        "max_concurrent_requests": 300,
+        "mean_ttft_ms": 2370.1049165600034,
+        "p50_ttft_ms": 1070.3614980000111,
+        "p99_ttft_ms": 10051.44347551991,
+        "mean_tpot_ms": 65.0384267994488,
+        "p50_tpot_ms": 69.84559675590647,
+        "p99_tpot_ms": 70.63012634165334,
+        "p50_itl_ms": 65.82561100003659,
+        "p99_itl_ms": 153.0171034799332,
+        "p99_e2el_ms": 15018.494954949829
+      },
+      "fixed_rate": 8.747319019979159,
+      "fixed": {
+        "duration": 79.82047380199992,
+        "completed": 656,
+        "failed": 0,
+        "request_throughput": 8.21844282241737,
+        "output_throughput": 1051.9606812694233,
+        "total_token_throughput": 1212.1827319643864,
+        "max_concurrent_requests": 75,
+        "mean_ttft_ms": 121.20779110517302,
+        "p50_ttft_ms": 121.47027749983863,
+        "p99_ttft_ms": 152.72456349999857,
+        "mean_tpot_ms": 41.177850792670974,
+        "p50_tpot_ms": 41.23653627559132,
+        "p99_tpot_ms": 43.50330051063025,
+        "p50_itl_ms": 39.99862000000576,
+        "p99_itl_ms": 50.27879181000572,
+        "p99_e2el_ms": 5653.12367050002
+      },
+      "counters": {
+        "steps": 2232,
+        "tokens": 140917,
+        "draft_tokens": 0,
+        "accepted_tokens": 0
+      },
+      "score": {
+        "rows": 2101,
+        "concurrency": 64,
+        "seconds": 35.4,
+        "counters": {
+          "steps": 630,
+          "tokens": 105976,
+          "draft_tokens": 0,
+          "accepted_tokens": 0
+        }
+      },
+      "peaks": {
+        "running": 256.0,
+        "kv_cache_usage": 0.46875
+      },
+      "seconds": 314.4,
+      "startup": {
+        "kv_cache_tokens": 83984,
+        "max_concurrency": 41.01,
+        "model_runner": "V2",
+        "scheduled_token_budget": 2048,
+        "async_scheduling": true
+      }
+    },
+    {
+      "arm": "baseline",
+      "round": 1,
+      "free_gpu_before": {
+        "used_mib": 5,
+        "free_mib": 22587
+      },
+      "command": [
+        "/.uv/.venv/bin/python",
+        "-m",
+        "vllm.entrypoints.cli.main",
+        "serve",
+        "Qwen/Qwen3-4B",
+        "--revision",
+        "1cfa9a7208912126459214e8b04321603b3df60c",
+        "--dtype",
+        "bfloat16",
+        "--max-model-len",
+        "2048",
+        "--enable-chunked-prefill",
+        "--no-enable-prefix-caching",
+        "--seed",
+        "0",
+        "--port",
+        "8766"
+      ],
+      "env": {
+        "VLLM_LENS_DISABLE": "1"
+      },
+      "startup_seconds": 92.1,
+      "saturation": {
+        "duration": 15.072862430999976,
+        "completed": 300,
+        "failed": 0,
+        "request_throughput": 19.903319716034666,
+        "output_throughput": 2547.6249236524372,
+        "total_token_throughput": 2929.7686622003025,
+        "max_concurrent_requests": 300,
+        "mean_ttft_ms": 2381.648334426674,
+        "p50_ttft_ms": 1173.476727499974,
+        "p99_ttft_ms": 10171.794312019818,
+        "mean_tpot_ms": 65.99981861790023,
+        "p50_tpot_ms": 70.66651432283497,
+        "p99_tpot_ms": 71.91204325464582,
+        "p50_itl_ms": 65.67369300000792,
+        "p99_itl_ms": 146.9518785998389,
+        "p99_e2el_ms": 15024.609251549955
+      },
+      "fixed_rate": 8.747319019979159,
+      "fixed": {
+        "duration": 79.77203374300007,
+        "completed": 656,
+        "failed": 0,
+        "request_throughput": 8.223433316410382,
+        "output_throughput": 1052.599464500529,
+        "total_token_throughput": 1212.9188070059747,
+        "max_concurrent_requests": 74,
+        "mean_ttft_ms": 121.17508376371966,
+        "p50_ttft_ms": 121.20182949990976,
+        "p99_ttft_ms": 157.50694594988772,
+        "mean_tpot_ms": 40.69678585455877,
+        "p50_tpot_ms": 40.73520332677191,
+        "p99_tpot_ms": 43.05238592519676,
+        "p50_itl_ms": 39.390415499951814,
+        "p99_itl_ms": 50.135409960014385,
+        "p99_e2el_ms": 5588.738662750029
+      },
+      "counters": {
+        "steps": 2254,
+        "tokens": 140917,
+        "draft_tokens": 0,
+        "accepted_tokens": 0
+      },
+      "peaks": {
+        "running": 256.0,
+        "kv_cache_usage": 0.42364441165621547
+      },
+      "seconds": 280.5,
+      "startup": {
+        "kv_cache_tokens": 86768,
+        "max_concurrency": 42.37,
+        "model_runner": "V2",
+        "scheduled_token_budget": null,
+        "async_scheduling": true
+      }
+    },
+    {
+      "arm": "b_zero_draft",
+      "round": 2,
+      "free_gpu_before": {
+        "used_mib": 5,
+        "free_mib": 22587
+      },
+      "command": [
+        "/.uv/.venv/bin/python",
+        "-m",
+        "vllm.entrypoints.cli.main",
+        "serve",
+        "Qwen/Qwen3-4B",
+        "--revision",
+        "1cfa9a7208912126459214e8b04321603b3df60c",
+        "--dtype",
+        "bfloat16",
+        "--max-model-len",
+        "2048",
+        "--enable-chunked-prefill",
+        "--no-enable-prefix-caching",
+        "--seed",
+        "0",
+        "--port",
+        "8766",
+        "--speculative-config",
+        "{\"method\": \"extract_hidden_states\", \"num_speculative_tokens\": 1, \"draft_model_config\": {\"hf_config\": {\"eagle_aux_hidden_state_layer_ids\": [18]}}, \"num_speculative_tokens_per_batch_size\": [[1, 1, 0]]}",
+        "--kv-transfer-config",
+        "{\"kv_connector\": \"ExampleHiddenStatesConnector\", \"kv_role\": \"kv_producer\", \"kv_connector_extra_config\": {\"shared_storage_path\": \"/tmp/d1/r2_b_zero_draft/hidden_states\"}}"
+      ],
+      "env": {
+        "VLLM_LENS_DISABLE": "1"
+      },
+      "startup_seconds": 88.1,
+      "saturation": {
+        "duration": 15.13517825300005,
+        "completed": 300,
+        "failed": 0,
+        "request_throughput": 19.821372103135616,
+        "output_throughput": 2537.135629201359,
+        "total_token_throughput": 2917.7059735815624,
+        "max_concurrent_requests": 300,
+        "mean_ttft_ms": 2370.0329216466776,
+        "p50_ttft_ms": 1044.6751930001028,
+        "p99_ttft_ms": 10085.716375520047,
+        "mean_tpot_ms": 65.49107129931758,
+        "p50_tpot_ms": 70.4542025354337,
+        "p99_tpot_ms": 71.07528916905513,
+        "p50_itl_ms": 65.5390729998544,
+        "p99_itl_ms": 158.2030994801153,
+        "p99_e2el_ms": 15082.330485429924
+      },
+      "fixed_rate": 8.747319019979159,
+      "fixed": {
+        "duration": 79.82080374099996,
+        "completed": 656,
+        "failed": 0,
+        "request_throughput": 8.21840885151405,
+        "output_throughput": 1051.9563329937985,
+        "total_token_throughput": 1212.1777214115016,
+        "max_concurrent_requests": 75,
+        "mean_ttft_ms": 121.73074079268218,
+        "p50_ttft_ms": 120.96065000002909,
+        "p99_ttft_ms": 151.33044819998534,
+        "mean_tpot_ms": 41.186722647181675,
+        "p50_tpot_ms": 41.22468447637785,
+        "p99_tpot_ms": 43.5132497984249,
+        "p50_itl_ms": 40.05318700001226,
+        "p99_itl_ms": 49.89813764999554,
+        "p99_e2el_ms": 5651.578028649999
+      },
+      "counters": {
+        "steps": 2232,
+        "tokens": 140917,
+        "draft_tokens": 0,
+        "accepted_tokens": 0
+      },
+      "score": {
+        "rows": 2101,
+        "concurrency": 64,
+        "seconds": 35.8,
+        "counters": {
+          "steps": 634,
+          "tokens": 105976,
+          "draft_tokens": 0,
+          "accepted_tokens": 0
+        }
+      },
+      "peaks": {
+        "running": 256.0,
+        "kv_cache_usage": 0.4636051829268293
+      },
+      "seconds": 312.4,
+      "startup": {
+        "kv_cache_tokens": 83984,
+        "max_concurrency": 41.01,
+        "model_runner": "V2",
+        "scheduled_token_budget": 2048,
+        "async_scheduling": true
+      }
+    },
+    {
+      "arm": "baseline",
+      "round": 2,
+      "free_gpu_before": {
+        "used_mib": 5,
+        "free_mib": 22587
+      },
+      "command": [
+        "/.uv/.venv/bin/python",
+        "-m",
+        "vllm.entrypoints.cli.main",
+        "serve",
+        "Qwen/Qwen3-4B",
+        "--revision",
+        "1cfa9a7208912126459214e8b04321603b3df60c",
+        "--dtype",
+        "bfloat16",
+        "--max-model-len",
+        "2048",
+        "--enable-chunked-prefill",
+        "--no-enable-prefix-caching",
+        "--seed",
+        "0",
+        "--port",
+        "8766"
+      ],
+      "env": {
+        "VLLM_LENS_DISABLE": "1"
+      },
+      "startup_seconds": 92.1,
+      "saturation": {
+        "duration": 14.843030463999867,
+        "completed": 300,
+        "failed": 0,
+        "request_throughput": 20.211506048418947,
+        "output_throughput": 2587.072774197625,
+        "total_token_throughput": 2975.133690327269,
+        "max_concurrent_requests": 300,
+        "mean_ttft_ms": 2365.329946739996,
+        "p50_ttft_ms": 1091.6437600000108,
+        "p99_ttft_ms": 9905.067737680038,
+        "mean_tpot_ms": 64.33392463089237,
+        "p50_tpot_ms": 69.15253791338563,
+        "p99_tpot_ms": 70.15690182377881,
+        "p50_itl_ms": 64.16606749996845,
+        "p99_itl_ms": 151.64878700005602,
+        "p99_e2el_ms": 14775.190186200016
+      },
+      "fixed_rate": 8.747319019979159,
+      "fixed": {
+        "duration": 79.74792484600016,
+        "completed": 656,
+        "failed": 0,
+        "request_throughput": 8.225919373661325,
+        "output_throughput": 1052.9176798286496,
+        "total_token_throughput": 1213.2854890813244,
+        "max_concurrent_requests": 73,
+        "mean_ttft_ms": 119.17248951981624,
+        "p50_ttft_ms": 119.56047750004473,
+        "p99_ttft_ms": 147.68498559999443,
+        "mean_tpot_ms": 40.61938901316736,
+        "p50_tpot_ms": 40.70043836220323,
+        "p99_tpot_ms": 42.81630105984225,
+        "p50_itl_ms": 39.335932499966475,
+        "p99_itl_ms": 49.74354794998817,
+        "p99_e2el_ms": 5565.235857849882
+      },
+      "counters": {
+        "steps": 2257,
+        "tokens": 140917,
+        "draft_tokens": 0,
+        "accepted_tokens": 0
+      },
+      "peaks": {
+        "running": 256.0,
+        "kv_cache_usage": 0.4347104389524161
+      },
+      "seconds": 279.9,
+      "startup": {
+        "kv_cache_tokens": 86768,
+        "max_concurrency": 42.37,
+        "model_runner": "V2",
+        "scheduled_token_budget": null,
+        "async_scheduling": true
+      }
+    },
+    {
+      "arm": "b_stock",
+      "round": 2,
+      "free_gpu_before": {
+        "used_mib": 5,
+        "free_mib": 22587
+      },
+      "command": [
+        "/.uv/.venv/bin/python",
+        "-m",
+        "vllm.entrypoints.cli.main",
+        "serve",
+        "Qwen/Qwen3-4B",
+        "--revision",
+        "1cfa9a7208912126459214e8b04321603b3df60c",
+        "--dtype",
+        "bfloat16",
+        "--max-model-len",
+        "2048",
+        "--enable-chunked-prefill",
+        "--no-enable-prefix-caching",
+        "--seed",
+        "0",
+        "--port",
+        "8766",
+        "--speculative-config",
+        "{\"method\": \"extract_hidden_states\", \"num_speculative_tokens\": 1, \"draft_model_config\": {\"hf_config\": {\"eagle_aux_hidden_state_layer_ids\": [18]}}}",
+        "--kv-transfer-config",
+        "{\"kv_connector\": \"ExampleHiddenStatesConnector\", \"kv_role\": \"kv_producer\", \"kv_connector_extra_config\": {\"shared_storage_path\": \"/tmp/d1/r2_b_stock/hidden_states\"}}"
+      ],
+      "env": {
+        "VLLM_LENS_DISABLE": "1"
+      },
+      "startup_seconds": 88.1,
+      "saturation": {
+        "duration": 24.311864957000125,
+        "completed": 300,
+        "failed": 0,
+        "request_throughput": 12.339653931551675,
+        "output_throughput": 1579.4757032386144,
+        "total_token_throughput": 1816.3970587244066,
+        "max_concurrent_requests": 300,
+        "mean_ttft_ms": 3611.186763516698,
+        "p50_ttft_ms": 1156.0136410000723,
+        "p99_ttft_ms": 18405.07724045002,
+        "mean_tpot_ms": 122.05253318868755,
+        "p50_tpot_ms": 135.5299947637821,
+        "p99_tpot_ms": 136.12789602149655,
+        "p50_itl_ms": 130.22127600015665,
+        "p99_itl_ms": 183.96627586000702,
+        "p99_e2el_ms": 24259.541181610242
+      },
+      "fixed_rate": 8.747319019979159,
+      "fixed": {
+        "duration": 80.31812722199993,
+        "completed": 656,
+        "failed": 0,
+        "request_throughput": 8.167521114963387,
+        "output_throughput": 1045.4427027153135,
+        "total_token_throughput": 1204.672012988586,
+        "max_concurrent_requests": 82,
+        "mean_ttft_ms": 144.01940578353395,
+        "p50_ttft_ms": 144.24696799983394,
+        "p99_ttft_ms": 185.9228919998032,
+        "mean_tpot_ms": 51.32665648404794,
+        "p50_tpot_ms": 51.924353649606985,
+        "p99_tpot_ms": 57.0000584622035,
+        "p50_itl_ms": 51.03671500000928,
+        "p99_itl_ms": 60.162044600019726,
+        "p99_e2el_ms": 7394.998176949844
+      },
+      "counters": {
+        "steps": 1887,
+        "tokens": 140917,
+        "draft_tokens": 121372,
+        "accepted_tokens": 40
+      },
+      "score": {
+        "rows": 2101,
+        "concurrency": 64,
+        "seconds": 39.9,
+        "counters": {
+          "steps": 626,
+          "tokens": 105976,
+          "draft_tokens": 31507,
+          "accepted_tokens": 8
+        }
+      },
+      "peaks": {
+        "running": 256.0,
+        "kv_cache_usage": 0.4628429878048781
+      },
+      "seconds": 327.6,
+      "startup": {
+        "kv_cache_tokens": 83984,
+        "max_concurrency": 41.01,
+        "model_runner": "V2",
+        "scheduled_token_budget": 2048,
+        "async_scheduling": true
+      }
+    },
+    {
+      "arm": "baseline",
+      "round": 3,
+      "free_gpu_before": {
+        "used_mib": 5,
+        "free_mib": 22587
+      },
+      "command": [
+        "/.uv/.venv/bin/python",
+        "-m",
+        "vllm.entrypoints.cli.main",
+        "serve",
+        "Qwen/Qwen3-4B",
+        "--revision",
+        "1cfa9a7208912126459214e8b04321603b3df60c",
+        "--dtype",
+        "bfloat16",
+        "--max-model-len",
+        "2048",
+        "--enable-chunked-prefill",
+        "--no-enable-prefix-caching",
+        "--seed",
+        "0",
+        "--port",
+        "8766"
+      ],
+      "env": {
+        "VLLM_LENS_DISABLE": "1"
+      },
+      "startup_seconds": 92.1,
+      "saturation": {
+        "duration": 14.853598745,
+        "completed": 300,
+        "failed": 0,
+        "request_throughput": 20.19712563603387,
+        "output_throughput": 2585.2320814123354,
+        "total_token_throughput": 2973.0168936241857,
+        "max_concurrent_requests": 300,
+        "mean_ttft_ms": 2340.0012737900047,
+        "p50_ttft_ms": 1084.501247999924,
+        "p99_ttft_ms": 9915.341113279941,
+        "mean_tpot_ms": 64.58387132627296,
+        "p50_tpot_ms": 69.35787420078718,
+        "p99_tpot_ms": 70.55504032086407,
+        "p50_itl_ms": 64.87807699977566,
+        "p99_itl_ms": 149.47685232014922,
+        "p99_e2el_ms": 14783.278491199671
+      },
+      "fixed_rate": 8.747319019979159,
+      "fixed": {
+        "duration": 79.73193053899968,
+        "completed": 656,
+        "failed": 0,
+        "request_throughput": 8.22756950152019,
+        "output_throughput": 1053.1288961945843,
+        "total_token_throughput": 1213.5288753941907,
+        "max_concurrent_requests": 73,
+        "mean_ttft_ms": 117.95914227286423,
+        "p50_ttft_ms": 117.92859000001954,
+        "p99_ttft_ms": 147.1811208499048,
+        "mean_tpot_ms": 40.52565121820392,
+        "p50_tpot_ms": 40.52888522834847,
+        "p99_tpot_ms": 42.90034632952638,
+        "p50_itl_ms": 39.19385999984115,
+        "p99_itl_ms": 49.32185691014638,
+        "p99_e2el_ms": 5570.431426049936
+      },
+      "counters": {
+        "steps": 2261,
+        "tokens": 140917,
+        "draft_tokens": 0,
+        "accepted_tokens": 0
+      },
+      "peaks": {
+        "running": 256.0,
+        "kv_cache_usage": 0.42530431575064553
+      },
+      "seconds": 280.0,
+      "startup": {
+        "kv_cache_tokens": 86768,
+        "max_concurrency": 42.37,
+        "model_runner": "V2",
+        "scheduled_token_budget": null,
+        "async_scheduling": true
+      }
+    },
+    {
+      "arm": "b_stock",
+      "round": 3,
+      "free_gpu_before": {
+        "used_mib": 5,
+        "free_mib": 22587
+      },
+      "command": [
+        "/.uv/.venv/bin/python",
+        "-m",
+        "vllm.entrypoints.cli.main",
+        "serve",
+        "Qwen/Qwen3-4B",
+        "--revision",
+        "1cfa9a7208912126459214e8b04321603b3df60c",
+        "--dtype",
+        "bfloat16",
+        "--max-model-len",
+        "2048",
+        "--enable-chunked-prefill",
+        "--no-enable-prefix-caching",
+        "--seed",
+        "0",
+        "--port",
+        "8766",
+        "--speculative-config",
+        "{\"method\": \"extract_hidden_states\", \"num_speculative_tokens\": 1, \"draft_model_config\": {\"hf_config\": {\"eagle_aux_hidden_state_layer_ids\": [18]}}}",
+        "--kv-transfer-config",
+        "{\"kv_connector\": \"ExampleHiddenStatesConnector\", \"kv_role\": \"kv_producer\", \"kv_connector_extra_config\": {\"shared_storage_path\": \"/tmp/d1/r3_b_stock/hidden_states\"}}"
+      ],
+      "env": {
+        "VLLM_LENS_DISABLE": "1"
+      },
+      "startup_seconds": 90.1,
+      "saturation": {
+        "duration": 24.109775975000048,
+        "completed": 300,
+        "failed": 0,
+        "request_throughput": 12.443085340613557,
+        "output_throughput": 1592.7149235985353,
+        "total_token_throughput": 1831.6221621383154,
+        "max_concurrent_requests": 300,
+        "mean_ttft_ms": 3553.000885926655,
+        "p50_ttft_ms": 1271.2943705000725,
+        "p99_ttft_ms": 18270.788020179978,
+        "mean_tpot_ms": 121.22469290070875,
+        "p50_tpot_ms": 133.64843429527411,
+        "p99_tpot_ms": 135.28050342535315,
+        "p50_itl_ms": 129.41930600027263,
+        "p99_itl_ms": 204.41195912009772,
+        "p99_e2el_ms": 24060.332139069775
+      },
+      "fixed_rate": 8.747319019979159,
+      "fixed": {
+        "duration": 80.35485534300005,
+        "completed": 656,
+        "failed": 0,
+        "request_throughput": 8.163787952822767,
+        "output_throughput": 1044.9648579613142,
+        "total_token_throughput": 1204.1213886452324,
+        "max_concurrent_requests": 82,
+        "mean_ttft_ms": 143.90231095884002,
+        "p50_ttft_ms": 143.30223499996464,
+        "p99_ttft_ms": 186.46072970018398,
+        "mean_tpot_ms": 51.26978475682979,
+        "p50_tpot_ms": 51.885946547243535,
+        "p99_tpot_ms": 56.86908748149488,
+        "p50_itl_ms": 51.04496300009487,
+        "p99_itl_ms": 60.01341380029771,
+        "p99_e2el_ms": 7368.566829849965
+      },
+      "counters": {
+        "steps": 1888,
+        "tokens": 140917,
+        "draft_tokens": 121369,
+        "accepted_tokens": 43
+      },
+      "score": {
+        "rows": 2101,
+        "concurrency": 64,
+        "seconds": 40.0,
+        "counters": {
+          "steps": 631,
+          "tokens": 105976,
+          "draft_tokens": 31507,
+          "accepted_tokens": 8
+        }
+      },
+      "peaks": {
+        "running": 256.0,
+        "kv_cache_usage": 0.47008384146341464
+      },
+      "seconds": 328.2,
+      "startup": {
+        "kv_cache_tokens": 83984,
+        "max_concurrency": 41.01,
+        "model_runner": "V2",
+        "scheduled_token_budget": 2048,
+        "async_scheduling": true
+      }
+    },
+    {
+      "arm": "b_zero_draft",
+      "round": 3,
+      "free_gpu_before": {
+        "used_mib": 5,
+        "free_mib": 22587
+      },
+      "command": [
+        "/.uv/.venv/bin/python",
+        "-m",
+        "vllm.entrypoints.cli.main",
+        "serve",
+        "Qwen/Qwen3-4B",
+        "--revision",
+        "1cfa9a7208912126459214e8b04321603b3df60c",
+        "--dtype",
+        "bfloat16",
+        "--max-model-len",
+        "2048",
+        "--enable-chunked-prefill",
+        "--no-enable-prefix-caching",
+        "--seed",
+        "0",
+        "--port",
+        "8766",
+        "--speculative-config",
+        "{\"method\": \"extract_hidden_states\", \"num_speculative_tokens\": 1, \"draft_model_config\": {\"hf_config\": {\"eagle_aux_hidden_state_layer_ids\": [18]}}, \"num_speculative_tokens_per_batch_size\": [[1, 1, 0]]}",
+        "--kv-transfer-config",
+        "{\"kv_connector\": \"ExampleHiddenStatesConnector\", \"kv_role\": \"kv_producer\", \"kv_connector_extra_config\": {\"shared_storage_path\": \"/tmp/d1/r3_b_zero_draft/hidden_states\"}}"
+      ],
+      "env": {
+        "VLLM_LENS_DISABLE": "1"
+      },
+      "startup_seconds": 88.1,
+      "saturation": {
+        "duration": 15.105943892000141,
+        "completed": 300,
+        "failed": 0,
+        "request_throughput": 19.859732178594616,
+        "output_throughput": 2542.045718860111,
+        "total_token_throughput": 2923.3525766891275,
+        "max_concurrent_requests": 300,
+        "mean_ttft_ms": 2377.1254304833446,
+        "p50_ttft_ms": 1192.220994500076,
+        "p99_ttft_ms": 10059.961350930153,
+        "mean_tpot_ms": 65.48457978498675,
+        "p50_tpot_ms": 69.6237929212614,
+        "p99_tpot_ms": 71.04139738149487,
+        "p50_itl_ms": 65.3939819999323,
+        "p99_itl_ms": 155.19187499985492,
+        "p99_e2el_ms": 15056.723826510239
+      },
+      "fixed_rate": 8.747319019979159,
+      "fixed": {
+        "duration": 79.8285298730002,
+        "completed": 656,
+        "failed": 0,
+        "request_throughput": 8.217613440252942,
+        "output_throughput": 1051.8545203523765,
+        "total_token_throughput": 1212.0604018880395,
+        "max_concurrent_requests": 75,
+        "mean_ttft_ms": 121.17436367530183,
+        "p50_ttft_ms": 120.91793399986273,
+        "p99_ttft_ms": 152.41729414983638,
+        "mean_tpot_ms": 41.177602734948174,
+        "p50_tpot_ms": 41.16816137007938,
+        "p99_tpot_ms": 43.48748060629812,
+        "p50_itl_ms": 40.01539449973279,
+        "p99_itl_ms": 49.98379232014486,
+        "p99_e2el_ms": 5649.949207649956
+      },
+      "counters": {
+        "steps": 2232,
+        "tokens": 140917,
+        "draft_tokens": 0,
+        "accepted_tokens": 0
+      },
+      "score": {
+        "rows": 2101,
+        "concurrency": 64,
+        "seconds": 35.5,
+        "counters": {
+          "steps": 636,
+          "tokens": 105976,
+          "draft_tokens": 0,
+          "accepted_tokens": 0
+        }
+      },
+      "peaks": {
+        "running": 256.0,
+        "kv_cache_usage": 0.47484756097560976
+      },
+      "seconds": 312.0,
+      "startup": {
+        "kv_cache_tokens": 83984,
+        "max_concurrency": 41.01,
+        "model_runner": "V2",
+        "scheduled_token_budget": 2048,
+        "async_scheduling": true
+      }
+    }
+  ],
+  "stopped": null,
+  "generation": {
+    "r0_b_stock": {
+      "identical": 11,
+      "of": 16,
+      "diverged": [
+        {
+          "prompt": 5,
+          "token": 35,
+          "tokens": [
+            " users",
+            " if"
+          ],
+          "margins": [
+            0.125,
+            0.0
+          ]
+        },
+        {
+          "prompt": 8,
+          "token": 63,
+          "tokens": [
+            " Also",
+            " I"
+          ],
+          "margins": [
+            0.125,
+            0.0
+          ]
+        },
+        {
+          "prompt": 9,
+          "token": 48,
+          "tokens": [
+            ".",
+            " first"
+          ],
+          "margins": [
+            0.0,
+            0.125
+          ]
+        },
+        {
+          "prompt": 12,
+          "token": 6,
+          "tokens": [
+            " is",
+            " wants"
+          ],
+          "margins": [
+            0.0,
+            0.25
+          ]
+        },
+        {
+          "prompt": 13,
+          "token": 59,
+          "tokens": [
+            " wait",
+            " since"
+          ],
+          "margins": [
+            0.24999994039535522,
+            0.0
+          ]
+        }
+      ]
+    },
+    "r0_b_zero_draft": {
+      "identical": 12,
+      "of": 16,
+      "diverged": [
+        {
+          "prompt": 7,
+          "token": 36,
+          "tokens": [
+            " securing",
+            " security"
+          ],
+          "margins": [
+            0.125,
+            0.0
+          ]
+        },
+        {
+          "prompt": 8,
+          "token": 38,
+          "tokens": [
+            " Then",
+            " Maybe"
+          ],
+          "margins": [
+            0.0,
+            0.25
+          ]
+        },
+        {
+          "prompt": 9,
+          "token": 48,
+          "tokens": [
+            ".",
+            " first"
+          ],
+          "margins": [
+            0.0,
+            0.125
+          ]
+        },
+        {
+          "prompt": 13,
+          "token": 11,
+          "tokens": [
+            " says",
+            " includes"
+          ],
+          "margins": [
+            0.125,
+            0.25
+          ]
+        }
+      ]
+    },
+    "r1_b_stock": {
+      "identical": 11,
+      "of": 16,
+      "diverged": [
+        {
+          "prompt": 5,
+          "token": 35,
+          "tokens": [
+            " users",
+            " if"
+          ],
+          "margins": [
+            0.125,
+            0.0
+          ]
+        },
+        {
+          "prompt": 8,
+          "token": 63,
+          "tokens": [
+            " Also",
+            " I"
+          ],
+          "margins": [
+            0.125,
+            0.0
+          ]
+        },
+        {
+          "prompt": 9,
+          "token": 48,
+          "tokens": [
+            ".",
+            " first"
+          ],
+          "margins": [
+            0.0,
+            0.125
+          ]
+        },
+        {
+          "prompt": 12,
+          "token": 6,
+          "tokens": [
+            " is",
+            " wants"
+          ],
+          "margins": [
+            0.0,
+            0.25
+          ]
+        },
+        {
+          "prompt": 13,
+          "token": 59,
+          "tokens": [
+            " wait",
+            " since"
+          ],
+          "margins": [
+            0.24999994039535522,
+            0.0
+          ]
+        }
+      ]
+    },
+    "r1_b_zero_draft": {
+      "identical": 12,
+      "of": 16,
+      "diverged": [
+        {
+          "prompt": 1,
+          "token": 24,
+          "tokens": [
+            ".",
+            " about"
+          ],
+          "margins": [
+            0.0,
+            0.25
+          ]
+        },
+        {
+          "prompt": 5,
+          "token": 35,
+          "tokens": [
+            " users",
+            " if"
+          ],
+          "margins": [
+            0.125,
+            0.0
+          ]
+        },
+        {
+          "prompt": 8,
+          "token": 30,
+          "tokens": [
+            " First",
+            " Let"
+          ],
+          "margins": [
+            0.0,
+            0.25
+          ]
+        },
+        {
+          "prompt": 9,
+          "token": 48,
+          "tokens": [
+            ".",
+            " first"
+          ],
+          "margins": [
+            0.0,
+            0.125
+          ]
+        }
+      ]
+    },
+    "r1_baseline": {
+      "identical": 16,
+      "of": 16,
+      "diverged": []
+    },
+    "r2_b_zero_draft": {
+      "identical": 12,
+      "of": 16,
+      "diverged": [
+        {
+          "prompt": 1,
+          "token": 24,
+          "tokens": [
+            ".",
+            " about"
+          ],
+          "margins": [
+            0.0,
+            0.25
+          ]
+        },
+        {
+          "prompt": 5,
+          "token": 35,
+          "tokens": [
+            " users",
+            " if"
+          ],
+          "margins": [
+            0.125,
+            0.0
+          ]
+        },
+        {
+          "prompt": 8,
+          "token": 30,
+          "tokens": [
+            " First",
+            " Let"
+          ],
+          "margins": [
+            0.0,
+            0.25
+          ]
+        },
+        {
+          "prompt": 9,
+          "token": 48,
+          "tokens": [
+            ".",
+            " first"
+          ],
+          "margins": [
+            0.0,
+            0.125
+          ]
+        }
+      ]
+    },
+    "r2_baseline": {
+      "identical": 16,
+      "of": 16,
+      "diverged": []
+    },
+    "r2_b_stock": {
+      "identical": 11,
+      "of": 16,
+      "diverged": [
+        {
+          "prompt": 5,
+          "token": 35,
+          "tokens": [
+            " users",
+            " if"
+          ],
+          "margins": [
+            0.125,
+            0.0
+          ]
+        },
+        {
+          "prompt": 8,
+          "token": 63,
+          "tokens": [
+            " Also",
+            " I"
+          ],
+          "margins": [
+            0.125,
+            0.0
+          ]
+        },
+        {
+          "prompt": 9,
+          "token": 48,
+          "tokens": [
+            ".",
+            " first"
+          ],
+          "margins": [
+            0.0,
+            0.125
+          ]
+        },
+        {
+          "prompt": 12,
+          "token": 6,
+          "tokens": [
+            " is",
+            " wants"
+          ],
+          "margins": [
+            0.0,
+            0.25
+          ]
+        },
+        {
+          "prompt": 13,
+          "token": 59,
+          "tokens": [
+            " wait",
+            " since"
+          ],
+          "margins": [
+            0.24999994039535522,
+            0.0
+          ]
+        }
+      ]
+    },
+    "r3_baseline": {
+      "identical": 16,
+      "of": 16,
+      "diverged": []
+    },
+    "r3_b_stock": {
+      "identical": 12,
+      "of": 16,
+      "diverged": [
+        {
+          "prompt": 8,
+          "token": 30,
+          "tokens": [
+            " First",
+            " Let"
+          ],
+          "margins": [
+            0.0,
+            0.25
+          ]
+        },
+        {
+          "prompt": 9,
+          "token": 48,
+          "tokens": [
+            ".",
+            " first"
+          ],
+          "margins": [
+            0.0,
+            0.125
+          ]
+        },
+        {
+          "prompt": 12,
+          "token": 61,
+          "tokens": [
+            " outlining",
+            " defining"
+          ],
+          "margins": [
+            0.125,
+            0.0
+          ]
+        },
+        {
+          "prompt": 13,
+          "token": 59,
+          "tokens": [
+            " wait",
+            " since"
+          ],
+          "margins": [
+            0.24999994039535522,
+            0.0
+          ]
+        }
+      ]
+    },
+    "r3_b_zero_draft": {
+      "identical": 12,
+      "of": 16,
+      "diverged": [
+        {
+          "prompt": 7,
+          "token": 36,
+          "tokens": [
+            " securing",
+            " security"
+          ],
+          "margins": [
+            0.125,
+            0.0
+          ]
+        },
+        {
+          "prompt": 8,
+          "token": 38,
+          "tokens": [
+            " Then",
+            " Maybe"
+          ],
+          "margins": [
+            0.0,
+            0.25
+          ]
+        },
+        {
+          "prompt": 9,
+          "token": 48,
+          "tokens": [
+            ".",
+            " first"
+          ],
+          "margins": [
+            0.0,
+            0.125
+          ]
+        },
+        {
+          "prompt": 13,
+          "token": 11,
+          "tokens": [
+            " says",
+            " includes"
+          ],
+          "margins": [
+            0.125,
+            0.25
+          ]
+        }
+      ]
+    }
+  },
+  "fixed_rate": 8.747319019979159,
+  "verdicts": {
+    "b_stock": {
+      "throughput": {
+        "overheads": [
+          0.3913325769675702,
+          0.3744523968066892,
+          0.38947380259587583,
+          0.38391801066911535
+        ],
+        "upper": 0.3913325769675702,
+        "threshold": 0.05,
+        "baseline_spread": 0.031026054432203153,
+        "verdict": "fail"
+      },
+      "p99_ttft": {
+        "overheads": [
+          0.18341815197960631,
+          0.2589153274075968,
+          0.2668793974625081
+        ],
+        "upper": 0.2668793974625081,
+        "threshold": 0.1,
+        "baseline_spread": 0.06847772018164394,
+        "verdict": "fail"
+      },
+      "p99_tpot": {
+        "overheads": [
+          0.3205984926516938,
+          0.3312700315362904,
+          0.3256090532386786
+        ],
+        "upper": 0.3312700315362904,
+        "threshold": 0.1,
+        "baseline_spread": 0.005500193469134371,
+        "verdict": "fail"
+      },
+      "passes": false
+    },
+    "b_zero_draft": {
+      "throughput": {
+        "overheads": [
+          0.0256415248505677,
+          -0.0003395825829837218,
+          0.019302566782936514,
+          0.016705023453303047
+        ],
+        "upper": 0.0256415248505677,
+        "threshold": 0.05,
+        "baseline_spread": 0.031026054432203153,
+        "verdict": "inconclusive"
+      },
+      "p99_ttft": {
+        "overheads": [
+          -0.03036299396860065,
+          0.024684043440033054,
+          0.035576392336836626
+        ],
+        "upper": 0.035576392336836626,
+        "threshold": 0.1,
+        "baseline_spread": 0.06847772018164394,
+        "verdict": "inconclusive"
+      },
+      "p99_tpot": {
+        "overheads": [
+          0.010473625926724406,
+          0.016277649430962216,
+          0.013686003191252682
+        ],
+        "upper": 0.016277649430962216,
+        "threshold": 0.1,
+        "baseline_spread": 0.005500193469134371,
+        "verdict": "pass"
+      },
+      "passes": null
+    }
+  },
+  "divergences": {
+    "tie_bound": {
+      "steps": 2,
+      "step": 0.125,
+      "tolerance": 1e-06
+    },
+    "rows": [
+      {
+        "run": "r0_b_stock",
+        "prompt": 5,
+        "token": 35,
+        "tokens": [
+          " users",
+          " if"
+        ],
+        "reference_margin": 0.125,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      },
+      {
+        "run": "r0_b_stock",
+        "prompt": 8,
+        "token": 63,
+        "tokens": [
+          " Also",
+          " I"
+        ],
+        "reference_margin": 0.125,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      },
+      {
+        "run": "r0_b_stock",
+        "prompt": 9,
+        "token": 48,
+        "tokens": [
+          ".",
+          " first"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.125,
+        "class": "exact tie"
+      },
+      {
+        "run": "r0_b_stock",
+        "prompt": 12,
+        "token": 6,
+        "tokens": [
+          " is",
+          " wants"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.25,
+        "class": "exact tie"
+      },
+      {
+        "run": "r0_b_stock",
+        "prompt": 13,
+        "token": 59,
+        "tokens": [
+          " wait",
+          " since"
+        ],
+        "reference_margin": 0.24999994039535522,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      },
+      {
+        "run": "r0_b_zero_draft",
+        "prompt": 7,
+        "token": 36,
+        "tokens": [
+          " securing",
+          " security"
+        ],
+        "reference_margin": 0.125,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      },
+      {
+        "run": "r0_b_zero_draft",
+        "prompt": 8,
+        "token": 38,
+        "tokens": [
+          " Then",
+          " Maybe"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.25,
+        "class": "exact tie"
+      },
+      {
+        "run": "r0_b_zero_draft",
+        "prompt": 9,
+        "token": 48,
+        "tokens": [
+          ".",
+          " first"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.125,
+        "class": "exact tie"
+      },
+      {
+        "run": "r0_b_zero_draft",
+        "prompt": 13,
+        "token": 11,
+        "tokens": [
+          " says",
+          " includes"
+        ],
+        "reference_margin": 0.125,
+        "arm_margin": 0.25,
+        "class": "within bound"
+      },
+      {
+        "run": "r1_b_stock",
+        "prompt": 5,
+        "token": 35,
+        "tokens": [
+          " users",
+          " if"
+        ],
+        "reference_margin": 0.125,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      },
+      {
+        "run": "r1_b_stock",
+        "prompt": 8,
+        "token": 63,
+        "tokens": [
+          " Also",
+          " I"
+        ],
+        "reference_margin": 0.125,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      },
+      {
+        "run": "r1_b_stock",
+        "prompt": 9,
+        "token": 48,
+        "tokens": [
+          ".",
+          " first"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.125,
+        "class": "exact tie"
+      },
+      {
+        "run": "r1_b_stock",
+        "prompt": 12,
+        "token": 6,
+        "tokens": [
+          " is",
+          " wants"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.25,
+        "class": "exact tie"
+      },
+      {
+        "run": "r1_b_stock",
+        "prompt": 13,
+        "token": 59,
+        "tokens": [
+          " wait",
+          " since"
+        ],
+        "reference_margin": 0.24999994039535522,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      },
+      {
+        "run": "r1_b_zero_draft",
+        "prompt": 1,
+        "token": 24,
+        "tokens": [
+          ".",
+          " about"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.25,
+        "class": "exact tie"
+      },
+      {
+        "run": "r1_b_zero_draft",
+        "prompt": 5,
+        "token": 35,
+        "tokens": [
+          " users",
+          " if"
+        ],
+        "reference_margin": 0.125,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      },
+      {
+        "run": "r1_b_zero_draft",
+        "prompt": 8,
+        "token": 30,
+        "tokens": [
+          " First",
+          " Let"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.25,
+        "class": "exact tie"
+      },
+      {
+        "run": "r1_b_zero_draft",
+        "prompt": 9,
+        "token": 48,
+        "tokens": [
+          ".",
+          " first"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.125,
+        "class": "exact tie"
+      },
+      {
+        "run": "r2_b_stock",
+        "prompt": 5,
+        "token": 35,
+        "tokens": [
+          " users",
+          " if"
+        ],
+        "reference_margin": 0.125,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      },
+      {
+        "run": "r2_b_stock",
+        "prompt": 8,
+        "token": 63,
+        "tokens": [
+          " Also",
+          " I"
+        ],
+        "reference_margin": 0.125,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      },
+      {
+        "run": "r2_b_stock",
+        "prompt": 9,
+        "token": 48,
+        "tokens": [
+          ".",
+          " first"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.125,
+        "class": "exact tie"
+      },
+      {
+        "run": "r2_b_stock",
+        "prompt": 12,
+        "token": 6,
+        "tokens": [
+          " is",
+          " wants"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.25,
+        "class": "exact tie"
+      },
+      {
+        "run": "r2_b_stock",
+        "prompt": 13,
+        "token": 59,
+        "tokens": [
+          " wait",
+          " since"
+        ],
+        "reference_margin": 0.24999994039535522,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      },
+      {
+        "run": "r2_b_zero_draft",
+        "prompt": 1,
+        "token": 24,
+        "tokens": [
+          ".",
+          " about"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.25,
+        "class": "exact tie"
+      },
+      {
+        "run": "r2_b_zero_draft",
+        "prompt": 5,
+        "token": 35,
+        "tokens": [
+          " users",
+          " if"
+        ],
+        "reference_margin": 0.125,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      },
+      {
+        "run": "r2_b_zero_draft",
+        "prompt": 8,
+        "token": 30,
+        "tokens": [
+          " First",
+          " Let"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.25,
+        "class": "exact tie"
+      },
+      {
+        "run": "r2_b_zero_draft",
+        "prompt": 9,
+        "token": 48,
+        "tokens": [
+          ".",
+          " first"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.125,
+        "class": "exact tie"
+      },
+      {
+        "run": "r3_b_stock",
+        "prompt": 8,
+        "token": 30,
+        "tokens": [
+          " First",
+          " Let"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.25,
+        "class": "exact tie"
+      },
+      {
+        "run": "r3_b_stock",
+        "prompt": 9,
+        "token": 48,
+        "tokens": [
+          ".",
+          " first"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.125,
+        "class": "exact tie"
+      },
+      {
+        "run": "r3_b_stock",
+        "prompt": 12,
+        "token": 61,
+        "tokens": [
+          " outlining",
+          " defining"
+        ],
+        "reference_margin": 0.125,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      },
+      {
+        "run": "r3_b_stock",
+        "prompt": 13,
+        "token": 59,
+        "tokens": [
+          " wait",
+          " since"
+        ],
+        "reference_margin": 0.24999994039535522,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      },
+      {
+        "run": "r3_b_zero_draft",
+        "prompt": 7,
+        "token": 36,
+        "tokens": [
+          " securing",
+          " security"
+        ],
+        "reference_margin": 0.125,
+        "arm_margin": 0.0,
+        "class": "within bound"
+      },
+      {
+        "run": "r3_b_zero_draft",
+        "prompt": 8,
+        "token": 38,
+        "tokens": [
+          " Then",
+          " Maybe"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.25,
+        "class": "exact tie"
+      },
+      {
+        "run": "r3_b_zero_draft",
+        "prompt": 9,
+        "token": 48,
+        "tokens": [
+          ".",
+          " first"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.125,
+        "class": "exact tie"
+      },
+      {
+        "run": "r3_b_zero_draft",
+        "prompt": 13,
+        "token": 11,
+        "tokens": [
+          " says",
+          " includes"
+        ],
+        "reference_margin": 0.125,
+        "arm_margin": 0.25,
+        "class": "within bound"
+      }
+    ],
+    "counts": {
+      "r0_b_stock": {
+        "exact tie": 2,
+        "within bound": 3,
+        "change": 0
+      },
+      "r0_b_zero_draft": {
+        "exact tie": 2,
+        "within bound": 2,
+        "change": 0
+      },
+      "r1_b_stock": {
+        "exact tie": 2,
+        "within bound": 3,
+        "change": 0
+      },
+      "r1_b_zero_draft": {
+        "exact tie": 3,
+        "within bound": 1,
+        "change": 0
+      },
+      "r1_baseline": {
+        "exact tie": 0,
+        "within bound": 0,
+        "change": 0
+      },
+      "r2_b_stock": {
+        "exact tie": 2,
+        "within bound": 3,
+        "change": 0
+      },
+      "r2_b_zero_draft": {
+        "exact tie": 3,
+        "within bound": 1,
+        "change": 0
+      },
+      "r2_baseline": {
+        "exact tie": 0,
+        "within bound": 0,
+        "change": 0
+      },
+      "r3_b_stock": {
+        "exact tie": 2,
+        "within bound": 2,
+        "change": 0
+      },
+      "r3_b_zero_draft": {
+        "exact tie": 2,
+        "within bound": 2,
+        "change": 0
+      },
+      "r3_baseline": {
+        "exact tie": 0,
+        "within bound": 0,
+        "change": 0
+      }
+    }
+  },
+  "stock_vs_zero_draft": [
+    {
+      "round": 0,
+      "b_stock": 12.496170028541655,
+      "b_zero_draft": 20.003944212353815,
+      "stock_drop": 0.3753146931481438
+    },
+    {
+      "round": 1,
+      "b_stock": 12.450473943955654,
+      "b_zero_draft": 19.910078536753787,
+      "stock_drop": 0.37466474976619424
+    },
+    {
+      "round": 2,
+      "b_stock": 12.339653931551675,
+      "b_zero_draft": 19.821372103135616,
+      "stock_drop": 0.3774571272187751
+    },
+    {
+      "round": 3,
+      "b_stock": 12.443085340613557,
+      "b_zero_draft": 19.859732178594616,
+      "stock_drop": 0.37345150333774046
+    }
+  ]
+}
