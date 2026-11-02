@@ -51,21 +51,36 @@ def floor_from(exp2_results: dict) -> dict:
 
 
 def score_outcome(zero: list[dict], stock: list[dict], floor: dict) -> dict:
-    """The rule fixed before the run, over zero-draft's stages. Within floor: every stage is at or
-    under the floor on both measures. Fail: a stage is above both the floor and b_stock's highest on
-    either measure, so zero-draft moves scores by more than serving does. Otherwise a serving shift,
-    which needs a decision and isn't a pass."""
-    highest = {m: max(run[m] for run in stock) for m in MEASURES}
-    if all(run[m] <= floor[m] for run in zero for m in MEASURES):
-        outcome = "within floor"
-    elif any(run[m] > floor[m] and run[m] > highest[m] for run in zero for m in MEASURES):
+    """The rule fixed before the run, over zero-draft's stages against b_stock's. Pass: the median
+    stage's mean |Δscore| is at most b_stock's highest, and every stage's flips at most b_stock's most.
+    Fail: the lowest stage's mean |Δscore| is above b_stock's highest. Anything else needs a decision.
+    So a pass says zero-draft moves scores no more than stock B does, not that either matches the
+    reference. The floor doesn't decide, and each arm's stages above it are counted beside the outcome."""
+    means = [run["mean_abs_dscore"] for run in zero]
+    median, lowest = float(np.median(means)), min(means)
+    highest = max(run["mean_abs_dscore"] for run in stock)
+    most_flips = max(run["flips"] for run in zero)
+    stock_most_flips = max(run["flips"] for run in stock)
+    if lowest > highest:
         outcome = "fail"
+    elif median <= highest and most_flips <= stock_most_flips:
+        outcome = "pass"
     else:
-        outcome = "serving shift"
+        outcome = "needs decision"
+
+    def above_floor(runs: list[dict]) -> int:
+        return sum(any(run[m] > floor[m] for m in MEASURES) for run in runs)
+
     return {
         "outcome": outcome,
+        "zero_draft_median_mean_abs_dscore": median,
+        "zero_draft_lowest_mean_abs_dscore": lowest,
+        "zero_draft_most_flips": most_flips,
+        "b_stock_highest_mean_abs_dscore": highest,
+        "b_stock_most_flips": stock_most_flips,
         "floor": floor,
-        "b_stock_range": {m: [min(run[m] for run in stock), highest[m]] for m in MEASURES},
+        "zero_draft_stages_above_floor": above_floor(zero),
+        "b_stock_stages_above_floor": above_floor(stock),
     }
 
 

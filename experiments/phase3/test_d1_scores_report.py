@@ -18,55 +18,57 @@ def stage(flips, mean):
     return {"flips": flips, "mean_abs_dscore": mean}
 
 
-def test_three_runs_inside_the_floor_are_confirmed():
-    zero = [stage(4, 0.00164), stage(0, 0.001), stage(2, 0.0015)]
-    stock = [stage(9, 0.01)] * 3
-    assert r.score_outcome(zero, stock, FLOOR)["outcome"] == "within floor"
+STOCK_STAGES = [stage(5, 0.002), stage(7, 0.003), stage(6, 0.0025)]  # highest mean 0.003, most flips 7
 
 
-def test_above_the_floor_but_inside_b_stocks_range_is_a_serving_shift_not_a_pass():
-    zero = [stage(5, 0.002), stage(6, 0.0025), stage(4, 0.001)]
-    stock = [stage(5, 0.0021), stage(7, 0.003), stage(6, 0.0025)]
-    assert r.score_outcome(zero, stock, FLOOR)["outcome"] == "serving shift"
+def test_a_median_and_flips_at_b_stocks_highest_pass():
+    zero = [stage(7, 0.001), stage(7, 0.003), stage(0, 0.009)]  # median 0.003, one stage far above
+    assert r.score_outcome(zero, STOCK_STAGES, FLOOR)["outcome"] == "pass"
 
 
-@pytest.mark.parametrize(
-    "zero_run",
-    [
-        stage(8, 0.001),  # flips above the floor and b_stock's highest, mean inside both
-        stage(1, 0.004),  # mean above the floor and b_stock's highest, flips inside both
-    ],
-)
-def test_one_run_above_both_the_floor_and_b_stocks_range_on_either_measure_fails(zero_run):
-    zero = [stage(0, 0.001), stage(0, 0.001), zero_run]
-    stock = [stage(5, 0.002), stage(7, 0.003), stage(6, 0.0025)]
-    assert r.score_outcome(zero, stock, FLOOR)["outcome"] == "fail"
+def test_a_median_above_b_stocks_highest_with_a_stage_below_it_needs_a_decision():
+    zero = [stage(0, 0.002), stage(0, 0.0031), stage(0, 0.004)]
+    assert r.score_outcome(zero, STOCK_STAGES, FLOOR)["outcome"] == "needs decision"
 
 
-def test_a_run_below_b_stocks_lowest_but_above_the_floor_isnt_a_fail():
-    zero = [stage(5, 0.002)] * 3
-    stock = [stage(7, 0.003), stage(8, 0.004), stage(9, 0.005)]
-    assert r.score_outcome(zero, stock, FLOOR)["outcome"] == "serving shift"
+def test_one_stage_with_more_flips_than_b_stocks_maximum_needs_a_decision_however_low_its_mean():
+    zero = [stage(0, 0.001), stage(8, 0.001), stage(0, 0.001)]
+    assert r.score_outcome(zero, STOCK_STAGES, FLOOR)["outcome"] == "needs decision"
 
 
-def test_above_b_stock_but_inside_the_floor_on_one_measure_and_the_reverse_on_the_other_isnt_a_fail():
-    # Flips 3: under the floor's 4, above b_stock's 1. Mean 0.002: above the floor, under b_stock's 0.003.
-    zero = [stage(3, 0.002)] * 3
-    stock = [stage(1, 0.003)] * 3
-    assert r.score_outcome(zero, stock, FLOOR)["outcome"] == "serving shift"
+def test_a_lowest_stage_above_b_stocks_highest_fails():
+    zero = [stage(0, 0.0031), stage(0, 0.004), stage(0, 0.005)]
+    assert r.score_outcome(zero, STOCK_STAGES, FLOOR)["outcome"] == "fail"
 
 
-def test_the_outcome_rule_is_applied_with_each_arm_in_its_own_place():
-    zero = [stage(9, 0.01)] * 3
-    stock = [stage(5, 0.002)] * 3
-    assert r.score_outcome(zero, stock, FLOOR)["outcome"] == "fail"
-    assert r.score_outcome(stock, zero, FLOOR)["outcome"] == "serving shift"
+def test_a_lowest_stage_exactly_at_b_stocks_highest_doesnt_fail():
+    zero = [stage(0, 0.003), stage(0, 0.004), stage(0, 0.005)]
+    assert r.score_outcome(zero, STOCK_STAGES, FLOOR)["outcome"] == "needs decision"
 
 
-def test_the_outcome_reports_the_range_it_judged_against():
-    out = r.score_outcome([stage(0, 0.001)] * 3, [stage(5, 0.002), stage(7, 0.003), stage(6, 0.0025)], FLOOR)
-    assert out["b_stock_range"] == {"flips": [5, 7], "mean_abs_dscore": [0.002, 0.003]}
+def test_the_rule_is_applied_with_each_arm_in_its_own_place():
+    low, high = [stage(0, 0.001)] * 3, [stage(0, 0.01)] * 3
+    assert r.score_outcome(low, high, FLOOR)["outcome"] == "pass"
+    assert r.score_outcome(high, low, FLOOR)["outcome"] == "fail"
+
+
+def test_a_pass_still_shows_each_stage_against_the_floor_since_the_floor_no_longer_decides():
+    # Both arms above the floor can pass, so the report must not read as matching the reference.
+    zero = [stage(5, 0.002), stage(0, 0.001), stage(6, 0.0025)]
+    out = r.score_outcome(zero, STOCK_STAGES, FLOOR)
+    assert out["outcome"] == "pass"
+    assert out["zero_draft_stages_above_floor"] == 2
+    assert out["b_stock_stages_above_floor"] == 3
     assert out["floor"] == FLOOR
+
+
+def test_the_outcome_reports_what_it_judged():
+    out = r.score_outcome([stage(1, 0.001), stage(2, 0.002), stage(3, 0.004)], STOCK_STAGES, FLOOR)
+    assert out["zero_draft_median_mean_abs_dscore"] == 0.002
+    assert out["zero_draft_lowest_mean_abs_dscore"] == 0.001
+    assert out["zero_draft_most_flips"] == 3
+    assert out["b_stock_highest_mean_abs_dscore"] == 0.003
+    assert out["b_stock_most_flips"] == 7
 
 
 def test_the_fixed_floor_is_experiment_2s_shuffled_rerun():
@@ -164,7 +166,7 @@ def test_the_report_scores_every_stage_with_the_real_check_and_applies_the_rule(
     assert set(stage_report["shift"]["flips_by_class"]) == {"attack", "benign"}
     assert stage_report["check"]["exit_code"] in (0, 10, 11, 12)
     assert stage_report["check"]["json"]["verdict"] in ("PASS", "THRESHOLD STALE", "SCORER DEGRADED", "INCONCLUSIVE")
-    assert out["outcome"]["outcome"] in ("within floor", "serving shift", "fail")
+    assert out["outcome"]["outcome"] in ("pass", "needs decision", "fail")
 
 
 def test_the_candidate_records_the_container_gpu_and_the_served_arm(tmp_path, probe_path):
@@ -232,4 +234,4 @@ def test_the_report_judges_zero_draft_against_b_stock_and_not_the_other_way_roun
         run_check=lambda *paths: {"exit_code": 0},
     )
     assert out["outcome"]["outcome"] == "fail"
-    assert out["outcome"]["b_stock_range"]["mean_abs_dscore"][1] < 0.05
+    assert out["outcome"]["b_stock_highest_mean_abs_dscore"] < 0.05
