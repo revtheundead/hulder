@@ -773,10 +773,10 @@ def collect_env_environ(extra: dict | None = None) -> dict:
 
 def uv_check(attempts: dict[str, dict]) -> dict:
     """`uv pip list` as collect_env runs it, once per set of extra variables, with what collect_env
-    discards: the exit code and the error."""
+    discards: the exit code and the error. A variable set to None is unset."""
     out = {}
     for name, extra in attempts.items():
-        env = collect_env_environ(extra)
+        env = {k: v for k, v in collect_env_environ(extra).items() if v is not None}
         done = subprocess.run(
             [str(Path(IMAGE_UV_DIR) / "uv"), "pip", "list", "--format=freeze"],
             capture_output=True,

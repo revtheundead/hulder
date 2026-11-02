@@ -110,8 +110,8 @@ DOWNLOAD_TIMEOUT_S = 10 * 60
 ENVIRONMENT_TIMEOUT_S = d1_l4.COLLECT_ENV_TIMEOUT_S + 2 * 60
 UV_CHECK_TIMEOUT_S = 2 * 60
 UV_ATTEMPTS = {
-    "as_recorded": {"UV_NO_CACHE": ""},
-    "cache_in_tmp": {"UV_NO_CACHE": "", "UV_CACHE_DIR": "/tmp/uv-cache"},
+    "as_recorded": {"UV_NO_CACHE": None},
+    "cache_in_tmp": {"UV_NO_CACHE": None, "UV_CACHE_DIR": "/tmp/uv-cache"},
     "no_cache": {"UV_NO_CACHE": "1"},
 }
 # The pre-flight: CPU only, on the same image and Volume, before any GPU is asked for.
