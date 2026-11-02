@@ -92,6 +92,7 @@ SUSTAIN_GRACE_S = 30
 UNSUSTAINED = "did not sustain the fixed rate"
 SCORE_OUTPUT_TOKENS = 16  # as the 2070's check, so decode steps share batches with prefills
 COLLECT_ENV_FILE = "collect_env.txt"
+IMAGE_UV_DIR = "/.uv"  # where Modal's uv_sync leaves uv, not on PATH
 # Outside the arm-runs: the GPU query, collect_env, the comparisons and committing the compile cache.
 MEASURE_SLACK_S = 5 * 60
 COLLECT_ENV_TIMEOUT_S = 60  # it took 23 s on the 2070, and this comes out of MEASURE_SLACK_S
@@ -763,12 +764,43 @@ def environment_path(run_id: str) -> Path:
     return Path("d1-env") / run_id / COLLECT_ENV_FILE
 
 
+def collect_env_environ(extra: dict | None = None) -> dict:
+    """The environment `python -m vllm.collect_env` runs in: the image's uv and this venv, with no uv
+    cache, since XDG_CACHE_HOME is on a Volume and uv can't take its lock there (run 20261102T202134Z)."""
+    path = f"{IMAGE_UV_DIR}{os.pathsep}{os.environ['PATH']}"
+    return {**os.environ, "PATH": path, "VIRTUAL_ENV": sys.prefix, "UV_NO_CACHE": "1", **(extra or {})}
+
+
+def uv_check(attempts: dict[str, dict]) -> dict:
+    """`uv pip list` as collect_env runs it, once per set of extra variables, with what collect_env
+    discards: the exit code and the error. A variable set to None is unset."""
+    out = {}
+    for name, extra in attempts.items():
+        env = {k: v for k, v in collect_env_environ(extra).items() if v is not None}
+        done = subprocess.run(
+            [str(Path(IMAGE_UV_DIR) / "uv"), "pip", "list", "--format=freeze"],
+            capture_output=True,
+            text=True,
+            check=False,
+            env=env,
+            stdin=subprocess.DEVNULL,
+        )
+        out[name] = {
+            "returncode": done.returncode,
+            "packages": len(done.stdout.splitlines()),
+            "stderr": done.stderr.strip()[:2000],
+        }
+    return out
+
+
 def record_environment(out: Path, persist: Path, commit, command: list[str] | None = None,
                        timeout_s: float = COLLECT_ENV_TIMEOUT_S) -> dict:  # fmt: skip
     """`python -m vllm.collect_env` as out/collect_env.txt, also written under persist and committed,
     so a function timeout or crash doesn't lose it. Nothing here stops the run: a failure goes in the
     file and the record it returns. Output goes straight to the file and the process has its own
-    group, so a child left holding it open can't hold up the first server."""
+    group, so a child left holding it open can't hold up the first server. With no pip in the venv it
+    falls back to `uv pip list` at 0.30.0 and crashes if that fails (collect_env.py:672), so it gets
+    the image's uv and this venv."""
     path = out / COLLECT_ENV_FILE
     started = time.time()
     record: dict = {"returncode": None}
@@ -780,6 +812,7 @@ def record_environment(out: Path, persist: Path, commit, command: list[str] | No
                 stdout=file,
                 stderr=subprocess.STDOUT,
                 start_new_session=True,
+                env=collect_env_environ(),
             )
         except OSError as error:
             note = f"collect_env couldn't run: {error}"

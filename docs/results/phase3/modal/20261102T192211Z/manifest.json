@@ -1,0 +1,18 @@
+{
+  "run_id": "20261102T192211Z",
+  "experiment": "d1_environment",
+  "commit": "c20e6ed16c96eb5adc377c74e7fd34e7f85df726",
+  "command": "uv run --with modal==1.6.1 modal run experiments/phase3/d1_modal.py --spent-usd 2.34 --environment-only",
+  "modal": "1.6.1",
+  "spent_before_usd": 2.34,
+  "worst_case_usd": 0.1772,
+  "timeout_s": 180,
+  "wall_seconds": 1952.3,
+  "estimated_usd": 0.6744,
+  "nvidia_smi": "NVIDIA L4, GPU-49a4986c-b120-d2f8-328c-ec57a5ceb558, 610.57.04, 23034 MiB",
+  "environment": {
+    "returncode": 1,
+    "note": "collect_env exited 1",
+    "seconds": 11.4
+  }
+}

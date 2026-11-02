@@ -23,6 +23,9 @@ so a mismatch stops it before any GPU time. d1_scores_report.py then scores its 
 
 Each container's first act is `python -m vllm.collect_env`, saved as collect_env.txt with the run's
 files and committed to the Volume under the run id, so a call that fails still leaves it (d1_l4.py).
+`--environment-only` runs just that, on one L4 container, with no model, pre-flight or arm-run.
+`--uv-check-only` runs `uv pip list` as collect_env does on one CPU container, with and without a cache
+directory off the Volume, and prints the error collect_env discards.
 
 The image is capture.py's (uv.lock with the vllm extra, on Python 3.12.14) with vllm-lens 1.3.0
 added, and the weights come from the hulder-hf Volume, so the Hub is offline in the container.
@@ -103,6 +106,14 @@ def measure_timeout_s(experiment: str) -> float:
 
 # The weights are on the Volume already, so the download only checks them; 8 GB fetched fresh fits too.
 DOWNLOAD_TIMEOUT_S = 10 * 60
+# collect_env's own timeout and a minute either side for nvidia-smi and the Volume commit.
+ENVIRONMENT_TIMEOUT_S = d1_l4.COLLECT_ENV_TIMEOUT_S + 2 * 60
+UV_CHECK_TIMEOUT_S = 2 * 60
+UV_ATTEMPTS = {
+    "as_recorded": {"UV_NO_CACHE": None},
+    "cache_in_tmp": {"UV_NO_CACHE": None, "UV_CACHE_DIR": "/tmp/uv-cache"},
+    "no_cache": {"UV_NO_CACHE": "1"},
+}
 # The pre-flight: CPU only, on the same image and Volume, before any GPU is asked for.
 PREFLIGHT_CPU, PREFLIGHT_MEMORY_GIB, PREFLIGHT_TIMEOUT_S = 2.0, 8, 10 * 60
 
@@ -174,6 +185,15 @@ def preflight(score: dict | None = None) -> dict:
     return {"facts": d1_l4.preflight(MODEL, REVISION, score), "packages": d1_l4.installed_packages()}
 
 
+def nvidia_smi() -> str:
+    return subprocess.run(
+        ["nvidia-smi", "--query-gpu=name,uuid,driver_version,memory.total", "--format=csv,noheader"],
+        capture_output=True,
+        text=True,
+        check=False,
+    ).stdout.strip()
+
+
 @app.function(
     gpu="L4",
     cpu=lib.GPU_CPU,
@@ -188,12 +208,7 @@ def measure(workload: dict, experiment: str, run_id: str) -> dict:
     os.environ.update({**CACHE_ENV, **ENGINE_ENV})
     from huggingface_hub import snapshot_download
 
-    gpu = subprocess.run(
-        ["nvidia-smi", "--query-gpu=name,uuid,driver_version,memory.total", "--format=csv,noheader"],
-        capture_output=True,
-        text=True,
-        check=False,
-    ).stdout.strip()
+    gpu = nvidia_smi()
     cfg = {**CFG, "tokenizer": snapshot_download(MODEL, revision=REVISION, local_files_only=True)}
     returned = d1_l4.in_container(
         cfg,
@@ -205,6 +220,42 @@ def measure(workload: dict, experiment: str, run_id: str) -> dict:
         hf.commit,
     )
     return {**returned, "nvidia_smi": gpu}
+
+
+@app.function(
+    gpu="L4",
+    cpu=lib.GPU_CPU,
+    memory=lib.GPU_MEMORY_GIB * 1024,
+    volumes={CACHE: hf},
+    timeout=ENVIRONMENT_TIMEOUT_S,
+    retries=0,
+    scaledown_window=2,
+)
+def environment(run_id: str) -> dict:
+    """measure's first act alone, in the same environment."""
+    os.environ.update({**CACHE_ENV, **ENGINE_ENV})
+    out = Path("/tmp/d1")
+    out.mkdir(parents=True, exist_ok=True)
+    persist = (Path(CACHE) / d1_l4.environment_path(run_id)).parent
+    record = d1_l4.record_environment(out, persist, hf.commit)
+    return {"environment": record, "file": (out / d1_l4.COLLECT_ENV_FILE).read_bytes(), "nvidia_smi": nvidia_smi()}
+
+
+@app.function(
+    cpu=PREFLIGHT_CPU,
+    memory=PREFLIGHT_MEMORY_GIB * 1024,
+    volumes={CACHE: hf},
+    timeout=UV_CHECK_TIMEOUT_S,
+    retries=0,
+)
+def uv_check() -> dict:
+    """d1_l4.uv_check in measure's environment."""
+    os.environ.update({**CACHE_ENV, **ENGINE_ENV})
+    return {
+        "uv": subprocess.run(["ls", "-l", "/.uv/uv"], capture_output=True, text=True, check=False).stdout.strip(),
+        "xdg_cache_home": os.environ["XDG_CACHE_HOME"],
+        "attempts": d1_l4.uv_check(UV_ATTEMPTS),
+    }
 
 
 def git(*args: str) -> str:
@@ -248,14 +299,95 @@ def worst_case_usd(experiment: str) -> float:
     )
 
 
+def run_uv_check(spent_usd: float, out: str) -> None:
+    """One CPU container's uv check, with its own guard and manifest."""
+    worst = lib.estimate_cost(
+        UV_CHECK_TIMEOUT_S + lib.CONTAINER_STARTUP_S, gpu=False, cpu=PREFLIGHT_CPU, memory_gib=PREFLIGHT_MEMORY_GIB
+    )
+    if spent_usd + worst > lib.BUDGET_USD:
+        raise SystemExit(f"today's ${spent_usd} plus the worst case ${worst:.2f} would pass ${lib.BUDGET_USD}")
+    run_id = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    run_dir = ROOT / out / run_id
+    run_dir.mkdir(parents=True)
+    commit = git("rev-parse", "HEAD")
+    start = time.time()
+    returned = uv_check.remote()
+    wall = time.time() - start
+    manifest = {
+        "run_id": run_id,
+        "experiment": "d1_uv_check",
+        "commit": commit,
+        "command": f"uv run --with modal==1.6.1 modal run experiments/phase3/d1_modal.py --spent-usd {spent_usd} --uv-check-only",
+        "modal": modal.__version__,
+        "spent_before_usd": spent_usd,
+        "worst_case_usd": round(worst, 4),
+        "timeout_s": UV_CHECK_TIMEOUT_S,
+        "wall_seconds": round(wall, 1),
+        "estimated_usd": round(
+            lib.estimate_cost(wall, gpu=False, cpu=PREFLIGHT_CPU, memory_gib=PREFLIGHT_MEMORY_GIB), 4
+        ),
+        **returned,
+    }
+    (run_dir / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+    print(json.dumps(manifest, indent=2))
+
+
+def run_environment(spent_usd: float, out: str) -> None:
+    """One L4 container's environment record, with its own guard and manifest."""
+    worst = lib.estimate_cost(
+        ENVIRONMENT_TIMEOUT_S + lib.CONTAINER_STARTUP_S, gpu=True, cpu=lib.GPU_CPU, memory_gib=lib.GPU_MEMORY_GIB
+    )
+    if spent_usd + worst > lib.BUDGET_USD:
+        raise SystemExit(f"today's ${spent_usd} plus the worst case ${worst:.2f} would pass ${lib.BUDGET_USD}")
+    run_id = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    run_dir = ROOT / out / run_id
+    run_dir.mkdir(parents=True)
+    commit = git("rev-parse", "HEAD")
+    start = time.time()
+    returned = environment.remote(run_id)
+    wall = time.time() - start
+    estimated = round(lib.estimate_cost(wall, gpu=True, cpu=lib.GPU_CPU, memory_gib=lib.GPU_MEMORY_GIB), 4)
+    (run_dir / d1_l4.COLLECT_ENV_FILE).write_bytes(returned["file"])
+    manifest = {
+        "run_id": run_id,
+        "experiment": "d1_environment",
+        "commit": commit,
+        "command": "uv run --with modal==1.6.1 modal run experiments/phase3/d1_modal.py "
+        f"--spent-usd {spent_usd} --environment-only",
+        "modal": modal.__version__,
+        "spent_before_usd": spent_usd,
+        "worst_case_usd": round(worst, 4),
+        "timeout_s": ENVIRONMENT_TIMEOUT_S,
+        "wall_seconds": round(wall, 1),
+        "estimated_usd": estimated,
+        "nvidia_smi": returned["nvidia_smi"],
+        "environment": returned["environment"],
+    }
+    (run_dir / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+    print(
+        f"Run {run_id} in {run_dir}: {returned['environment']}, estimated ${estimated}. Check the actual charge on Modal's usage page."
+    )
+
+
 @app.local_entrypoint()
 def main(
-    spent_usd: float, experiment: str = "cost", out: str = ".cache/modal-runs", preflight_only: bool = False
+    spent_usd: float,
+    experiment: str = "cost",
+    out: str = ".cache/modal-runs",
+    preflight_only: bool = False,
+    environment_only: bool = False,
+    uv_check_only: bool = False,
 ) -> None:
     if experiment not in EXPERIMENTS:
         raise SystemExit(f"--experiment is one of {', '.join(EXPERIMENTS)}, not {experiment}")
     if git("status", "--porcelain", "--untracked-files=no"):
         raise SystemExit("the tracked tree has changes; commit them so the manifest's commit is what ran")
+    if uv_check_only:
+        run_uv_check(spent_usd, out)
+        return
+    if environment_only:
+        run_environment(spent_usd, out)
+        return
     worst = (
         download_worst_case_usd() + preflight_worst_case_usd() + (0 if preflight_only else worst_case_usd(experiment))
     )
