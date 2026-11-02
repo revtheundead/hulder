@@ -77,6 +77,21 @@ Every run gets PASS from `hulder check`, and every run's shift exceeds the floor
 
 The 32-prompt check's two B servers matched bit for bit at concurrency 8, so it was too small to show this. The likely cause is that request arrival timing changes which prompts share a step from one server start to the next, the batch-composition effect in docs/design.md §5, which keeps capture at a fixed batch composition. That's not verified here. It means a served score moves between server starts by about as much as zero-draft moves it, and that the bundled rerun floor, captured at a fixed batch composition, understates serving's own noise.
 
+**Zero-draft relies on async scheduling (2026-11-02).** vLLM 0.30.0 turns async scheduling on by default for `extract_hidden_states`, and the results above and on the L4 ran at that default. With `--no-async-scheduling`, zero-draft drafts exactly as much as plain B, and its log has no warning about it. Results are in [`d1_zero_draft_sync.json`](d1_zero_draft_sync.json), from the 32 generation prompts at 16 tokens each, at `4ef47ad6dd4e`.
+
+```bash
+source scripts/dev-env.sh && uv run python experiments/phase3/d1_local.py --zero-draft-sync --out .cache/d1-zero-draft-sync
+```
+
+| Server | Async scheduling | Draft tokens, one at a time | Draft tokens, concurrency 8 | Accepted, each |
+|---|---|---|---|---|
+| B | On, the default | 479 | 479 | 1 |
+| B | Off | 479 | 479 | 1 |
+| Zero-draft | On, the default | 0 | 0 | 0 |
+| Zero-draft | Off | **479** | **479** | 1 |
+
+All four servers ran on V2. The cause isn't confirmed by a trace, but the result fits the code, where with async scheduling off the engine core sets draft tokens from the model runner after each step (`v1/engine/core.py:621-628`, `v1/core/sched/scheduler.py:2420-2423`). Each server's `/server_info` gave the resolved setting shown in the table, and it matched what `d1_l4.py` reads from the log in all four. All 32 replies matched between zero-draft on and off, and so did every saved hidden state, in both phases.
+
 ## Where this falls short
 
 - Overhead isn't measured. Throughput and latency on the 2070 aren't representative (docs/design.md §8.1).

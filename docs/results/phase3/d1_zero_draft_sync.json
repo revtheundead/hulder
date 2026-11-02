@@ -1,0 +1,181 @@
+{
+  "zero_draft_sync": {
+    "arms": {
+      "b_async": {
+        "resolved_async_scheduling": true,
+        "sequential": {
+          "steps": 511,
+          "tokens": 2360,
+          "draft_tokens": 479,
+          "accepted_tokens": 1
+        },
+        "concurrent": {
+          "steps": 68,
+          "tokens": 2360,
+          "draft_tokens": 479,
+          "accepted_tokens": 1
+        },
+        "startup": {
+          "kv_cache_tokens": 78416,
+          "max_concurrency": 76.58,
+          "model_runner": "V2",
+          "scheduled_token_budget": 2048,
+          "async_scheduling": true
+        }
+      },
+      "b_sync": {
+        "resolved_async_scheduling": false,
+        "sequential": {
+          "steps": 511,
+          "tokens": 2360,
+          "draft_tokens": 479,
+          "accepted_tokens": 1
+        },
+        "concurrent": {
+          "steps": 68,
+          "tokens": 2360,
+          "draft_tokens": 479,
+          "accepted_tokens": 1
+        },
+        "startup": {
+          "kv_cache_tokens": 53776,
+          "max_concurrency": 52.52,
+          "model_runner": "V2",
+          "scheduled_token_budget": 2048,
+          "async_scheduling": false
+        }
+      },
+      "zero_draft_async": {
+        "resolved_async_scheduling": true,
+        "sequential": {
+          "steps": 512,
+          "tokens": 2360,
+          "draft_tokens": 0,
+          "accepted_tokens": 0
+        },
+        "concurrent": {
+          "steps": 68,
+          "tokens": 2360,
+          "draft_tokens": 0,
+          "accepted_tokens": 0
+        },
+        "startup": {
+          "kv_cache_tokens": 78416,
+          "max_concurrency": 76.58,
+          "model_runner": "V2",
+          "scheduled_token_budget": 2048,
+          "async_scheduling": true
+        }
+      },
+      "zero_draft_sync": {
+        "resolved_async_scheduling": false,
+        "sequential": {
+          "steps": 511,
+          "tokens": 2360,
+          "draft_tokens": 479,
+          "accepted_tokens": 1
+        },
+        "concurrent": {
+          "steps": 68,
+          "tokens": 2360,
+          "draft_tokens": 479,
+          "accepted_tokens": 1
+        },
+        "startup": {
+          "kv_cache_tokens": 78416,
+          "max_concurrency": 76.58,
+          "model_runner": "V2",
+          "scheduled_token_budget": 2048,
+          "async_scheduling": false
+        }
+      }
+    },
+    "b_async_vs_zero_draft_async": {
+      "sequential": {
+        "of": 32,
+        "token_ids_identical": 32,
+        "hidden_states_identical": 32,
+        "shape": [
+          45,
+          1,
+          1536
+        ],
+        "max_abs_difference": 0.0,
+        "last_position_max_abs_difference": 0.0,
+        "replies_identical": 32
+      },
+      "concurrent": {
+        "of": 32,
+        "token_ids_identical": 32,
+        "hidden_states_identical": 24,
+        "shape": [
+          45,
+          1,
+          1536
+        ],
+        "max_abs_difference": 4.0,
+        "last_position_max_abs_difference": 0.03125,
+        "replies_identical": 32
+      }
+    },
+    "zero_draft_async_vs_zero_draft_sync": {
+      "sequential": {
+        "of": 32,
+        "token_ids_identical": 32,
+        "hidden_states_identical": 32,
+        "shape": [
+          45,
+          1,
+          1536
+        ],
+        "max_abs_difference": 0.0,
+        "last_position_max_abs_difference": 0.0,
+        "replies_identical": 32
+      },
+      "concurrent": {
+        "of": 32,
+        "token_ids_identical": 32,
+        "hidden_states_identical": 32,
+        "shape": [
+          45,
+          1,
+          1536
+        ],
+        "max_abs_difference": 0.0,
+        "last_position_max_abs_difference": 0.0,
+        "replies_identical": 32
+      }
+    },
+    "b_sync_vs_zero_draft_sync": {
+      "sequential": {
+        "of": 32,
+        "token_ids_identical": 32,
+        "hidden_states_identical": 32,
+        "shape": [
+          45,
+          1,
+          1536
+        ],
+        "max_abs_difference": 0.0,
+        "last_position_max_abs_difference": 0.0,
+        "replies_identical": 32
+      },
+      "concurrent": {
+        "of": 32,
+        "token_ids_identical": 32,
+        "hidden_states_identical": 32,
+        "shape": [
+          45,
+          1,
+          1536
+        ],
+        "max_abs_difference": 0.0,
+        "last_position_max_abs_difference": 0.0,
+        "replies_identical": 32
+      }
+    }
+  },
+  "versions": {
+    "vllm": "0.30.0"
+  }
+}

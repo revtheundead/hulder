@@ -17,6 +17,7 @@ token with logprobs, so plain against B can be set against plain against plain.
 --no-write smoke-tests the L4 run's B no-op arm (no_write_connector.py).
 --zero-draft runs B with and without num_speculative_tokens_per_batch_size=[[1, 1, 0]], which
 should stop the per-step draft on Model Runner V2, and compares their drafts and saved hidden states.
+--zero-draft-sync repeats --zero-draft's counters for B and zero-draft with async scheduling off.
 --zero-draft-scores scores B and zero-draft, each served three times, against the offline
 reference at concurrency 8, where decode steps share batches with prefills.
 
