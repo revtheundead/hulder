@@ -657,6 +657,16 @@ def test_collect_env_finds_the_images_uv_and_lists_this_environments_packages(tm
     assert venv == sys.prefix
 
 
+def test_the_uv_check_reports_each_environments_exit_code_error_and_package_count(tmp_path, monkeypatch):
+    uv = tmp_path / "uv"
+    uv.write_text('#!/bin/sh\nif [ -n "$FAKE_OK" ]; then echo a==1; echo b==2; else echo "no cache" >&2; exit 2; fi\n')
+    uv.chmod(0o755)
+    monkeypatch.setattr(r, "IMAGE_UV_DIR", str(tmp_path))
+    out = r.uv_check({"as_is": {}, "with_fix": {"FAKE_OK": "1"}})
+    assert out["as_is"] == {"returncode": 2, "packages": 0, "stderr": "no cache"}
+    assert out["with_fix"] == {"returncode": 0, "packages": 2, "stderr": ""}
+
+
 def test_collect_env_fits_in_the_measure_calls_slack_so_the_worst_case_doesnt_move():
     assert r.COLLECT_ENV_TIMEOUT_S == 60
     assert r.MEASURE_SLACK_S == 300

@@ -764,6 +764,34 @@ def environment_path(run_id: str) -> Path:
     return Path("d1-env") / run_id / COLLECT_ENV_FILE
 
 
+def collect_env_environ(extra: dict | None = None) -> dict:
+    """The environment `python -m vllm.collect_env` runs in: the image's uv and this venv."""
+    path = f"{IMAGE_UV_DIR}{os.pathsep}{os.environ['PATH']}"
+    return {**os.environ, "PATH": path, "VIRTUAL_ENV": sys.prefix, **(extra or {})}
+
+
+def uv_check(attempts: dict[str, dict]) -> dict:
+    """`uv pip list` as collect_env runs it, once per set of extra variables, with what collect_env
+    discards: the exit code and the error."""
+    out = {}
+    for name, extra in attempts.items():
+        env = collect_env_environ(extra)
+        done = subprocess.run(
+            [str(Path(IMAGE_UV_DIR) / "uv"), "pip", "list", "--format=freeze"],
+            capture_output=True,
+            text=True,
+            check=False,
+            env=env,
+            stdin=subprocess.DEVNULL,
+        )
+        out[name] = {
+            "returncode": done.returncode,
+            "packages": len(done.stdout.splitlines()),
+            "stderr": done.stderr.strip()[:2000],
+        }
+    return out
+
+
 def record_environment(out: Path, persist: Path, commit, command: list[str] | None = None,
                        timeout_s: float = COLLECT_ENV_TIMEOUT_S) -> dict:  # fmt: skip
     """`python -m vllm.collect_env` as out/collect_env.txt, also written under persist and committed,
@@ -783,11 +811,7 @@ def record_environment(out: Path, persist: Path, commit, command: list[str] | No
                 stdout=file,
                 stderr=subprocess.STDOUT,
                 start_new_session=True,
-                env={
-                    **os.environ,
-                    "PATH": f"{IMAGE_UV_DIR}{os.pathsep}{os.environ['PATH']}",
-                    "VIRTUAL_ENV": sys.prefix,
-                },
+                env=collect_env_environ(),
             )
         except OSError as error:
             note = f"collect_env couldn't run: {error}"
