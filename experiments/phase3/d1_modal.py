@@ -16,6 +16,14 @@ request 128 output tokens with EOS ignored. 4 arms over 3 rounds.
 round without the fixed-rate bench and three full rounds. Its measure call gets its own timeout, and
 the guard counts that one, from the same arm-run timeouts.
 
+`--experiment confirmation` runs the baseline, b_stock and zero-draft B the same way, with a score
+stage on both B arms in rounds 1 to 3 (d1_l4.py) and a 4.5 minute cold start, since the compile caches
+are on the Volume. Its pre-flight templates the 2,101 calibration prompts on CPU against kept/'s tokens,
+so a mismatch stops it before any GPU time. d1_scores_report.py then scores its stages locally.
+
+Each container's first act is `python -m vllm.collect_env`, saved as collect_env.txt with the run's
+files and committed to the Volume under the run id, so a call that fails still leaves it (d1_l4.py).
+
 The image is capture.py's (uv.lock with the vllm extra, on Python 3.12.14) with vllm-lens 1.3.0
 added, and the weights come from the hulder-hf Volume, so the Hub is offline in the container.
 
@@ -76,18 +84,21 @@ CFG = {
 }  # fmt: skip
 WORKLOAD = {"gen_tokens": 64, "saturation_prompts": 300, "fixed_seconds": 75, "output_len": 128}
 N_GENERATE = 16
-EXPERIMENTS = {"cost": d1_l4.COST, "zero_draft": d1_l4.ZERO_DRAFT}
+EXPERIMENTS = {"cost": d1_l4.COST, "zero_draft": d1_l4.ZERO_DRAFT, "confirmation": d1_l4.CONFIRMATION}
+RUN_NAMES = {"cost": "d1_cost", "zero_draft": "d1_zero_draft", "confirmation": "d1_confirmation"}
+KEPT_TOKEN_IDS = ROOT / ".cache" / "modal-runs" / "20261022T125644Z" / "kept" / lib.TOKEN_IDS_FILE
 # From run 20261030T191447Z's baseline: a cold start of 386.6 s, 174 s of it compiling. At this
 # workload its measurement is about 185 s: 39 s of greedy replies, about 24 s for each bench's own
 # process to start, 16 s of saturation, 75 s at the fixed rate and a few seconds' drain.
 TIMEOUTS = d1_l4.Timeouts(cold_startup=8 * 60, warm_startup=270, measure=4 * 60)
-# Outside the arm-runs: the GPU query, the comparisons and committing the compile cache.
-MEASURE_SLACK_S = 5 * 60
+
+
+def timeouts_for(experiment: str) -> d1_l4.Timeouts:
+    return d1_l4.CONFIRMATION_TIMEOUTS if experiment == "confirmation" else TIMEOUTS
 
 
 def measure_timeout_s(experiment: str) -> float:
-    arms, rounds, _ = EXPERIMENTS[experiment]
-    return d1_l4.worst_case_seconds(TIMEOUTS, rounds, arms) + MEASURE_SLACK_S
+    return d1_l4.measure_call_seconds(EXPERIMENTS[experiment], timeouts_for(experiment))
 
 
 # The weights are on the Volume already, so the download only checks them; 8 GB fetched fresh fits too.
@@ -156,11 +167,11 @@ def download() -> dict:
     timeout=PREFLIGHT_TIMEOUT_S,
     retries=0,
 )
-def preflight() -> dict:
+def preflight(score: dict | None = None) -> dict:
     """d1_l4.preflight on this image with the Volume's HF cache and the Hub offline, as measure
     runs, and the image's package list."""
     os.environ.update({**CACHE_ENV, **ENGINE_ENV})
-    return {"facts": d1_l4.preflight(MODEL, REVISION), "packages": d1_l4.installed_packages()}
+    return {"facts": d1_l4.preflight(MODEL, REVISION, score), "packages": d1_l4.installed_packages()}
 
 
 @app.function(
@@ -172,7 +183,7 @@ def preflight() -> dict:
     retries=0,
     scaledown_window=2,
 )
-def measure(workload: dict, experiment: str) -> dict:
+def measure(workload: dict, experiment: str, run_id: str) -> dict:
     """Every arm-run of d1_l4's schedule, then the results and every log."""
     os.environ.update({**CACHE_ENV, **ENGINE_ENV})
     from huggingface_hub import snapshot_download
@@ -184,26 +195,33 @@ def measure(workload: dict, experiment: str) -> dict:
         check=False,
     ).stdout.strip()
     cfg = {**CFG, "tokenizer": snapshot_download(MODEL, revision=REVISION, local_files_only=True)}
-    out = Path("/tmp/d1")
-    out.mkdir(parents=True)
-    (out / "packages.txt").write_text(d1_l4.installed_packages())
-    results = d1_l4.run_all(cfg, workload, out, EXPERIMENTS[experiment], timeouts=TIMEOUTS)
-    hf.commit()  # compile caches, for later runs
-    files = {str(p.relative_to(out)): p.read_bytes() for p in sorted(out.rglob("*")) if p.is_file()}
-    return {"results": results, "nvidia_smi": gpu, "files": files}
+    returned = d1_l4.in_container(
+        cfg,
+        workload,
+        Path("/tmp/d1"),
+        EXPERIMENTS[experiment],
+        timeouts_for(experiment),
+        (Path(CACHE) / d1_l4.environment_path(run_id)).parent,
+        hf.commit,
+    )
+    return {**returned, "nvidia_smi": gpu}
 
 
 def git(*args: str) -> str:
     return subprocess.run(["git", *args], cwd=ROOT, capture_output=True, text=True, check=True).stdout.strip()
 
 
-def workload() -> dict:
+def workload(experiment: str = "cost") -> dict:
     import pandas as pd
 
     rows = pd.read_parquet(lib.SLABS_SPLITS, columns=["id", "split", "text"])
     calibration = rows[rows["split"] == "calibration"].sort_values("id", kind="stable")
     texts = [str(t) for t in calibration["text"]]
-    return {**WORKLOAD, "gen_prompts": texts[:N_GENERATE], "bench_prompts": texts}
+    out = {**WORKLOAD, "gen_prompts": texts[:N_GENERATE], "bench_prompts": texts}
+    if EXPERIMENTS[experiment].scored_arms:
+        tokens = dict(zip(*lib.load_token_ids(KEPT_TOKEN_IDS), strict=True))
+        out |= d1_l4.score_workload([str(i) for i in calibration["id"]], texts, tokens)
+    return out
 
 
 def download_worst_case_usd() -> float:
@@ -247,7 +265,10 @@ def main(
     run_dir = ROOT / out / run_id
     run_dir.mkdir(parents=True)
     measure_call_s = measure_timeout_s(experiment)
-    name = "d1_cost" if experiment == "cost" else "d1_zero_draft"
+    name = RUN_NAMES[experiment]
+    the_workload = workload(experiment)
+    score = {k: v for k, v in the_workload.items() if k.startswith("score_")} or None
+    timeouts = timeouts_for(experiment)
     manifest = {
         "run_id": run_id,
         "experiment": f"{name}_preflight" if preflight_only else name,
@@ -265,7 +286,10 @@ def main(
         "arms": EXPERIMENTS[experiment].arms,
         "rounds": EXPERIMENTS[experiment].rounds,
         "calibration_rounds": EXPERIMENTS[experiment].calibration_rounds,
-        "timeouts_s": {**TIMEOUTS._asdict(), "stop_grace": d1_l4.STOP_GRACE_S, "measure_call": measure_call_s},
+        "scored_arms": EXPERIMENTS[experiment].scored_arms,
+        "score_concurrency": the_workload.get("score_concurrency"),
+        "score_output_tokens": the_workload.get("score_output_tokens"),
+        "timeouts_s": {**timeouts._asdict(), "stop_grace": d1_l4.STOP_GRACE_S, "measure_call": measure_call_s},
     }
 
     def record() -> None:
@@ -280,7 +304,7 @@ def main(
     )
     record()
     start = time.time()
-    checked = preflight.remote()
+    checked = preflight.remote(score)
     wall = time.time() - start
     manifest["preflight"] = {
         **checked["facts"],
@@ -298,7 +322,7 @@ def main(
         return
     start = time.time()
     try:
-        returned = measure.with_options(timeout=int(measure_call_s)).remote(workload(), experiment)
+        returned = measure.with_options(timeout=int(measure_call_s)).remote(the_workload, experiment, run_id)
     except Exception as error:
         # Recorded before re-raising, so a failed call still leaves its wall time and estimate.
         wall = time.time() - start
@@ -308,6 +332,8 @@ def main(
                 lib.estimate_cost(wall, gpu=True, cpu=lib.GPU_CPU, memory_gib=lib.GPU_MEMORY_GIB), 4
             ),
             "error": f"{type(error).__name__}: {error}",
+            # What measure would have returned is lost, but the environment record was committed.
+            "environment_recovered": d1_l4.recover_environment(hf.read_file, run_id, run_dir),
         }
         manifest["estimated_usd"] = round(
             manifest["download"]["estimated_usd"]
@@ -324,6 +350,7 @@ def main(
         "nvidia_smi": returned["nvidia_smi"],
         "model_runners": d1_l4.model_runners(returned["results"]),
         "async_scheduling": d1_l4.async_scheduling(returned["results"]),
+        "environment": returned["environment"],
     }
     manifest["estimated_usd"] = round(
         manifest["download"]["estimated_usd"]
@@ -336,7 +363,8 @@ def main(
         (run_dir / name).write_bytes(data)
     (run_dir / "d1_l4.json").write_text(json.dumps(returned["results"], indent=2, default=str) + "\n")
     record()
-    print(json.dumps({k: returned["results"][k] for k in ("stopped", "verdicts", "divergences")}, indent=2))
+    keys = ("stopped", "verdicts", "stock_vs_zero_draft", "divergences")
+    print(json.dumps({k: returned["results"].get(k) for k in keys}, indent=2))
     print(
         f"Run {run_id} in {run_dir}, estimated ${manifest['estimated_usd']}. Check the actual charge on Modal's usage page."
     )

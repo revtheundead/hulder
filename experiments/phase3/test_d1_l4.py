@@ -844,3 +844,41 @@ def test_a_connector_file_holding_other_tokens_stops_the_run_instead_of_crashing
     fake_server(monkeypatch, acts_error=ValueError("the file's token ids aren't the prompt's"))
     with pytest.raises(RuntimeError, match="doesn't match its prompt"):
         r.score_stage("url", {"model": "m"}, SCORE_WORKLOAD, 1, tmp_path, 60)
+
+
+class FakeTokenizer:
+    """Tokens are each word's length, after a template that shows its arguments."""
+
+    def apply_chat_template(self, messages, tokenize, add_generation_prompt, enable_thinking):
+        assert tokenize is False and add_generation_prompt is True and enable_thinking is False
+        return " ".join(m["content"] for m in messages)
+
+    def __call__(self, text, add_special_tokens):
+        assert add_special_tokens is False
+        return {"input_ids": [len(word) for word in text.split()]}
+
+
+SYSTEM_TOKENS = [len(word) for word in d1_local.SYSTEM_PROMPT.split()]
+
+
+def test_the_preflight_passes_prompts_that_template_to_their_expected_tokens():
+    expected = [[*SYSTEM_TOKENS, 3], [*SYSTEM_TOKENS, 2, 2]]
+    assert r.check_templated(FakeTokenizer(), ["abc", "ab cd"], expected) == 2
+
+
+def test_the_preflight_stops_on_a_template_mismatch_before_any_gpu_time():
+    with pytest.raises(RuntimeError, match="prompt 1 templates to other tokens"):
+        r.check_templated(FakeTokenizer(), ["abc", "ab cd"], [[*SYSTEM_TOKENS, 3], [*SYSTEM_TOKENS, 9]])
+
+
+def test_the_score_workload_takes_each_prompts_tokens_from_kept_and_refuses_a_missing_one():
+    workload = r.score_workload(["a", "b"], ["text a", "text b"], {"a": [1], "b": [2, 3], "other": [9]})
+    assert workload == {
+        "score_ids": ["a", "b"],
+        "score_prompts": ["text a", "text b"],
+        "score_tokens": [[1], [2, 3]],
+        "score_output_tokens": 16,
+        "score_concurrency": 64,
+    }
+    with pytest.raises(KeyError):
+        r.score_workload(["a", "missing"], ["text a", "text b"], {"a": [1]})

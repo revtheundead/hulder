@@ -12,6 +12,11 @@ running its greedy check and saturation bench only, and the fixed rate is 70% of
 saturation. Later rounds run all three, so throughput pairs one round more than latency. Its stop
 rules add a b_zero_draft arm-run off V2, where the setting doesn't work, or with any draft tokens.
 
+A third, CONFIRMATION, adds b_stock to that, so the two B arms' cost is paired by round in one
+container. After the fixed-rate bench in every later round, both B arms run a score stage (score_stage),
+and a stage stops the run on other tokens than expected, too few rows, a non-finite activation or its
+timeout. A b_stock arm-run with no drafts also stops it. d1_scores_report.py reads the stages.
+
 Each arm-run records the GPU's free memory before the server starts, the server's KV-cache size
 and maximum concurrency, a greedy generation check, a saturation bench (throughput), a fixed-rate
 bench at 70% of round 0's baseline saturation rate (TTFT and TPOT), the peak running requests and
@@ -39,7 +44,8 @@ small model and a tiny workload, needs vllm-lens layered on:
     uv run --with vllm-lens==1.3.0 python experiments/phase3/d1_l4.py --smoke --out .cache/d1-l4-smoke
 
 --smoke --zero-draft does the same for the zero-draft experiment, with a calibration round and one
-more, and without vllm-lens.
+more, and without vllm-lens. --smoke --confirmation does the same for the confirmation run, and
+d1_scores_report.py --smoke scores its stages.
 """
 
 import argparse
@@ -84,6 +90,7 @@ STOP_GRACE_S = 30  # from SIGTERM to SIGKILL when a server is stopped
 # 128-token replies at an eager 60 ms a token. One that hasn't did not sustain the rate.
 SUSTAIN_GRACE_S = 30
 UNSUSTAINED = "did not sustain the fixed rate"
+SCORE_OUTPUT_TOKENS = 16  # as the 2070's check, so decode steps share batches with prefills
 COLLECT_ENV_FILE = "collect_env.txt"
 # Outside the arm-runs: the GPU query, collect_env, the comparisons and committing the compile cache.
 MEASURE_SLACK_S = 5 * 60
@@ -357,10 +364,34 @@ def installed_packages() -> str:
     return "\n".join(sorted(lines, key=str.lower)) + "\n"
 
 
-def preflight(model: str, revision: str) -> dict:
+def score_workload(ids: list[str], texts: list[str], tokens_by_id: dict, concurrency: int = 64) -> dict:
+    """A score stage's prompts with the tokens the offline capture recorded for each."""
+    return {
+        "score_ids": list(ids),
+        "score_prompts": list(texts),
+        "score_tokens": [list(tokens_by_id[i]) for i in ids],
+        "score_output_tokens": SCORE_OUTPUT_TOKENS,
+        "score_concurrency": concurrency,
+    }
+
+
+def check_templated(tokenizer, texts: list[str], expected: list[list[int]]) -> int:
+    """How many prompts template to their expected tokens, as a score stage's requests do. Raises
+    RuntimeError at the first that doesn't, so a template mismatch costs no GPU time."""
+    for i, (text, tokens) in enumerate(zip(texts, expected, strict=True)):
+        templated = tokenizer.apply_chat_template(
+            d1_local.messages(text), tokenize=False, add_generation_prompt=True, enable_thinking=False
+        )
+        if tokenizer(templated, add_special_tokens=False)["input_ids"] != list(tokens):
+            raise RuntimeError(f"prompt {i} templates to other tokens than expected")
+    return len(texts)
+
+
+def preflight(model: str, revision: str, score: dict | None = None) -> dict:
     """Everything an arm-run needs except a GPU, checked on CPU: the package list, the tokenizer
-    read offline from the HF cache, the imports of the no-op connector and vllm-lens, and the
-    bench command. Raises RuntimeError on the first that fails."""
+    read offline from the HF cache, the imports of the no-op connector and vllm-lens, the bench
+    command, and any score stage's prompts against their expected tokens. Raises RuntimeError on the
+    first that fails."""
     import importlib
 
     from huggingface_hub import snapshot_download
@@ -389,7 +420,9 @@ def preflight(model: str, revision: str) -> dict:
     if bench_help.returncode != 0:
         raise RuntimeError(f"`vllm bench serve --help` exited {bench_help.returncode}: {bench_help.stderr[-500:]}")
     packages = installed_packages()
+    scored = check_templated(tokenizer, score["score_prompts"], score["score_tokens"]) if score else None
     return {
+        "score_prompts_templated": scored,
         "tokenizer_path": path,
         "tokenizer_vocab": len(tokenizer),
         "templated_tokens": len(templated),
@@ -787,7 +820,7 @@ def in_container(cfg: dict, workload: dict, out: Path, experiment: Experiment, t
                  commit, command: list[str] | None = None) -> dict:  # fmt: skip
     """What one container does: the environment record first, the image's packages, every arm-run,
     then the results and every file to return."""
-    out.mkdir(parents=True)
+    out.mkdir(parents=True, exist_ok=True)
     environment = record_environment(out, persist, commit, command)
     (out / "packages.txt").write_text(installed_packages())
     results = run_all(cfg, workload, out, experiment, timeouts)
@@ -820,11 +853,50 @@ SMOKE = {
 }
 
 
+def smoke_confirmation(workload: dict, out: Path, timeouts: Timeouts) -> int:
+    """The confirmation run's whole path on the local GPU, through in_container as a container runs
+    it, with all 360 demo prompts in its score stage, for d1_scores_report.py --smoke. Writes what
+    that report reads: d1_l4.json, each score.npz, and a manifest with no GPU line."""
+    from transformers import AutoTokenizer
+
+    rows = d1_local.prompts()
+    ids, texts = [p["id"] for p in rows], [p["text"] for p in rows]
+    tokenizer = AutoTokenizer.from_pretrained(SMOKE["model"], revision=d1_local.REVISION)
+    templated = [
+        tokenizer(
+            tokenizer.apply_chat_template(
+                d1_local.messages(text), tokenize=False, add_generation_prompt=True, enable_thinking=False
+            ),
+            add_special_tokens=False,
+        )["input_ids"]
+        for text in texts
+    ]
+    workload = {**workload, **score_workload(ids, texts, dict(zip(ids, templated, strict=True)), concurrency=8)}
+    returned = in_container(
+        SMOKE,
+        workload,
+        out,
+        CONFIRMATION._replace(rounds=2),
+        timeouts,
+        out.parent / f"{out.name}-volume",
+        lambda: None,
+    )
+    results = returned["results"]
+    (out / "d1_l4.json").write_text(json.dumps(results, indent=2, default=str) + "\n")
+    (out / "manifest.json").write_text(json.dumps({"environment": returned["environment"]}, indent=2) + "\n")
+    keys = ("stopped", "verdicts", "stock_vs_zero_draft", "divergences")
+    print(json.dumps({k: results.get(k) for k in keys}, indent=2))
+    return 0 if results["stopped"] is None else 1
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--smoke", action="store_true", help="the whole path on the local GPU, tiny workload")
     parser.add_argument(
         "--zero-draft", action="store_true", help="smoke the zero-draft experiment: a calibration round and one more"
+    )
+    parser.add_argument(
+        "--confirmation", action="store_true", help="smoke the confirmation run: a calibration round and one more"
     )
     parser.add_argument("--out", type=Path)
     parser.add_argument(
@@ -847,9 +919,12 @@ def main(argv: list[str] | None = None) -> int:
         "fixed_seconds": 5,
         "output_len": 16,
     }
+    timeouts = Timeouts(900, 900, 900)
+    if args.confirmation:
+        return smoke_confirmation(workload, args.out, timeouts)
     args.out.mkdir(parents=True, exist_ok=True)
     experiment = ZERO_DRAFT._replace(rounds=2) if args.zero_draft else COST._replace(rounds=1)
-    results = run_all(SMOKE, workload, args.out, experiment, timeouts=Timeouts(900, 900, 900))
+    results = run_all(SMOKE, workload, args.out, experiment, timeouts=timeouts)
     (args.out / "d1_l4.json").write_text(json.dumps(results, indent=2, default=str) + "\n")
     print(json.dumps({k: results[k] for k in ("stopped", "verdicts", "divergences")}, indent=2))
     return 0 if results["stopped"] is None else 1
