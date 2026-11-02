@@ -7,6 +7,7 @@ import time
 
 import d1_l4 as r
 import d1_local
+import numpy as np
 import pytest
 
 
@@ -317,7 +318,7 @@ def fake_run_all(monkeypatch, tmp_path, rounds, misbehaving):
     """run_all over a fake run_arm, where misbehaving maps (round, arm) to the run's error fields."""
     monkeypatch.setattr(r.d1_local, "compare_generations", lambda a, b: {"diverged": []})
 
-    def run_arm(arm, rnd, cfg, workload, out, rate, timeouts, calibrate=False):
+    def run_arm(arm, rnd, cfg, workload, out, rate, timeouts, calibrate=False, score=False):
         run = {"arm": arm, "round": rnd, "generate": ["reply"], "saturation": bench_result(), "fixed_rate": 7.0}
         if (rnd, arm) in misbehaving:
             return {**run, **misbehaving[(rnd, arm)]}
@@ -471,7 +472,7 @@ def calibrated_run_all(monkeypatch, tmp_path, misbehaving=()):
     saturation = {"baseline": 20.0, "b_zero_draft": 12.0}
     misbehaving = dict(misbehaving)
 
-    def run_arm(arm, rnd, cfg, workload, out, rate, timeouts, calibrate=False):
+    def run_arm(arm, rnd, cfg, workload, out, rate, timeouts, calibrate=False, score=False):
         calls.append({"arm": arm, "round": rnd, "rate": rate, "calibrate": calibrate})
         result = {
             "arm": arm,
@@ -647,3 +648,199 @@ def test_collect_env_fits_in_the_measure_calls_slack_so_the_worst_case_doesnt_mo
     assert r.COLLECT_ENV_TIMEOUT_S == 60
     assert r.MEASURE_SLACK_S == 300
     assert r.COLLECT_ENV_TIMEOUT_S < r.MEASURE_SLACK_S
+
+
+def test_the_confirmation_run_has_every_arm_in_every_position_over_its_measured_rounds():
+    plan = r.schedule(r.CONFIRMATION.arms, r.CONFIRMATION.rounds)
+    assert plan == [
+        (0, "baseline"), (0, "b_stock"), (0, "b_zero_draft"),
+        (1, "b_stock"), (1, "b_zero_draft"), (1, "baseline"),
+        (2, "b_zero_draft"), (2, "baseline"), (2, "b_stock"),
+        (3, "baseline"), (3, "b_stock"), (3, "b_zero_draft"),
+    ]  # fmt: skip
+    assert r.CONFIRMATION.calibration_rounds == 1
+    assert r.CONFIRMATION.scored_arms == ("b_stock", "b_zero_draft")
+    assert r.score_stages(r.CONFIRMATION) == 6
+
+
+def test_the_confirmation_measure_call_is_the_drafts_7500_seconds():
+    # 12 arm-runs at 270 + 240 + 30 s, 6 score stages at 120 s, 300 s of slack.
+    assert r.CONFIRMATION_TIMEOUTS == r.Timeouts(cold_startup=270, warm_startup=270, measure=240, score=120)
+    assert r.measure_call_seconds(r.CONFIRMATION, r.CONFIRMATION_TIMEOUTS) == 12 * 540 + 6 * 120 + 300
+
+
+def test_the_earlier_experiments_worst_cases_dont_move():
+    timeouts = r.Timeouts(cold_startup=480, warm_startup=270, measure=240)
+    assert r.measure_call_seconds(r.COST, timeouts) == 4 * 750 + 8 * 540 + 300
+    assert r.measure_call_seconds(r.ZERO_DRAFT, timeouts) == 2 * 750 + 6 * 540 + 300
+
+
+def test_the_stock_and_zero_draft_throughput_drop_is_paired_by_round_with_no_pass_mark():
+    runs = [
+        {"round": 0, "arm": "baseline", "saturation": run(20.0, 0, 0)},
+        {"round": 0, "arm": "b_stock", "saturation": run(12.0, 0, 0)},
+        {"round": 0, "arm": "b_zero_draft", "saturation": run(19.0, 0, 0)},
+        {"round": 1, "arm": "b_stock", "saturation": run(10.0, 0, 0)},
+        {"round": 1, "arm": "b_zero_draft", "saturation": run(20.0, 0, 0)},
+    ]
+    assert r.stock_against_zero_draft(runs) == [
+        {"round": 0, "b_stock": 12.0, "b_zero_draft": 19.0, "stock_drop": pytest.approx(7 / 19)},
+        {"round": 1, "b_stock": 10.0, "b_zero_draft": 20.0, "stock_drop": pytest.approx(0.5)},
+    ]
+
+
+def scored_run_all(monkeypatch, tmp_path, misbehaving=()):
+    """run_all over a fake run_arm on the confirmation run, with its calls."""
+    monkeypatch.setattr(r.d1_local, "compare_generations", lambda a, b: {"diverged": []})
+    calls, misbehaving = [], dict(misbehaving)
+    saturation = {"baseline": 20.0, "b_stock": 12.0, "b_zero_draft": 19.0}
+
+    def run_arm(arm, rnd, cfg, workload, out, rate, timeouts, calibrate=False, score=False):
+        calls.append({"arm": arm, "round": rnd, "calibrate": calibrate, "score": score})
+        drafts = 100 if arm == "b_stock" else 0
+        result = {
+            "arm": arm,
+            "round": rnd,
+            "generate": ["reply"],
+            "saturation": bench_result(saturation[arm]),
+            "counters": {"draft_tokens": drafts},
+            "startup": {"model_runner": "V2"},
+        }
+        if not calibrate:
+            result |= {"fixed": bench_result(), "fixed_rate": rate}
+        if score:
+            result["score"] = {"rows": 2101, "counters": {"draft_tokens": drafts}}
+        return {**result, **misbehaving.get((rnd, arm), {})}
+
+    monkeypatch.setattr(r, "run_arm", run_arm)
+    return r.run_all({}, {}, tmp_path, r.CONFIRMATION, r.CONFIRMATION_TIMEOUTS), calls
+
+
+def test_the_score_stage_runs_on_both_b_arms_after_the_calibration_round_and_never_on_the_baseline(
+    monkeypatch, tmp_path
+):
+    results, calls = scored_run_all(monkeypatch, tmp_path)
+    assert results["stopped"] is None
+    scored = [(c["round"], c["arm"]) for c in calls if c["score"]]
+    assert sorted(scored) == [(rnd, arm) for rnd in (1, 2, 3) for arm in ("b_stock", "b_zero_draft")]
+    assert results["fixed_rate"] == pytest.approx(8.4)  # 70% of b_stock's 12 req/s, the slowest
+    assert [row["round"] for row in results["stock_vs_zero_draft"]] == [0, 1, 2, 3]
+    assert set(results["verdicts"]) == {"b_stock", "b_zero_draft"}
+
+
+@pytest.mark.parametrize(
+    "key, fields, reason",
+    [
+        ((0, "b_stock"), {"counters": {"draft_tokens": 0}}, "b_stock drafted no tokens"),
+        ((2, "b_stock"), {"counters": {"draft_tokens": 0}}, "b_stock drafted no tokens"),
+        ((2, "b_zero_draft"), {"counters": {"draft_tokens": 5}}, "5 draft tokens"),
+        ((2, "b_zero_draft"), {"score": {"counters": {"draft_tokens": 7}}}, "7 draft tokens in its score stage"),
+        ((2, "b_zero_draft"), {"startup": {"model_runner": "V1"}}, "startup log isn't V2"),
+    ],
+)
+def test_a_b_arm_that_stops_being_what_it_is_named_stops_the_run(monkeypatch, tmp_path, key, fields, reason):
+    results, calls = scored_run_all(monkeypatch, tmp_path, {key: fields})
+    assert reason in results["stopped"]
+    assert (calls[-1]["round"], calls[-1]["arm"]) == key
+
+
+def test_the_stock_draft_rule_applies_only_to_a_scored_experiment(monkeypatch, tmp_path):
+    # The cost run's fakes and its records carry no counters on b_stock.
+    results = fake_run_all(monkeypatch, tmp_path, rounds=1, misbehaving={})
+    assert results["stopped"] is None
+
+
+SCORE_WORKLOAD = {
+    "score_ids": ["a", "b", "c", "d"],
+    "score_prompts": ["text a", "text b", "text c", "text d"],
+    "score_tokens": [[1], [2, 2], [3], [4, 4]],
+    "score_output_tokens": 16,
+    "score_concurrency": 2,
+}
+TOKENS_OF = dict(zip(SCORE_WORKLOAD["score_prompts"], SCORE_WORKLOAD["score_tokens"], strict=True))
+ROW_OF = {text: i for i, text in enumerate(SCORE_WORKLOAD["score_prompts"])}
+
+
+def fake_server(monkeypatch, tokens_of=TOKENS_OF, row=lambda i: [float(i), 0.5], delay=0.0, acts_error=None):
+    """A fake server: chat_all answers in request order, and each prompt's hidden state is row(its prompt)."""
+    seen = {}
+
+    async def chat_all(url, texts, concurrency, **params):
+        seen.update(texts=list(texts), concurrency=concurrency, params=params)
+        await d1_local.asyncio.sleep(delay)
+        return [{"prompt_token_ids": tokens_of[t], "text": t} for t in texts]
+
+    def connector_acts(responses):
+        if acts_error:
+            raise acts_error
+        rows = [row(ROW_OF[response["text"]]) for response in responses]
+        return np.array(rows, dtype=np.float16), [1] * len(rows)
+
+    monkeypatch.setattr(r.d1_local, "chat_all", chat_all)
+    monkeypatch.setattr(r.d1_local, "connector_acts", connector_acts)
+    return seen
+
+
+def test_the_score_stage_sends_prompts_as_the_capture_templates_them_in_a_seeded_order(monkeypatch, tmp_path):
+    seen = fake_server(monkeypatch)
+    r.score_stage("url", {"model": "m"}, SCORE_WORKLOAD, 2, tmp_path, 60)
+    expected = [SCORE_WORKLOAD["score_prompts"][i] for i in np.random.default_rng(2).permutation(4)]
+    assert seen["texts"] == expected
+    assert seen["concurrency"] == 2
+    assert seen["params"] == {
+        "model": "m",
+        "max_tokens": 16,
+        "min_tokens": 16,
+        "ignore_eos": True,
+        "return_token_ids": True,
+        "chat_template_kwargs": {"enable_thinking": False},
+    }
+
+
+def test_each_round_sends_the_prompts_in_its_own_order():
+    orders = {tuple(np.random.default_rng(rnd).permutation(100)) for rnd in (1, 2, 3)}
+    assert len(orders) == 3
+
+
+def test_the_score_stage_saves_only_the_last_position_rows_back_in_prompt_order(monkeypatch, tmp_path):
+    fake_server(monkeypatch)
+    facts = r.score_stage("url", {"model": "m"}, SCORE_WORKLOAD, 1, tmp_path, 60)
+    assert facts["rows"] == 4
+    saved = np.load(tmp_path / "score.npz")
+    assert saved["ids"].tolist() == ["a", "b", "c", "d"]
+    assert saved["activations"].dtype == np.float16
+    assert saved["activations"].tolist() == [[0.0, 0.5], [1.0, 0.5], [2.0, 0.5], [3.0, 0.5]]
+
+
+def test_saved_tokens_that_dont_match_the_expected_ones_stop_the_run(monkeypatch, tmp_path):
+    fake_server(monkeypatch, tokens_of={**TOKENS_OF, "text c": [9]})
+    with pytest.raises(RuntimeError, match="prompt 2's saved token ids"):
+        r.score_stage("url", {"model": "m"}, SCORE_WORKLOAD, 1, tmp_path, 60)
+    assert not (tmp_path / "score.npz").exists()
+
+
+@pytest.mark.parametrize("bad", [float("nan"), float("inf"), float("-inf")])
+def test_a_non_finite_activation_stops_the_run(monkeypatch, tmp_path, bad):
+    fake_server(monkeypatch, row=lambda i: [bad if i == 1 else 0.0, 0.5])
+    with pytest.raises(RuntimeError, match="1 rows hold a NaN or infinite activation"):
+        r.score_stage("url", {"model": "m"}, SCORE_WORKLOAD, 1, tmp_path, 60)
+
+
+def test_a_stage_returning_too_few_rows_stops_the_run():
+    with pytest.raises(RuntimeError, match="returned 1 of 2 rows"):
+        r.score_rows(np.array([0, 1]), [{"prompt_token_ids": [1]}], np.zeros((1, 2)), [[1], [2]])
+
+
+def test_a_stage_past_its_timeout_raises_the_timeout_the_arm_run_turns_into_a_stop(monkeypatch, tmp_path):
+    fake_server(monkeypatch, delay=5.0)
+    started = time.time()
+    with pytest.raises(TimeoutError):
+        r.score_stage("url", {"model": "m"}, SCORE_WORKLOAD, 1, tmp_path, 0.05)
+    assert time.time() - started < 2
+
+
+def test_a_connector_file_holding_other_tokens_stops_the_run_instead_of_crashing_it(monkeypatch, tmp_path):
+    # run_arm catches RuntimeError, so its files come back, and last_position raises ValueError.
+    fake_server(monkeypatch, acts_error=ValueError("the file's token ids aren't the prompt's"))
+    with pytest.raises(RuntimeError, match="doesn't match its prompt"):
+        r.score_stage("url", {"model": "m"}, SCORE_WORKLOAD, 1, tmp_path, 60)

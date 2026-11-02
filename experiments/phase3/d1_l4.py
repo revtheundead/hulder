@@ -58,11 +58,13 @@ from pathlib import Path
 from typing import NamedTuple
 
 import d1_local
+import numpy as np
 
 HERE = Path(__file__).resolve().parent
 ARMS = ("baseline", "b_stock", "b_noop", "lens")
 BASELINE = "baseline"
 LENS = "lens"
+STOCK_ARM = "b_stock"
 ZERO_DRAFT_ARM = "b_zero_draft"
 THRESHOLDS = {"throughput": 0.05, "p99_ttft": 0.10, "p99_tpot": 0.10}
 FIXED_RATE_FRACTION = 0.7
@@ -89,15 +91,24 @@ COLLECT_ENV_TIMEOUT_S = 60  # it took 23 s on the 2070, and this comes out of ME
 
 
 class Experiment(NamedTuple):
-    """The arms, the rounds counting any calibration rounds, and how many of those there are."""
+    """The arms, the rounds counting any calibration rounds, how many of those there are, and the
+    arms that run a score stage in every other round."""
 
     arms: tuple[str, ...]
     rounds: int
     calibration_rounds: int = 0
+    scored_arms: tuple[str, ...] = ()
 
 
 COST = Experiment(ARMS, 3)
 ZERO_DRAFT = Experiment((BASELINE, ZERO_DRAFT_ARM), 4, calibration_rounds=1)
+CONFIRMATION = Experiment(
+    (BASELINE, STOCK_ARM, ZERO_DRAFT_ARM), 4, calibration_rounds=1, scored_arms=(STOCK_ARM, ZERO_DRAFT_ARM)
+)
+
+
+def score_stages(experiment: Experiment) -> int:
+    return (experiment.rounds - experiment.calibration_rounds) * len(experiment.scored_arms)
 
 
 def schedule(arms: tuple[str, ...], rounds: int) -> list[tuple[int, str]]:
@@ -114,6 +125,7 @@ class Timeouts(NamedTuple):
     cold_startup: float
     warm_startup: float
     measure: float
+    score: float = 120
 
     def startup(self, rnd: int) -> float:
         return self.cold_startup if rnd == 0 else self.warm_startup
@@ -122,6 +134,17 @@ class Timeouts(NamedTuple):
 def worst_case_seconds(timeouts: Timeouts, rounds: int, arms: tuple[str, ...] = ARMS) -> float:
     """The longest the schedule can run: every arm-run at both its timeouts, then stopped."""
     return sum(timeouts.startup(rnd) + timeouts.measure + STOP_GRACE_S for rnd, _ in schedule(arms, rounds))
+
+
+# The compile caches for all three arms are on the Volume, and at 480 s of cold start the guard total
+# is $3.00 and leaves no room. A cold start would stop the run in round 0 for about $0.22.
+CONFIRMATION_TIMEOUTS = Timeouts(cold_startup=270, warm_startup=270, measure=240, score=120)
+
+
+def measure_call_seconds(experiment: Experiment, timeouts: Timeouts) -> float:
+    """The measure call's timeout: every arm-run and score stage at its timeouts, and the slack."""
+    arm_runs = worst_case_seconds(timeouts, experiment.rounds, experiment.arms)
+    return arm_runs + score_stages(experiment) * timeouts.score + MEASURE_SLACK_S
 
 
 def fixed_rate(saturations: list[float]) -> float:
@@ -138,6 +161,15 @@ def zero_draft_stop(run: dict) -> str | None:
         return f"its startup log isn't V2: {run['startup']['model_runner']}"
     if drafts := run["counters"]["draft_tokens"]:
         return f"{drafts} draft tokens"
+    if drafts := run.get("score", {}).get("counters", {}).get("draft_tokens"):
+        return f"{drafts} draft tokens in its score stage"
+    return None
+
+
+def stock_stop(run: dict) -> str | None:
+    """Why a scored b_stock arm-run stops the run, or None. With no drafts it would no longer be B."""
+    if run["arm"] == STOCK_ARM and not run["counters"]["draft_tokens"]:
+        return "b_stock drafted no tokens"
     return None
 
 
@@ -190,6 +222,24 @@ def verdicts(runs: dict, baseline: str = BASELINE, measurement_timeouts: dict | 
         result["passes"] = passes
         out[arm] = result
     return out
+
+
+def stock_against_zero_draft(runs: list[dict]) -> list[dict]:
+    """b_stock's saturation throughput against b_zero_draft's, paired by round: the one comparison
+    the two earlier runs could only make across days. Reported, with no pass mark."""
+    throughput = {
+        (run["round"], run["arm"]): run["saturation"]["request_throughput"] for run in runs if "saturation" in run
+    }
+    return [
+        {
+            "round": rnd,
+            STOCK_ARM: throughput[(rnd, STOCK_ARM)],
+            ZERO_DRAFT_ARM: throughput[(rnd, ZERO_DRAFT_ARM)],
+            "stock_drop": 1 - throughput[(rnd, STOCK_ARM)] / throughput[(rnd, ZERO_DRAFT_ARM)],
+        }
+        for rnd in sorted({r for r, a in throughput if a == STOCK_ARM})
+        if (rnd, ZERO_DRAFT_ARM) in throughput
+    ]
 
 
 def divergence_class(reference_margin: float | None) -> str:
@@ -366,7 +416,7 @@ def arm_command(arm: str, cfg: dict, storage: Path) -> tuple[list[str], dict]:
     command = [sys.executable, "-m", "vllm.entrypoints.cli.main", "serve", cfg["model"], *cfg["serve"]]
     command += ["--port", str(PORT)]
     env = {} if arm == "lens" else {"VLLM_LENS_DISABLE": "1"}
-    if arm in ("b_stock", "b_noop", ZERO_DRAFT_ARM):
+    if arm in (STOCK_ARM, "b_noop", ZERO_DRAFT_ARM):
         speculative = {
             "method": "extract_hidden_states",
             "num_speculative_tokens": 1,
@@ -488,10 +538,56 @@ def make_probe_hook(weights, bias: float, layer: int):
     return Hook(fn=score, layer_indices=[layer])
 
 
+def score_rows(order: np.ndarray, responses: list[dict], acts: np.ndarray, expected: list[list[int]]) -> np.ndarray:
+    """A score stage's activations back in prompt order, once every prompt has answered with the
+    tokens kept/ recorded for it and a finite activation. Raises RuntimeError, a stop rule, if not."""
+    if len(responses) != len(expected) or len(acts) != len(expected):
+        raise RuntimeError(f"the score stage returned {len(responses)} of {len(expected)} rows")
+    for i, response in zip(order, responses, strict=True):
+        if list(response["prompt_token_ids"]) != list(expected[i]):
+            raise RuntimeError(f"prompt {i}'s saved token ids don't match the expected tokens")
+    if not np.isfinite(acts).all():
+        raise RuntimeError(f"{int((~np.isfinite(acts)).any(axis=1).sum())} rows hold a NaN or infinite activation")
+    rows = np.empty_like(acts)
+    rows[order] = acts
+    return rows
+
+
+def score_stage(url: str, cfg: dict, workload: dict, rnd: int, run_dir: Path, timeout_s: float) -> dict:
+    """The calibration prompts through the server in a default_rng(round) order, as the offline
+    capture templates them, so decode steps share batches with other prompts' prefills. Only each
+    prompt's last-position hidden state stays, as score.npz, and the connector's files are deleted
+    as they're read. Raises TimeoutError past timeout_s, and RuntimeError on any other stop rule."""
+    started = time.time()
+    texts = workload["score_prompts"]
+    order = np.random.default_rng(rnd).permutation(len(texts))
+    tokens = workload["score_output_tokens"]
+    params = {
+        "model": cfg["model"],
+        "max_tokens": tokens,
+        "min_tokens": tokens,
+        "ignore_eos": True,
+        "return_token_ids": True,
+        "chat_template_kwargs": {"enable_thinking": False},
+    }
+    replies = d1_local.chat_all(url, [texts[i] for i in order], workload["score_concurrency"], **params)
+    responses = d1_local.asyncio.run(d1_local.asyncio.wait_for(replies, timeout_s))
+    try:
+        acts, _ = d1_local.connector_acts(responses)
+    except ValueError as error:  # a connector file holding other tokens than its response
+        raise RuntimeError(f"a saved hidden state doesn't match its prompt: {error}") from error
+    rows = score_rows(order, responses, acts, workload["score_tokens"])
+    if time.time() - started > timeout_s:
+        raise TimeoutError(f"the score stage passed its {timeout_s:g} s timeout reading hidden states")
+    np.savez(run_dir / "score.npz", ids=np.array(workload["score_ids"]), activations=rows, order=order)
+    return {"rows": len(rows), "concurrency": workload["score_concurrency"], "seconds": round(time.time() - started, 1)}
+
+
 def run_arm(arm: str, rnd: int, cfg: dict, workload: dict, out: Path, rate: float | None,
-            timeouts: Timeouts, calibrate: bool = False) -> dict:  # fmt: skip
+            timeouts: Timeouts, calibrate: bool = False, score: bool = False) -> dict:  # fmt: skip
     """One arm-run. rate is the fixed-rate bench's, None in round 0's baseline, which sets it. A
-    calibration arm-run stops after its saturation bench."""
+    calibration arm-run stops after its saturation bench. score adds a score stage after the bench
+    counters are read, with its own timeout and counters, so it can't change what the benches report."""
     import httpx
 
     run_dir = out / f"r{rnd}_{arm}"
@@ -534,6 +630,12 @@ def run_arm(arm: str, rnd: int, cfg: dict, workload: dict, out: Path, rate: floa
             result["counters"] = d1_local.step_tokens(before, httpx.get(f"{url}/metrics").text)
             if arm == "lens":
                 result["hook_results"] = len(VLLMLensClient(url).collect_hook_results())
+            if score:
+                peaks.stop.set()  # the peaks are the benches'
+                before = httpx.get(f"{url}/metrics").text
+                stage, stage_started = "score", time.time()
+                result["score"] = score_stage(url, cfg, workload, rnd, run_dir, timeouts.score)
+                result["score"]["counters"] = d1_local.step_tokens(before, httpx.get(f"{url}/metrics").text)
     except (RuntimeError, TimeoutError, subprocess.SubprocessError, httpx.HTTPError) as error:
         result["error"] = f"{type(error).__name__}: {str(error) or 'the measurement timeout passed'}"
         if stage and isinstance(error, (TimeoutError, subprocess.TimeoutExpired)):
@@ -563,7 +665,8 @@ def run_all(cfg: dict, workload: dict, out: Path, experiment: Experiment, timeou
     for rnd, arm in plan:
         print(f"round {rnd}: {arm}", flush=True)
         calibrate = rnd < experiment.calibration_rounds
-        run = run_arm(arm, rnd, cfg, workload, out, rate, timeouts, calibrate=calibrate)
+        score = arm in experiment.scored_arms and not calibrate
+        run = run_arm(arm, rnd, cfg, workload, out, rate, timeouts, calibrate=calibrate, score=score)
         generated = run.pop("generate", None)
         results["runs"].append(run)
         # Lens runs eager, so it may not keep up with the baseline's fixed rate. That is its result.
@@ -574,7 +677,7 @@ def run_all(cfg: dict, workload: dict, out: Path, experiment: Experiment, timeou
         if failed := sum(run[b]["failed"] for b in ("saturation", "fixed") if b in run):
             results["stopped"] = f"round {rnd} {arm}: {failed} failed requests"
             break
-        if reason := zero_draft_stop(run):
+        if reason := zero_draft_stop(run) or (experiment.scored_arms and stock_stop(run)):
             results["stopped"] = f"round {rnd} {arm}: {reason}"
             break
         if lens_timed_out:
@@ -602,6 +705,8 @@ def run_all(cfg: dict, workload: dict, out: Path, experiment: Experiment, timeou
             break
     results["verdicts"] = verdicts(runs, measurement_timeouts={LENS: lens_timeouts} if lens_timeouts else None)
     results["divergences"] = divergence_table(results.get("generation", {}))
+    if experiment.scored_arms:
+        results["stock_vs_zero_draft"] = stock_against_zero_draft(results["runs"])
     return results
 
 
