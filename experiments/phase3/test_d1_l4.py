@@ -648,13 +648,14 @@ def test_a_volume_that_cant_commit_doesnt_stop_the_run(tmp_path):
 def test_collect_env_finds_the_images_uv_and_lists_this_environments_packages(tmp_path):
     # Without pip it falls back to `uv pip list`, and crashes if that fails. /.uv isn't on the image's PATH,
     # and with VIRTUAL_ENV unset uv lists the interpreter's packages rather than the venv's.
-    script = "import os; print(os.environ['PATH']); print(os.environ['VIRTUAL_ENV'])"
+    script = "import os; print(os.environ['PATH']); print(os.environ['VIRTUAL_ENV']); print(os.environ['UV_NO_CACHE'])"
     out = tmp_path / "out"
     out.mkdir()
     r.record_environment(out, tmp_path / "env", lambda: None, [sys.executable, "-c", script])
-    path, venv = (out / r.COLLECT_ENV_FILE).read_text().splitlines()
+    path, venv, no_cache = (out / r.COLLECT_ENV_FILE).read_text().splitlines()
     assert path.split(os.pathsep)[0] == "/.uv"
     assert venv == sys.prefix
+    assert no_cache == "1"  # uv can't take its cache lock on a Modal Volume
 
 
 def test_the_uv_check_reports_each_environments_exit_code_error_and_package_count(tmp_path, monkeypatch):

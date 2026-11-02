@@ -765,9 +765,10 @@ def environment_path(run_id: str) -> Path:
 
 
 def collect_env_environ(extra: dict | None = None) -> dict:
-    """The environment `python -m vllm.collect_env` runs in: the image's uv and this venv."""
+    """The environment `python -m vllm.collect_env` runs in: the image's uv and this venv, with no uv
+    cache, since XDG_CACHE_HOME is on a Volume and uv can't take its lock there (run 20261102T202134Z)."""
     path = f"{IMAGE_UV_DIR}{os.pathsep}{os.environ['PATH']}"
-    return {**os.environ, "PATH": path, "VIRTUAL_ENV": sys.prefix, **(extra or {})}
+    return {**os.environ, "PATH": path, "VIRTUAL_ENV": sys.prefix, "UV_NO_CACHE": "1", **(extra or {})}
 
 
 def uv_check(attempts: dict[str, dict]) -> dict:

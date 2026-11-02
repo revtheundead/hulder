@@ -1,0 +1,31 @@
+{
+  "run_id": "20261102T202134Z",
+  "experiment": "d1_uv_check",
+  "commit": "37306c4a525069b8f8155a7d75f7b7a6673dc0e5",
+  "command": "uv run --with modal==1.6.1 modal run experiments/phase3/d1_modal.py --spent-usd 2.52 --uv-check-only",
+  "modal": "1.6.1",
+  "spent_before_usd": 2.52,
+  "worst_case_usd": 0.0199,
+  "timeout_s": 120,
+  "wall_seconds": 7.2,
+  "estimated_usd": 0.0003,
+  "uv": "-rwxr-xr-x 1 root root 56101408 Sep 29 18:43 /.uv/uv",
+  "xdg_cache_home": "/vol/hf/xdg",
+  "attempts": {
+    "as_recorded": {
+      "returncode": 2,
+      "packages": 0,
+      "stderr": "error: Could not acquire lock\n  cause: Could not persist temporary file `/vol/hf/xdg/uv/.tmpOpvxzQ`\n  cause: Operation not permitted (os error 1)"
+    },
+    "cache_in_tmp": {
+      "returncode": 0,
+      "packages": 209,
+      "stderr": "Using Python 3.12.14 environment at: /.uv/.venv"
+    },
+    "no_cache": {
+      "returncode": 0,
+      "packages": 209,
+      "stderr": "Using Python 3.12.14 environment at: /.uv/.venv"
+    }
+  }
+}
