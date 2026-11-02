@@ -536,3 +536,114 @@ def test_rejudge_reads_a_run_with_a_calibration_round():
     v = r.rejudge(results)["verdicts"]["b"]
     assert len(v["throughput"]["overheads"]) == 2
     assert len(v["p99_ttft"]["overheads"]) == 1
+
+
+class FakeVolume:
+    """A Modal Volume: read_file sees only what commit has published, like another container."""
+
+    def __init__(self, root):
+        self.root, self.committed = root, {}
+
+    def commit(self):
+        self.committed = {str(p.relative_to(self.root)): p.read_bytes() for p in self.root.rglob("*") if p.is_file()}
+
+    def read_file(self, path):
+        if path not in self.committed:
+            raise FileNotFoundError(path)
+        yield self.committed[path]
+
+
+PRINTS_ENV = [sys.executable, "-c", "print('PyTorch version: 2.13.0')"]
+
+
+def in_container(tmp_path, volume, command=PRINTS_ENV, run_id="R1"):
+    return r.in_container(
+        {}, {}, tmp_path / "out", r.ZERO_DRAFT, r.Timeouts(270, 270, 240),
+        volume.root / r.environment_path(run_id).parent, volume.commit, command=command,
+    )  # fmt: skip
+
+
+def test_the_environment_record_exists_before_the_first_arm_starts(monkeypatch, tmp_path):
+    seen = {}
+
+    def run_all(cfg, workload, out, experiment, timeouts):
+        seen["text"] = (out / r.COLLECT_ENV_FILE).read_text()
+        return {"stopped": None}
+
+    monkeypatch.setattr(r, "run_all", run_all)
+    in_container(tmp_path, FakeVolume(tmp_path / "vol"))
+    assert "PyTorch version: 2.13.0" in seen["text"]
+
+
+def test_the_environment_record_is_returned_when_an_arm_hits_a_stop_rule(monkeypatch, tmp_path):
+    monkeypatch.setattr(r, "run_all", lambda *a: {"stopped": "round 1 b_stock: 3 failed requests"})
+    returned = in_container(tmp_path, FakeVolume(tmp_path / "vol"))
+    assert returned["results"]["stopped"].startswith("round 1")
+    assert b"PyTorch version" in returned["files"][r.COLLECT_ENV_FILE]
+    assert returned["environment"]["returncode"] == 0
+
+
+def test_a_crash_after_startup_leaves_the_record_on_the_volume_for_the_failure_path(monkeypatch, tmp_path):
+    def crashes(*args):
+        raise MemoryError("the container is going down")
+
+    monkeypatch.setattr(r, "run_all", crashes)
+    volume = FakeVolume(tmp_path / "vol")
+    with pytest.raises(MemoryError):
+        in_container(tmp_path, volume)
+    run_dir = tmp_path / "local"
+    run_dir.mkdir()
+    assert r.recover_environment(volume.read_file, "R1", run_dir) is True
+    assert "PyTorch version" in (run_dir / r.COLLECT_ENV_FILE).read_text()
+
+
+def test_the_failure_path_reports_a_record_it_cant_read_and_doesnt_raise(tmp_path):
+    volume = FakeVolume(tmp_path / "vol")
+    assert r.recover_environment(volume.read_file, "never-started", tmp_path) is False
+    assert not (tmp_path / r.COLLECT_ENV_FILE).exists()
+
+
+@pytest.mark.parametrize(
+    "command, recorded",
+    [
+        ([sys.executable, "-c", "print('partial'); raise SystemExit(3)"], "exited 3"),
+        (["/nonexistent/python", "-m", "vllm.collect_env"], "couldn't run"),
+    ],
+)
+def test_a_failing_collect_env_writes_the_failure_and_the_run_carries_on(monkeypatch, tmp_path, command, recorded):
+    monkeypatch.setattr(r, "run_all", lambda *a: {"stopped": None})
+    returned = in_container(tmp_path, FakeVolume(tmp_path / "vol"), command=command)
+    assert returned["results"]["stopped"] is None
+    assert recorded in returned["files"][r.COLLECT_ENV_FILE].decode()
+
+
+def test_a_collect_env_past_its_timeout_is_killed_with_its_children_and_noted(tmp_path):
+    # A child holding the output open must not hold up the run.
+    script = "import subprocess, time; print('partial', flush=True); subprocess.Popen(['sleep', '60']); time.sleep(60)"
+    volume = FakeVolume(tmp_path / "vol")
+    out = tmp_path / "out"
+    out.mkdir()
+    started = time.time()
+    record = r.record_environment(out, volume.root / "env", volume.commit, [sys.executable, "-c", script], timeout_s=1)
+    assert time.time() - started < 10
+    assert record["returncode"] is None
+    text = (out / r.COLLECT_ENV_FILE).read_text()
+    assert "partial" in text and "timed out after 1 s" in text
+
+
+def test_a_volume_that_cant_commit_doesnt_stop_the_run(tmp_path):
+    def fails():
+        raise OSError("the Volume is unavailable")
+
+    out = tmp_path / "out"
+    out.mkdir()
+    record = r.record_environment(out, tmp_path / "vol" / "env", fails, PRINTS_ENV)
+    assert record["returncode"] == 0
+    assert "the Volume is unavailable" in record["persist_error"]
+    assert "PyTorch version" in (out / r.COLLECT_ENV_FILE).read_text()
+
+
+def test_collect_env_fits_in_the_measure_calls_slack_so_the_worst_case_doesnt_move():
+    assert r.COLLECT_ENV_TIMEOUT_S == 60
+    assert r.MEASURE_SLACK_S == 300
+    assert r.COLLECT_ENV_TIMEOUT_S < r.MEASURE_SLACK_S

@@ -82,6 +82,10 @@ STOP_GRACE_S = 30  # from SIGTERM to SIGKILL when a server is stopped
 # 128-token replies at an eager 60 ms a token. One that hasn't did not sustain the rate.
 SUSTAIN_GRACE_S = 30
 UNSUSTAINED = "did not sustain the fixed rate"
+COLLECT_ENV_FILE = "collect_env.txt"
+# Outside the arm-runs: the GPU query, collect_env, the comparisons and committing the compile cache.
+MEASURE_SLACK_S = 5 * 60
+COLLECT_ENV_TIMEOUT_S = 60  # it took 23 s on the 2070, and this comes out of MEASURE_SLACK_S
 
 
 class Experiment(NamedTuple):
@@ -614,6 +618,77 @@ def rejudge(results: dict) -> dict:
         "verdicts": verdicts(runs, measurement_timeouts={LENS: timeouts} if timeouts else None),
         "divergences": divergence_table(results.get("generation", {})),
     }
+
+
+def environment_path(run_id: str) -> Path:
+    """Where a run's environment record sits on the Volume, relative to its root."""
+    return Path("d1-env") / run_id / COLLECT_ENV_FILE
+
+
+def record_environment(out: Path, persist: Path, commit, command: list[str] | None = None,
+                       timeout_s: float = COLLECT_ENV_TIMEOUT_S) -> dict:  # fmt: skip
+    """`python -m vllm.collect_env` as out/collect_env.txt, also written under persist and committed,
+    so a function timeout or crash doesn't lose it. Nothing here stops the run: a failure goes in the
+    file and the record it returns. Output goes straight to the file and the process has its own
+    group, so a child left holding it open can't hold up the first server."""
+    path = out / COLLECT_ENV_FILE
+    started = time.time()
+    record: dict = {"returncode": None}
+    with path.open("wb") as file:
+        try:
+            proc = subprocess.Popen(
+                command or [sys.executable, "-m", "vllm.collect_env"],
+                stdin=subprocess.DEVNULL,
+                stdout=file,
+                stderr=subprocess.STDOUT,
+                start_new_session=True,
+            )
+        except OSError as error:
+            note = f"collect_env couldn't run: {error}"
+        else:
+            try:
+                record["returncode"] = proc.wait(timeout=timeout_s)
+                note = f"collect_env exited {proc.returncode}" if proc.returncode else None
+            except subprocess.TimeoutExpired:
+                os.killpg(proc.pid, signal.SIGKILL)
+                proc.wait()
+                note = f"collect_env timed out after {timeout_s:g} s"
+        if note:
+            file.write(f"\n{note}\n".encode())
+            record["note"] = note
+    record["seconds"] = round(time.time() - started, 1)
+    try:
+        persist.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(path, persist / COLLECT_ENV_FILE)
+        commit()
+    except Exception as error:  # noqa: BLE001 - a Volume problem must not cost the run
+        record["persist_error"] = f"{type(error).__name__}: {error}"
+    return record
+
+
+def recover_environment(read_file, run_id: str, run_dir: Path) -> bool:
+    """The committed environment record into run_dir, for a call that returned no files. False if
+    there's none to read, which leaves the original failure as the one reported."""
+    try:
+        data = b"".join(read_file(str(environment_path(run_id))))
+    except Exception as error:  # noqa: BLE001 - Modal's not-found errors vary, and the call's failure comes first
+        print(f"no environment record on the Volume: {type(error).__name__}: {error}", flush=True)
+        return False
+    (run_dir / COLLECT_ENV_FILE).write_bytes(data)
+    return True
+
+
+def in_container(cfg: dict, workload: dict, out: Path, experiment: Experiment, timeouts: Timeouts, persist: Path,
+                 commit, command: list[str] | None = None) -> dict:  # fmt: skip
+    """What one container does: the environment record first, the image's packages, every arm-run,
+    then the results and every file to return."""
+    out.mkdir(parents=True)
+    environment = record_environment(out, persist, commit, command)
+    (out / "packages.txt").write_text(installed_packages())
+    results = run_all(cfg, workload, out, experiment, timeouts)
+    commit()  # compile caches, for later runs
+    files = {str(p.relative_to(out)): p.read_bytes() for p in sorted(out.rglob("*")) if p.is_file()}
+    return {"results": results, "environment": environment, "files": files}
 
 
 SMOKE = {
