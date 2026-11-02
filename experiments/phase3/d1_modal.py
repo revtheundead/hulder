@@ -323,6 +323,7 @@ def main(
         "estimated_usd": round(lib.estimate_cost(wall, gpu=True, cpu=lib.GPU_CPU, memory_gib=lib.GPU_MEMORY_GIB), 4),
         "nvidia_smi": returned["nvidia_smi"],
         "model_runners": d1_l4.model_runners(returned["results"]),
+        "async_scheduling": d1_l4.async_scheduling(returned["results"]),
     }
     manifest["estimated_usd"] = round(
         manifest["download"]["estimated_usd"]

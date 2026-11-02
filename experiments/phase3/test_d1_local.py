@@ -1,6 +1,8 @@
 """The D1 local checks' pure parts: the shift between two runs' scores, the last prompt
 position, and the per-step token counts from two /metrics scrapes. CPU only."""
 
+from pathlib import Path
+
 import d1_local as d
 import numpy as np
 import pytest

@@ -141,11 +141,12 @@ LOG = """\
 
 
 def test_startup_facts_reads_kv_cache_size_and_maximum_concurrency():
-    assert r.startup_facts(LOG) | {"model_runner": None, "scheduled_token_budget": None} == {
+    assert r.startup_facts(LOG) | {"model_runner": None, "scheduled_token_budget": None, "async_scheduling": None} == {
         "kv_cache_tokens": 53776,
         "max_concurrency": 26.26,
         "model_runner": None,
         "scheduled_token_budget": None,
+        "async_scheduling": None,
     }
     assert r.startup_facts("")["kv_cache_tokens"] is None
     assert r.startup_facts("")["max_concurrency"] is None

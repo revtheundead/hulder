@@ -117,7 +117,7 @@ def messages(text: str) -> list[dict]:
     return [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": text}]
 
 
-def extraction(storage: Path, zero_draft: bool = False) -> list[str]:
+def extraction(storage: Path, zero_draft: bool = False, async_scheduling: bool | None = None) -> list[str]:
     speculative = {
         "method": "extract_hidden_states",
         "num_speculative_tokens": 1,
@@ -130,7 +130,8 @@ def extraction(storage: Path, zero_draft: bool = False) -> list[str]:
         "kv_role": "kv_producer",
         "kv_connector_extra_config": {"shared_storage_path": str(storage)},
     }
-    return ["--speculative-config", json.dumps(speculative), "--kv-transfer-config", json.dumps(transfer)]
+    flags = ["--no-async-scheduling"] if async_scheduling is False else []
+    return ["--speculative-config", json.dumps(speculative), "--kv-transfer-config", json.dumps(transfer), *flags]
 
 
 @contextlib.contextmanager
@@ -478,6 +479,54 @@ def run_zero_draft(out: Path) -> dict:
     return {"zero_draft": {"counters": results, **comparisons}}
 
 
+def run_zero_draft_sync(out: Path) -> dict:
+    """B and zero-draft, each with async scheduling at its default and off, as run_zero_draft's
+    phases. Zero-draft's schedule works through the scheduler, and with async scheduling off the engine core
+    sets draft tokens from the model runner (v1/engine/core.py:625). /server_info, under the dev mode
+    that exposes it, gives each server's resolved setting, to check what d1_l4 reads from the log."""
+    import d1_l4
+    import httpx
+
+    texts = [r["text"] for r in prompts()][:N_GENERATE]
+    params = {"max_tokens": 16, "min_tokens": 16, "ignore_eos": True, "return_token_ids": True}
+    storage = out / "hidden_states"
+    saved, replies, results = {}, {}, {}
+    arms = {
+        "b_async": (False, None),
+        "b_sync": (False, False),
+        "zero_draft_async": (True, None),
+        "zero_draft_sync": (True, False),
+    }
+    for name, (zero, asynchronous) in arms.items():
+        extra = extraction(storage, zero_draft=zero, async_scheduling=asynchronous)
+        with server(name, out, extra, env={"VLLM_SERVER_DEV_MODE": "1"}) as url:
+            info = httpx.get(f"{url}/server_info", params={"config_format": "json"}, timeout=30).json()
+            arm = {"resolved_async_scheduling": info["vllm_config"]["scheduler_config"]["async_scheduling"]}
+            for phase, concurrency in (("sequential", 1), ("concurrent", 8)):
+                before = httpx.get(f"{url}/metrics").text
+                responses = asyncio.run(chat_all(url, texts, concurrency, **params))
+                arm[phase] = step_tokens(before, httpx.get(f"{url}/metrics").text)
+                replies[(name, phase)] = [r["choices"][0]["message"]["content"] for r in responses]
+                saved[(name, phase)] = saved_hidden_states(responses)
+        startup = d1_l4.startup_facts((out / f"{name}.log").read_text(errors="replace"))
+        results[name] = {**arm, "startup": startup}
+    shutil.rmtree(storage, ignore_errors=True)
+    comparisons = {}
+    for a, b in (
+        ("b_async", "zero_draft_async"),
+        ("zero_draft_async", "zero_draft_sync"),
+        ("b_sync", "zero_draft_sync"),
+    ):
+        comparisons[f"{a}_vs_{b}"] = {
+            phase: {
+                **compare_saved(saved[(a, phase)], saved[(b, phase)]),
+                "replies_identical": sum(x == y for x, y in zip(replies[(a, phase)], replies[(b, phase)], strict=True)),
+            }
+            for phase in ("sequential", "concurrent")
+        }
+    return {"zero_draft_sync": {"arms": results, **comparisons}}
+
+
 def relative_l2(a: np.ndarray, b: np.ndarray) -> dict:
     """Per-row ||a - b|| / ||b|| between two servers' last-position activations."""
     a, b = a.astype(np.float64), b.astype(np.float64)
@@ -604,6 +653,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--zero-draft-scores", action="store_true", help="probe scores of B and zero-draft at concurrency 8"
     )
+    parser.add_argument("--zero-draft-sync", action="store_true", help="B and zero-draft with async scheduling off")
     args = parser.parse_args(argv)
     args.out.mkdir(parents=True, exist_ok=True)
     print(f"{shutil.disk_usage(args.out).free / 1e9:.0f} GB free in {args.out}", flush=True)
@@ -620,6 +670,8 @@ def main(argv: list[str] | None = None) -> int:
         if args.zero_draft
         else run_zero_draft_scores
         if args.zero_draft_scores
+        else run_zero_draft_sync
+        if args.zero_draft_sync
         else run_main
     )
     results.update(run(args.out))
