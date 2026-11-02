@@ -49,6 +49,20 @@ def test_a_run_below_b_stocks_lowest_but_above_the_floor_isnt_a_fail():
     assert r.score_outcome(zero, stock, FLOOR)["outcome"] == "serving shift"
 
 
+def test_above_b_stock_but_inside_the_floor_on_one_measure_and_the_reverse_on_the_other_isnt_a_fail():
+    # Flips 3: under the floor's 4, above b_stock's 1. Mean 0.002: above the floor, under b_stock's 0.003.
+    zero = [stage(3, 0.002)] * 3
+    stock = [stage(1, 0.003)] * 3
+    assert r.score_outcome(zero, stock, FLOOR)["outcome"] == "serving shift"
+
+
+def test_the_outcome_rule_is_applied_with_each_arm_in_its_own_place():
+    zero = [stage(9, 0.01)] * 3
+    stock = [stage(5, 0.002)] * 3
+    assert r.score_outcome(zero, stock, FLOOR)["outcome"] == "fail"
+    assert r.score_outcome(stock, zero, FLOOR)["outcome"] == "serving shift"
+
+
 def test_the_outcome_reports_the_range_it_judged_against():
     out = r.score_outcome([stage(0, 0.001)] * 3, [stage(5, 0.002), stage(7, 0.003), stage(6, 0.0025)], FLOOR)
     assert out["b_stock_range"] == {"flips": [5, 7], "mean_abs_dscore": [0.002, 0.003]}
@@ -197,3 +211,25 @@ def test_a_rerun_that_doesnt_reproduce_the_recorded_floor_stops_the_report(tmp_p
     out = r.report(run_dir, reference, rerun, probe_path, FLOOR, recorded_floor={"flips": 99, "mean_abs_dscore": 9.0})
     assert out["stopped_at"] == "floor"
     assert "doesn't reproduce" in out["stops"][0]
+
+
+def test_the_report_judges_zero_draft_against_b_stock_and_not_the_other_way_round(tmp_path, probe_path):
+    # Zero-draft moves scores far more than b_stock does, so this fails whichever floor applies.
+    run_dir = finished_run(tmp_path, rounds=(1, 2))
+    for rnd in (1, 2):
+        np.savez(
+            run_dir / f"r{rnd}_b_zero_draft" / "score.npz",
+            ids=np.array(IDS),
+            activations=(activations() + 1.0).astype(np.float16),
+        )
+    floor = {"flips": 0, "mean_abs_dscore": 1e-6}
+    out = r.report(
+        run_dir,
+        snapshot(activations()),
+        snapshot(activations()),
+        probe_path,
+        floor,
+        run_check=lambda *paths: {"exit_code": 0},
+    )
+    assert out["outcome"]["outcome"] == "fail"
+    assert out["outcome"]["b_stock_range"]["mean_abs_dscore"][1] < 0.05
