@@ -52,6 +52,8 @@ From each server's `/metrics`. The score stage's are counted apart from the benc
 
 Round 0's benches drafted 38,087 tokens on `b_stock`, with 14 accepted, and 0 on zero-draft.
 
+The drafts and their cost are reported to vLLM as [vllm-project/vllm#65250](https://github.com/vllm-project/vllm/issues/65250).
+
 ## Scores
 
 Each score stage ran the 2,101 calibration prompts through the server, in a `default_rng(round)` order at 64 in flight, and kept each prompt's layer 18 hidden state at position −1. They're scored against `kept/` with the frozen primary probe (`18_-1`) at threshold 0.8025. The floor is experiment 2's shuffled rerun against `kept/`: 4 flips, mean |Δscore| 0.00164, 355 rows bit-identical. It reproduced exactly.
