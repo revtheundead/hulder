@@ -9,8 +9,9 @@ capture's kept/ with the frozen primary probe, and the small model's is the bund
 captured on an RTX 2070. So any difference from the 1.5B reference includes the GPU.
 
 Prefix caching is declared a change under test, so a verdict on a caching-on stage reads as one on that
-serving change. Unique prompts share little beyond the chat template, so caching-on stages test whether
-caching moves scores, not how it behaves on a shared-prefix workload.
+serving change. The prompts are unique, so caching-on stages test whether caching moves scores, not how it
+behaves on a shared-prefix workload. They still get hits, from the chat template's block and from prompts
+the benches already sent, so each stage reports its hit rate (docs/results/phase3/overhead_l4.md).
 
 Writes <run>/overhead_report.json.
 """
