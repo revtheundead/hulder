@@ -2,7 +2,9 @@
 
 **Not run yet.** This page fixes the setup, the rules and the cost before any data exists. Only the local smoke below has run, and it says nothing about overhead.
 
-Each model gets its own call, on its own day, with every arm-run in one container and each a fresh `vllm serve`. Arm order rotates by round. Round 0 calibrates, with no fixed-rate bench. Every later round runs a greedy check, a saturation bench of 300 prompts and a fixed-rate bench of up to 75 s, each request 128 output tokens with EOS ignored.
+Each model gets its own call, on its own day, with every arm-run in one container and each a fresh `vllm serve`. Arm order rotates by round. Round 0 calibrates, with no fixed-rate bench. Every later round runs a greedy check, a saturation bench of 300 prompts, a short-reply saturation bench of the same 300 prompts at 16 output tokens, and a fixed-rate bench of up to 60 s, with EOS ignored and 128 output tokens outside the short bench. Round 0 has both saturation benches.
+
+**Why the short bench.** Every other timed bench is 128-token replies, and a local check found a cost there that those wouldn't show: about 15% to 18% of saturation throughput on short replies on the 2070, all of it at the extraction path (`d3_drop.md`). **Why 60 s.** The short bench takes about 30 s, and that's an estimate from a bench process's 24 s start. D1's fixed-rate bench ran 75 s. At 60 s, a Qwen3-4B arm-run's measurement is about 203 s of its 240 s limit, against 188 s measured in D1, which keeps over 30 s of margin. At about 14 req/s it means about 840 requests rather than 1,050 behind each p99, so these latencies aren't from the same length of bench as D1's.
 
 | | Qwen3-4B at `1cfa9a72` | Qwen2.5-1.5B-Instruct at `989aa798` |
 |---|---|---|
@@ -40,7 +42,8 @@ Qwen3-4B has no lens arm here. Its figure is the 2026-10-31 L4 run (`d1_l4.md`),
 It isn't a run with no hits, though. The local smoke's counts show two sources:
 
 - **The chat template.** All prompts share at least one 16-token block. On short prompts that's a real share: 20% of tokens in the first saturation bench, and 22% in a score stage, where 4,896 hit tokens are about one block per request.
-- **Repeats.** The benches reuse prompts on one server. 46% to 52% of tokens hit by the end of the fixed-rate bench.
+- **Repeats.** The benches reuse prompts on one server. 46% to 52% of tokens hit by the end of the fixed-rate bench, measured before the short bench was added.
+- **The short bench itself.** It sends the prompts the saturation bench just sent, so with caching on it's almost all hits: 90% of tokens in the smoke, where `scoring_caching` ran 33% to 40% faster than the baseline. That says nothing about the connector on short replies, so read `scoring` for that. The run reports this bench's hit rate too.
 
 On the L4, the Qwen3-4B score stage reuses the bench's prompts on the same server, so it gets repeat hits too. The small model's stage uses prompts the benches don't. The run reports every stage's hit rate, and the Qwen3-4B stage's shift should be read with it.
 
@@ -48,12 +51,14 @@ On the L4, the Qwen3-4B score stage reuses the bench's prompts on the same serve
 
 **Cost.** D1's rule (`d1_l4.md`): at most 5% on saturation throughput and 10% on fixed-rate p99 TTFT and p99 TPOT, each round paired with that round's baseline. A metric fails if its smallest overhead exceeds its threshold plus the baseline's range, and is otherwise inconclusive if that range exceeds half its threshold. `scoring` is judged by this. `scoring_caching`'s figures are reported beside it, labelled as caching on against off. Lens not sustaining the fixed rate is a result.
 
+**Short replies.** Each arm's short-bench throughput is reported against the same round's baseline, with the 5% threshold marked, and stays out of the arm's pass or fail, so `scoring`'s verdict stays comparable with D1's. Past 5% is recorded as a limit on prefill-heavy traffic. It would be a finding about zero-draft B rather than the connector unless `scoring` differs from D1's figures.
+
 **The fixed rate** is 70% of the slowest arm's calibration saturation, leaving lens out, since it would set a rate well below serving load.
 
 **Scores.** Each stage goes through `hulder.check_snapshots` with the reference and its rerun, with prefix caching declared a change under test. If every caching-on stage is PASS, caching holds at this threshold on this set. Anything else means it needs its own calibration, which isn't an overhead failure.
 
 **Stop rules.**
-- From D1: a startup or measurement timeout, a failed request, and an arm's greedy replies diverging beyond a fresh baseline's. Lens running out of measurement time is a result, not a stop.
+- From D1: a startup or measurement timeout, a failed request in any bench, and an arm's greedy replies diverging beyond a fresh baseline's. Lens running out of measurement time is a result, not a stop.
 - A scoring arm off Model Runner V2, with async scheduling off, or with any draft token.
 - More than 1% of a stage's 16-token replies without a score, or `/metrics` counting fewer scores than requests.
 - On Qwen3-4B, a `scoring` stage's mean |Δscore| against `kept/` above 0.00585, three times D1's highest zero-draft stage, which would suggest the connector is reading the wrong thing.
@@ -70,8 +75,10 @@ At about $0.000345/s for the L4 with 4 CPUs and 32 GiB, from `experiments/modal/
 | Measure call's limit, plus 333 s of container startup | 7,500 s | 7,860 s |
 | The guard's worst case, with download and pre-flight | $2.78 | $2.90 |
 | Room under the $3 daily guard | $0.22 | $0.10 |
-| Expected, arm time only | About 3,300 s, $1.15 | About 3,500 s, $1.20, not measured on an L4 |
-| With about 57 minutes of queueing charged, as an upper estimate | About $2.30 | About $2.40 |
+| Expected, arm time only | About 3,480 s, $1.20 | About 3,680 s, $1.27, not measured on an L4 |
+| With about 57 minutes of queueing charged, as an upper estimate | About $2.40 | About $2.45 |
+
+The short bench and the shorter fixed-rate bench add about 15 s to each arm-run. The guard's worst cases don't change, because the 240 s limit on measurement stays.
 
 ## Local smoke (2026-11-03)
 
@@ -92,6 +99,8 @@ uv run python experiments/phase3/overhead_report.py .cache/overhead-smoke --mode
 | `scoring` stage, mean \|Δscore\| against the bundled reference | 0.000252, PASS | 0.000246, PASS |
 | `scoring_caching` stage | 0.000298, PASS | 0.000298, PASS |
 | Lens saturation, req/s, against the baseline's 17.8 to 18.1 | | 3.45 to 3.55 |
+
+A third smoke, the four arms again at `4e20b31d3726`, ran the short bench at 8 tokens. No stop rule fired. On it, against the same round's baseline, `scoring` was 5.5% faster and 7.1% slower, `lens` 53% and 52% slower, and `scoring_caching` 40% and 33% faster on its 90% hits.
 
 The rerun's floor is 0.000208, and every stage is above it with 0 flips. Caching on is the highest of the four.
 
