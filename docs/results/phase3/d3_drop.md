@@ -10,7 +10,7 @@ Reproduce from the repository root, at `6c8fe7be747a` (the first run at `8974831
 source scripts/dev-env.sh && uv run python experiments/phase3/d3_drop.py --out .cache/d3-drop-2
 ```
 
-**Why there are two runs.** The first, with 3 rounds, came out "no drop" under the rule, because one round's baseline and `b_zero_draft` ran far slower than the rest and decided the mean. That result stands, below. It couldn't say which step costs what, since rounds 1 and 2 pointed the other way from the mean, and the disturbance had no explanation. So a second run of 5 rounds, with the rule unchanged, a disturbed-round check added and the GPU's state recorded, went looking for an answer. It wasn't run because the first result was unwelcome, but the decision to run it did come after seeing that data, and that's why both are reported.
+**Why there are two runs.** The first, with 3 rounds, came out "no drop" under the rule, because one round's baseline and `b_zero_draft` ran far slower than the rest and decided the mean. That result stands, below. Without that round, its other two gave total drops of 35% and 3%, too far apart to say which step costs what, and the disturbance had no explanation. So a second run of 5 rounds followed, with the rule unchanged, a disturbed-round check added and the GPU's state recorded. The decision to run it came after seeing the first run's data, which is why both are reported.
 
 ## The rule
 
