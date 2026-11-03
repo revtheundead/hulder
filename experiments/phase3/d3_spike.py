@@ -61,6 +61,11 @@ def compare_scores(served: list, saved: np.ndarray) -> dict:
     }
 
 
+def flips(served: list, saved: np.ndarray, threshold: float) -> int:
+    """Replies whose decision differs from the saved hidden state's."""
+    return sum((s > threshold) != (float(v) > threshold) for s, v in zip(served, saved) if s is not None)
+
+
 def probe_metrics(before: str, after: str) -> dict:
     from prometheus_client.parser import text_string_to_metric_families
 
@@ -158,11 +163,7 @@ def correctness_stage(out: Path, name: str, texts: list[str], probe, extra: list
     return {
         **compare_scores(served, saved),
         "prompts_over_64_tokens": sum(n > 64 for n in lengths),
-        "flips_at_threshold": sum(
-            (s > probe.metadata["threshold"]) != (v > probe.metadata["threshold"])
-            for s, v in zip(served, saved)
-            if s is not None
-        ),
+        "flips_at_threshold": flips(served, saved, probe.metadata["threshold"]),
     }
 
 

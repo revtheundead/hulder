@@ -1,5 +1,7 @@
 """The D3 spike's pure parts: comparing scores, reading /metrics and the verdict. CPU only."""
 
+import json
+
 import d3_spike as d
 import numpy as np
 import pytest
@@ -118,3 +120,9 @@ def test_a_failure_outranks_a_decision_overall():
         correct=[correct(compared=359, without_score=1), correct()], generation={**GENERATION, "identical": 31}
     )
     assert result["overall"] == "fail"
+
+
+def test_flips_skips_replies_without_a_score_and_stays_a_plain_int_for_the_results_file():
+    flips = d.flips([0.6, None, 0.4], np.array([0.4, 0.9, 0.4], dtype=np.float32), threshold=0.5)
+    assert flips == 1
+    assert json.dumps(flips) == "1"
