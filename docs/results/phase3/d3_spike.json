@@ -1,0 +1,216 @@
+{
+  "correct": [
+    {
+      "budget": "default",
+      "requests": 360,
+      "compared": 360,
+      "without_score": 0,
+      "max_abs_delta": 1.1920928955078125e-07,
+      "prompts_over_64_tokens": 30,
+      "flips_at_threshold": 0
+    },
+    {
+      "budget": 64,
+      "requests": 360,
+      "compared": 360,
+      "without_score": 0,
+      "max_abs_delta": 1.1920928955078125e-07,
+      "prompts_over_64_tokens": 30,
+      "flips_at_threshold": 0
+    }
+  ],
+  "generation": {
+    "prompts": 32,
+    "identical": 32,
+    "draft_tokens": 0
+  },
+  "surfaces": [
+    {
+      "concurrency": 1,
+      "reply_tokens": 1,
+      "requests": 360,
+      "without_score": 360,
+      "flagged_in_replies": 0,
+      "files_written": 0,
+      "metrics": {
+        "scores": 360,
+        "flagged": 188,
+        "replies_with_score": 0,
+        "replies_without_score": 360
+      }
+    },
+    {
+      "concurrency": 1,
+      "reply_tokens": 2,
+      "requests": 360,
+      "without_score": 190,
+      "flagged_in_replies": 84,
+      "files_written": 0,
+      "metrics": {
+        "scores": 360,
+        "flagged": 188,
+        "replies_with_score": 170,
+        "replies_without_score": 190
+      }
+    },
+    {
+      "concurrency": 1,
+      "reply_tokens": 3,
+      "requests": 360,
+      "without_score": 0,
+      "flagged_in_replies": 188,
+      "files_written": 0,
+      "metrics": {
+        "scores": 360,
+        "flagged": 188,
+        "replies_with_score": 360,
+        "replies_without_score": 0
+      }
+    },
+    {
+      "concurrency": 1,
+      "reply_tokens": 4,
+      "requests": 360,
+      "without_score": 0,
+      "flagged_in_replies": 188,
+      "files_written": 0,
+      "metrics": {
+        "scores": 360,
+        "flagged": 188,
+        "replies_with_score": 360,
+        "replies_without_score": 0
+      }
+    },
+    {
+      "concurrency": 1,
+      "reply_tokens": 8,
+      "requests": 360,
+      "without_score": 0,
+      "flagged_in_replies": 188,
+      "files_written": 0,
+      "metrics": {
+        "scores": 360,
+        "flagged": 188,
+        "replies_with_score": 360,
+        "replies_without_score": 0
+      }
+    },
+    {
+      "concurrency": 1,
+      "reply_tokens": 16,
+      "requests": 360,
+      "without_score": 0,
+      "flagged_in_replies": 188,
+      "files_written": 0,
+      "metrics": {
+        "scores": 360,
+        "flagged": 188,
+        "replies_with_score": 360,
+        "replies_without_score": 0
+      }
+    },
+    {
+      "concurrency": 8,
+      "reply_tokens": 1,
+      "requests": 360,
+      "without_score": 360,
+      "flagged_in_replies": 0,
+      "files_written": 0,
+      "metrics": {
+        "scores": 360,
+        "flagged": 188,
+        "replies_with_score": 0,
+        "replies_without_score": 360
+      }
+    },
+    {
+      "concurrency": 8,
+      "reply_tokens": 2,
+      "requests": 360,
+      "without_score": 344,
+      "flagged_in_replies": 9,
+      "files_written": 0,
+      "metrics": {
+        "scores": 360,
+        "flagged": 188,
+        "replies_with_score": 16,
+        "replies_without_score": 344
+      }
+    },
+    {
+      "concurrency": 8,
+      "reply_tokens": 3,
+      "requests": 360,
+      "without_score": 0,
+      "flagged_in_replies": 188,
+      "files_written": 0,
+      "metrics": {
+        "scores": 360,
+        "flagged": 188,
+        "replies_with_score": 360,
+        "replies_without_score": 0
+      }
+    },
+    {
+      "concurrency": 8,
+      "reply_tokens": 4,
+      "requests": 360,
+      "without_score": 0,
+      "flagged_in_replies": 188,
+      "files_written": 0,
+      "metrics": {
+        "scores": 360,
+        "flagged": 188,
+        "replies_with_score": 360,
+        "replies_without_score": 0
+      }
+    },
+    {
+      "concurrency": 8,
+      "reply_tokens": 8,
+      "requests": 360,
+      "without_score": 0,
+      "flagged_in_replies": 188,
+      "files_written": 0,
+      "metrics": {
+        "scores": 360,
+        "flagged": 188,
+        "replies_with_score": 360,
+        "replies_without_score": 0
+      }
+    },
+    {
+      "concurrency": 8,
+      "reply_tokens": 16,
+      "requests": 360,
+      "without_score": 0,
+      "flagged_in_replies": 188,
+      "files_written": 0,
+      "metrics": {
+        "scores": 360,
+        "flagged": 188,
+        "replies_with_score": 360,
+        "replies_without_score": 0
+      }
+    }
+  ],
+  "streamed": {
+    "requests": 16,
+    "chunks_with_a_score": 0,
+    "metrics": {
+      "scores": 16,
+      "flagged": 7,
+      "replies_with_score": 16,
+      "replies_without_score": 0
+    }
+  },
+  "verdict": {
+    "correct": "pass",
+    "replies_unchanged": "pass",
+    "surfaces": "pass",
+    "overall": "pass"
+  },
+  "versions": {
+    "vllm": "0.30.0"
+  }
+}
