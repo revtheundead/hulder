@@ -72,6 +72,9 @@ BASELINE = "baseline"
 LENS = "lens"
 STOCK_ARM = "b_stock"
 ZERO_DRAFT_ARM = "b_zero_draft"
+SCORING_ARM = "scoring"
+CACHING_ARM = "scoring_caching"
+SCORING_ARMS = (SCORING_ARM, CACHING_ARM)
 THRESHOLDS = {"throughput": 0.05, "p99_ttft": 0.10, "p99_tpot": 0.10}
 FIXED_RATE_FRACTION = 0.7
 # A greedy divergence starting where the reference's top two candidates are this close is a tie
@@ -114,6 +117,12 @@ CONFIRMATION = Experiment(
     (BASELINE, STOCK_ARM, ZERO_DRAFT_ARM), 4, calibration_rounds=1, scored_arms=(STOCK_ARM, ZERO_DRAFT_ARM)
 )
 
+# The Phase 3 overhead table. Qwen3-4B leaves lens to its 2026-10-31 result in d1_l4.md, cross-day but
+# a 75% effect, so its three arms fit three measured rounds under the daily guard. The small model has
+# no L4 lens data, so it keeps lens, and four arms fit two measured rounds.
+OVERHEAD_QWEN3 = Experiment((BASELINE, *SCORING_ARMS), 4, calibration_rounds=1, scored_arms=SCORING_ARMS)
+OVERHEAD_15B = Experiment((BASELINE, *SCORING_ARMS, LENS), 3, calibration_rounds=1, scored_arms=SCORING_ARMS)
+
 
 def score_stages(experiment: Experiment) -> int:
     return (experiment.rounds - experiment.calibration_rounds) * len(experiment.scored_arms)
@@ -147,6 +156,12 @@ def worst_case_seconds(timeouts: Timeouts, rounds: int, arms: tuple[str, ...] = 
 # The compile caches for all three arms are on the Volume, and at 480 s of cold start the guard total
 # is $3.00 and leaves no room. A cold start would stop the run in round 0 for about $0.22.
 CONFIRMATION_TIMEOUTS = Timeouts(cold_startup=270, warm_startup=270, measure=240, score=120)
+# Qwen3-4B's zero-draft compile is on the Volume, though whether caching on reuses it is unverified. A
+# cold start would stop the run in round 0, as above.
+OVERHEAD_QWEN3_TIMEOUTS = Timeouts(cold_startup=270, warm_startup=270, measure=240, score=120)
+# Nothing is compiled for the small model yet. Qwen3-4B's cold start took 386.6 s, and 420 s keeps the
+# guard total below $3.
+OVERHEAD_15B_TIMEOUTS = Timeouts(cold_startup=420, warm_startup=270, measure=240, score=120)
 
 
 def measure_call_seconds(experiment: Experiment, timeouts: Timeouts) -> float:
@@ -447,16 +462,18 @@ def free_gpu_memory() -> dict:
 
 def arm_command(arm: str, cfg: dict, storage: Path) -> tuple[list[str], dict]:
     """The `vllm serve` command and extra environment for one arm."""
-    command = [sys.executable, "-m", "vllm.entrypoints.cli.main", "serve", cfg["model"], *cfg["serve"]]
+    serve_flags = ["--enable-prefix-caching" if f == "--no-enable-prefix-caching" else f for f in cfg["serve"]]
+    serve_flags = serve_flags if arm == CACHING_ARM else cfg["serve"]
+    command = [sys.executable, "-m", "vllm.entrypoints.cli.main", "serve", cfg["model"], *serve_flags]
     command += ["--port", str(PORT)]
     env = {} if arm == "lens" else {"VLLM_LENS_DISABLE": "1"}
-    if arm in (STOCK_ARM, "b_noop", ZERO_DRAFT_ARM):
+    if arm in (STOCK_ARM, "b_noop", ZERO_DRAFT_ARM, *SCORING_ARMS):
         speculative = {
             "method": "extract_hidden_states",
             "num_speculative_tokens": 1,
             "draft_model_config": {"hf_config": {"eagle_aux_hidden_state_layer_ids": [cfg["layer"]]}},
         }
-        if arm == ZERO_DRAFT_ARM:
+        if arm in (ZERO_DRAFT_ARM, *SCORING_ARMS):
             speculative["num_speculative_tokens_per_batch_size"] = [[1, 1, 0]]
         transfer = {
             "kv_connector": "ExampleHiddenStatesConnector",
@@ -466,6 +483,12 @@ def arm_command(arm: str, cfg: dict, storage: Path) -> tuple[list[str], dict]:
         if arm == "b_noop":
             transfer["kv_connector"] = "NoWriteHiddenStatesConnector"
             transfer["kv_connector_module_path"] = "no_write_connector"
+            transfer["kv_connector_extra_config"]["use_synchronization_lock"] = False
+            env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(HERE), os.environ.get("PYTHONPATH")]))
+        if arm in SCORING_ARMS:
+            transfer["kv_connector"] = "ScoringHiddenStatesConnector"
+            transfer["kv_connector_module_path"] = "scoring_connector"
+            transfer["kv_connector_extra_config"]["probe_path"] = str(cfg["probe_path"])
             transfer["kv_connector_extra_config"]["use_synchronization_lock"] = False
             env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(HERE), os.environ.get("PYTHONPATH")]))
         command += ["--speculative-config", json.dumps(speculative), "--kv-transfer-config", json.dumps(transfer)]
