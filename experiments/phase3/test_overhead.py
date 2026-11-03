@@ -74,3 +74,64 @@ def test_the_baseline_keeps_prefix_caching_off(tmp_path):
     command, _ = r.arm_command("baseline", CFG, tmp_path)
     assert "--no-enable-prefix-caching" in command
     assert "--speculative-config" not in command
+
+
+def scoring_run(arm="scoring", **startup):
+    return {
+        "arm": arm,
+        "startup": {"model_runner": "V2", "async_scheduling": True, **startup},
+        "counters": {"draft_tokens": 0},
+    }
+
+
+@pytest.mark.parametrize("arm", ["scoring", "scoring_caching"])
+def test_a_scoring_arm_stops_off_v2_with_async_off_or_with_drafts(arm):
+    assert r.zero_draft_stop(scoring_run(arm)) is None
+    assert "isn't V2" in r.zero_draft_stop(scoring_run(arm, model_runner="V1"))
+    assert "async scheduling" in r.zero_draft_stop(scoring_run(arm, async_scheduling=False))
+    assert "draft tokens" in r.zero_draft_stop({**scoring_run(arm), "counters": {"draft_tokens": 3}})
+
+
+def fake_runs(monkeypatch, tmp_path, experiment, saturation, diverged=()):
+    monkeypatch.setattr(
+        r.d1_local,
+        "compare_generations",
+        lambda a, b: {
+            "diverged": [{"prompt": 0, "token": 1, "tokens": ["a", "b"], "margins": [9.0, 9.0]}]
+            if b == ["changed"]
+            else []
+        },
+    )
+    rates = []
+
+    def run_arm(arm, rnd, cfg, workload, out, rate, timeouts, calibrate=False, score=False):
+        rates.append((rnd, arm, rate))
+        bench = {"failed": 0, "request_throughput": saturation[arm], "p99_ttft_ms": 100.0, "p99_tpot_ms": 20.0}
+        result = {
+            "arm": arm,
+            "round": rnd,
+            "generate": ["changed"] if arm in diverged else ["reply"],
+            "saturation": bench,
+            "counters": {"draft_tokens": 0},
+            "startup": {"model_runner": "V2", "async_scheduling": True},
+        }
+        return {**result, **({} if calibrate else {"fixed": bench, "fixed_rate": rate})}
+
+    monkeypatch.setattr(r, "run_arm", run_arm)
+    return r.run_all({}, {}, tmp_path, experiment, r.OVERHEAD_15B_TIMEOUTS), rates
+
+
+def test_the_fixed_rate_leaves_lens_out_since_it_would_set_a_rate_nobody_serves_at(monkeypatch, tmp_path):
+    saturation = {"baseline": 20.0, "scoring": 19.0, "scoring_caching": 18.0, "lens": 5.0}
+    results, rates = fake_runs(monkeypatch, tmp_path, r.OVERHEAD_15B, saturation)
+    assert results["fixed_rate"] == pytest.approx(0.7 * 18.0)
+    assert [rate for rnd, _, rate in rates if rnd > 0] == [pytest.approx(0.7 * 18.0)] * 8
+
+
+def test_a_changed_reply_stops_the_scoring_arm_but_only_gets_reported_with_caching_on(monkeypatch, tmp_path):
+    saturation = {"baseline": 20.0, "scoring": 19.0, "scoring_caching": 18.0}
+    results, _ = fake_runs(monkeypatch, tmp_path, r.OVERHEAD_QWEN3, saturation, diverged=("scoring_caching",))
+    assert results["stopped"] is None
+    assert results["generation"]["r0_scoring_caching"]["diverged"]
+    results, _ = fake_runs(monkeypatch, tmp_path, r.OVERHEAD_QWEN3, saturation, diverged=("scoring",))
+    assert "greedy replies changed" in results["stopped"]

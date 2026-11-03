@@ -178,10 +178,12 @@ def fixed_rate(saturations: list[float]) -> float:
 def zero_draft_stop(run: dict) -> str | None:
     """Why a b_zero_draft arm-run stops the run, or None. The setting only works on V2, and on any
     other runner, or if it stopped working, it would be measuring B under another name."""
-    if run["arm"] != ZERO_DRAFT_ARM:
+    if run["arm"] not in (ZERO_DRAFT_ARM, *SCORING_ARMS):
         return None
     if run["startup"]["model_runner"] != "V2":
         return f"its startup log isn't V2: {run['startup']['model_runner']}"
+    if run["arm"] in SCORING_ARMS and run["startup"]["async_scheduling"] is False:
+        return "async scheduling is off, where zero-draft drafts again"
     if drafts := run["counters"]["draft_tokens"]:
         return f"{drafts} draft tokens"
     if drafts := run.get("score", {}).get("counters", {}).get("draft_tokens"):
@@ -746,7 +748,8 @@ def run_all(cfg: dict, workload: dict, out: Path, experiment: Experiment, timeou
         if experiment.calibration_rounds == 0 and rnd == 0 and arm == BASELINE:
             rate = run["fixed_rate"]
         if calibrate and len(results["runs"]) == experiment.calibration_rounds * len(experiment.arms):
-            saturations = [r["saturation"]["request_throughput"] for r in runs.values()]
+            # Lens, at about a quarter of the baseline, would set a rate well below serving load.
+            saturations = [r["saturation"]["request_throughput"] for (_, a), r in runs.items() if a != LENS]
             rate = results["fixed_rate"] = fixed_rate(saturations)
         reference = replies[(0, BASELINE)]
         comparisons = {
@@ -756,7 +759,9 @@ def run_all(cfg: dict, workload: dict, out: Path, experiment: Experiment, timeou
         }
         plain = [c for (r, a), c in comparisons.items() if a == BASELINE]
         results["generation"] = {f"r{r}_{a}": c for (r, a), c in comparisons.items()}
-        fails = [f"r{r}_{a}" for (r, a), c in comparisons.items() if a != BASELINE and generation_fails(c, plain)]
+        # Caching on can change replies, since it changes the numbers. That's reported, not a stop.
+        judged = {k: c for k, c in comparisons.items() if k[1] not in (BASELINE, CACHING_ARM)}
+        fails = [f"r{r}_{a}" for (r, a), c in judged.items() if generation_fails(c, plain)]
         if fails:
             results["stopped"] = f"greedy replies changed beyond a fresh baseline's: {', '.join(fails)}"
             break
