@@ -16,6 +16,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 import torch
+from d3_scoring import PrefillTracker, ScoreLedger
 from vllm.distributed.kv_transfer.kv_connector.v1.base import KVConnectorRole, KVConnectorWorkerMetadata
 from vllm.distributed.kv_transfer.kv_connector.v1.example_hidden_states_connector import (
     ExampleHiddenStatesConnector,
@@ -25,7 +26,6 @@ from vllm.distributed.kv_transfer.kv_connector.v1.metrics import KVConnectorProm
 from vllm.utils.gpu_sync_debug import gpu_sync_allowed
 from vllm.v1.metrics.utils import create_metric_per_engine
 
-from d3_scoring import PrefillTracker, ScoreLedger
 from hulder import Probe
 
 SCORE_BUCKETS = [i / 20 for i in range(1, 20)]
@@ -100,7 +100,11 @@ class ScorePromMetrics(KVConnectorPromMetrics):
             for key, name, documentation in (
                 ("flagged", "hulder_probe_flagged", "Scores strictly above the probe's threshold."),
                 ("replies_with_score", "hulder_probe_replies_with_score", "Finished requests with a score ready."),
-                ("replies_without_score", "hulder_probe_replies_without_score", "Requests that ended before their score."),
+                (
+                    "replies_without_score",
+                    "hulder_probe_replies_without_score",
+                    "Requests that ended before their score.",
+                ),
             )
         }
 

@@ -111,5 +111,7 @@ def test_a_request_that_never_finished_prefill_leaves_nothing_waiting_for_a_scor
 
 def test_the_tracker_says_whether_a_request_reached_the_end_of_prefill():
     t = tracker()
-    t.finished_prefill(step(new=[("a", 20, 0), ("b", 20, 0)], scheduled={"a": 20, "b": 16}, blocks={"a": [7, 9], "b": [5]}))
+    t.finished_prefill(
+        step(new=[("a", 20, 0), ("b", 20, 0)], scheduled={"a": 20, "b": 16}, blocks={"a": [7, 9], "b": [5]})
+    )
     assert t.reported("a") and not t.reported("b")

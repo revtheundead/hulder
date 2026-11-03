@@ -7,9 +7,9 @@ import pytest
 torch = pytest.importorskip("torch")
 pytest.importorskip("vllm")
 
-import scoring_connector as c  # noqa: E402
+import scoring_connector as c
 
-import hulder  # noqa: E402
+import hulder
 
 
 def test_the_score_of_a_worked_example():
@@ -45,6 +45,12 @@ def test_stats_aggregate_over_an_interval_and_reduce_for_the_log():
     a = c.ScoreStats({"scores": [0.25], "flagged": 0, "replies_with_score": 1, "replies_without_score": 0})
     b = c.ScoreStats({"scores": [0.75], "flagged": 1, "replies_with_score": 0, "replies_without_score": 2})
     both = a.aggregate(b)
-    assert both.reduce() == {"scores": 2, "mean_score": 0.5, "flagged": 1, "replies_with_score": 1, "replies_without_score": 2}
+    assert both.reduce() == {
+        "scores": 2,
+        "mean_score": 0.5,
+        "flagged": 1,
+        "replies_with_score": 1,
+        "replies_without_score": 2,
+    }
     assert not both.is_empty()
     assert c.ScoreStats({"scores": [], "flagged": 0, "replies_with_score": 0, "replies_without_score": 0}).is_empty()
