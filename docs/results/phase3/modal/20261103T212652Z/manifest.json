@@ -1,0 +1,116 @@
+{
+  "run_id": "20261103T212652Z",
+  "experiment": "overhead_qwen3",
+  "commit": "afb17ce4ba1683683221173f313caee901fb4814",
+  "command": "uv run --with modal==1.6.1 modal run experiments/phase3/d1_modal.py --spent-usd 0.0 --experiment overhead_qwen3",
+  "modal": "1.6.1",
+  "rates_usd_per_s": {
+    "L4": 0.000222,
+    "cpu_core": 1.31e-05,
+    "memory_gib": 2.22e-06
+  },
+  "spent_before_usd": 0.0,
+  "worst_case_usd": 2.7796,
+  "cfg": {
+    "model": "Qwen/Qwen3-4B",
+    "hidden_size": 2560,
+    "layer": 18,
+    "probe_path": "/root/experiments/phase3/18_-1.npz",
+    "serve": [
+      "--revision",
+      "1cfa9a7208912126459214e8b04321603b3df60c",
+      "--dtype",
+      "bfloat16",
+      "--max-model-len",
+      "2048",
+      "--enable-chunked-prefill",
+      "--no-enable-prefix-caching",
+      "--seed",
+      "0"
+    ]
+  },
+  "workload": {
+    "gen_tokens": 64,
+    "saturation_prompts": 300,
+    "fixed_seconds": 60,
+    "output_len": 128,
+    "short_output_len": 16
+  },
+  "arms": [
+    "baseline",
+    "scoring",
+    "scoring_caching"
+  ],
+  "rounds": 4,
+  "calibration_rounds": 1,
+  "scored_arms": [
+    "scoring",
+    "scoring_caching"
+  ],
+  "score_concurrency": 64,
+  "score_output_tokens": 16,
+  "timeouts_s": {
+    "cold_startup": 270,
+    "warm_startup": 270,
+    "measure": 240,
+    "score": 120,
+    "stop_grace": 30,
+    "measure_call": 7500
+  },
+  "download": {
+    "seconds": 0.0,
+    "estimated_usd": 0.0002
+  },
+  "preflight": {
+    "score_prompts_templated": 2101,
+    "tokenizer_path": "/__modal/volumes/vo-jLVhGKA1eUYgYxMUijaSbV/hf/hub/models--Qwen--Qwen3-4B/snapshots/1cfa9a7208912126459214e8b04321603b3df60c",
+    "tokenizer_vocab": 151669,
+    "templated_tokens": 9,
+    "packages": 238,
+    "versions": {
+      "hulder": "0.2.0",
+      "torch": "2.13.0",
+      "transformers": "5.18.0",
+      "vllm-lens": "1.3.0",
+      "vllm": "0.30.0"
+    },
+    "seconds": 50.8,
+    "wall_seconds": 56.9,
+    "estimated_usd": 0.0025
+  },
+  "estimated_usd": 1.2073,
+  "measure": {
+    "wall_seconds": 3487.2,
+    "estimated_usd": 1.2046,
+    "nvidia_smi": "NVIDIA L4, GPU-768d570b-d6d4-d8d2-4807-a243a6d3c6e2, 610.57.04, 23034 MiB",
+    "model_runners": {
+      "baseline": [
+        "V2"
+      ],
+      "scoring": [
+        "V2"
+      ],
+      "scoring_caching": [
+        "V2"
+      ]
+    },
+    "async_scheduling": {
+      "r0_baseline": true,
+      "r0_scoring": true,
+      "r0_scoring_caching": true,
+      "r1_scoring": true,
+      "r1_scoring_caching": true,
+      "r1_baseline": true,
+      "r2_scoring_caching": true,
+      "r2_baseline": true,
+      "r2_scoring": true,
+      "r3_baseline": true,
+      "r3_scoring": true,
+      "r3_scoring_caching": true
+    },
+    "environment": {
+      "returncode": 0,
+      "seconds": 11.1
+    }
+  }
+}
