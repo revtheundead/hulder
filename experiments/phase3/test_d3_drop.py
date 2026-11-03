@@ -79,12 +79,12 @@ def test_no_round_is_disturbed_when_the_arms_agree():
 
 
 def test_the_gpu_state_parses_nvidia_smis_line():
-    assert d.parse_gpu_state("1605, 7000, P0, 123.45, 71, 0x0000000000000000") == {
+    assert d.parse_gpu_state("1605, 7000, P0, 123.45, 71.25, 0x0000000000000000") == {
         "clock_mhz": 1605,
         "memory_clock_mhz": 7000,
         "pstate": "P0",
         "power_w": 123.45,
-        "temperature_c": 71,
+        "temperature_c": 71.25,
         "throttle_reasons": "0x0000000000000000",
     }
 

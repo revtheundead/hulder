@@ -3,8 +3,8 @@
 The smoke's workload on the local GPU: Qwen2.5-1.5B-Instruct in fp16, 4 greedy replies, then saturation
 benches of 16 requests of 16 tokens at --max-num-seqs 8. Three arms interleaved over 3 rounds, each a
 fresh `vllm serve`: the baseline, the stock connector on zero-draft (b_zero_draft), and the scoring
-connector (scoring). Each server runs the bench 3 times, so the first bench is the smoke's measurement
-and the later two show whether it was warm-up.
+connector (scoring). Each server runs the bench twice, so the first is the smoke's measurement and the
+second shows whether it was warm-up. The first run ran it 3 times and took about 9 minutes per server.
 
 The rule, fixed before the first run, on the first bench of each server, in req/s lost:
 - Under a 10% mean drop from the baseline to scoring, nothing reproduced.
@@ -40,7 +40,7 @@ import d1_local
 
 ARMS = ("baseline", "b_zero_draft", "scoring")
 ROUNDS = 5
-BENCHES = 3
+BENCHES = 2
 REPRODUCED = 0.10
 DISTURBED = 2.0
 GPU_QUERY = "clocks.gr,clocks.mem,pstate,power.draw,temperature.gpu,clocks_throttle_reasons.active"
@@ -118,7 +118,7 @@ def parse_gpu_state(line: str) -> dict:
         "memory_clock_mhz": int(memory),
         "pstate": pstate,
         "power_w": float(power),
-        "temperature_c": int(temperature),
+        "temperature_c": float(temperature),
         "throttle_reasons": throttle,
     }
 
