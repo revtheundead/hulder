@@ -93,6 +93,10 @@ STOP_GRACE_S = 30  # from SIGTERM to SIGKILL when a server is stopped
 # 128-token replies at an eager 60 ms a token. One that hasn't did not sustain the rate.
 SUSTAIN_GRACE_S = 30
 UNSUSTAINED = "did not sustain the fixed rate"
+# Three times D1 confirmation's highest zero-draft stage against kept/ (mean |Δscore|): far enough past
+# normal that the connector is more likely reading the wrong thing than a server having moved.
+SCORE_SHIFT_STOP = 3 * 0.001951430574990809
+MAX_MISSING_SCORES = 0.01  # the share of a stage's 16-token replies that may come back without a score
 SCORE_OUTPUT_TOKENS = 16  # as the 2070's check, so decode steps share batches with prefills
 COLLECT_ENV_FILE = "collect_env.txt"
 IMAGE_UV_DIR = "/.uv"  # where Modal's uv_sync leaves uv, not on PATH
@@ -428,7 +432,7 @@ def preflight(model: str, revision: str, score: dict | None = None) -> dict:
     )
     templated = tokenizer(text, add_special_tokens=False)["input_ids"]
     sys.path.insert(0, str(HERE))
-    for module in ("no_write_connector", "vllm_lens", "vllm_lens.client", "prometheus_client.parser", "httpx"):
+    for module in ("no_write_connector", "scoring_connector", "d3_spike", "vllm_lens", "vllm_lens.client", "prometheus_client.parser", "httpx"):
         try:
             importlib.import_module(module)
         except ImportError as error:
@@ -642,6 +646,104 @@ def score_stage(url: str, cfg: dict, workload: dict, rnd: int, run_dir: Path, ti
     return {"rows": len(rows), "concurrency": workload["score_concurrency"], "seconds": round(time.time() - started, 1)}
 
 
+def reply_scores(order: np.ndarray, responses: list[dict], expected: list[list[int]]) -> np.ndarray:
+    """A stage's scores from its replies, in prompt order, NaN where a reply came back without one.
+    Raises RuntimeError, a stop rule, on too few rows, other tokens or a score that isn't a probability."""
+    if len(responses) != len(expected):
+        raise RuntimeError(f"the score stage returned {len(responses)} of {len(expected)} rows")
+    scores = np.full(len(expected), np.nan)
+    for i, response in zip(order, responses, strict=True):
+        if list(response["prompt_token_ids"]) != list(expected[i]):
+            raise RuntimeError(f"prompt {i}'s token ids don't match the expected tokens")
+        score = response["kv_transfer_params"]["hulder_score"]
+        if score is None:
+            continue
+        if not 0 <= score <= 1:
+            raise RuntimeError(f"prompt {i}'s score {score} isn't a probability")
+        scores[i] = score
+    return scores
+
+
+def stage_summary(scores: np.ndarray, metrics_scores: int, reference: np.ndarray | None = None,
+                  shift_stop: float | None = None, allowed_missing: float = MAX_MISSING_SCORES) -> dict:  # fmt: skip
+    """A stage's counts and any shift against a reference. Raises RuntimeError, a stop rule, on too many
+    replies without a score, a score /metrics didn't count, or a shift past shift_stop."""
+    present = ~np.isnan(scores)
+    missing = int((~present).sum())
+    if missing > allowed_missing * len(scores):
+        raise RuntimeError(f"{missing} of {len(scores)} replies came back without a score")
+    if metrics_scores != len(scores):
+        raise RuntimeError(f"/metrics has {metrics_scores} scores for {len(scores)} requests")
+    summary = {"without_score": missing}
+    if reference is not None:
+        summary["mean_abs_dscore"] = float(np.abs(scores[present] - reference[present]).mean())
+        if shift_stop is not None and summary["mean_abs_dscore"] > shift_stop:
+            raise RuntimeError(f"mean |Δscore| {summary['mean_abs_dscore']:.6f} is above its stop rule, {shift_stop:.6f}")
+    return summary
+
+
+def shift_stop_for(arm: str, workload: dict) -> float | None:
+    """Only the caching-off arm stops on shift. With caching on, the shift is what's being measured."""
+    return workload.get("score_shift_stop") if arm == SCORING_ARM else None
+
+
+CACHE_COUNTERS = {"queried_tokens": "vllm:prefix_cache_queries_total", "hit_tokens": "vllm:prefix_cache_hits_total"}
+
+
+def cache_counters(before: str, after: str) -> dict:
+    """Prefix-cache tokens queried and hit between two /metrics scrapes."""
+    from prometheus_client.parser import text_string_to_metric_families
+
+    def read(text: str) -> dict:
+        totals = dict.fromkeys(CACHE_COUNTERS.values(), 0.0)
+        for family in text_string_to_metric_families(text):
+            for sample in family.samples:
+                if sample.name in totals:
+                    totals[sample.name] += sample.value
+        return totals
+
+    b, a = read(before), read(after)
+    return {key: round(a[name] - b[name]) for key, name in CACHE_COUNTERS.items()}
+
+
+def reply_score_stage(url: str, cfg: dict, workload: dict, rnd: int, run_dir: Path, timeout_s: float, arm: str) -> dict:
+    """score_stage for the scoring connector: the same prompts and order, with each score read from its
+    reply and /metrics, and no hidden states. Saves score.npz. Raises TimeoutError past timeout_s, and
+    RuntimeError on any other stop rule."""
+    import d3_spike
+    import httpx
+
+    started = time.time()
+    texts = workload["score_prompts"]
+    order = np.random.default_rng(rnd).permutation(len(texts))
+    tokens = workload["score_output_tokens"]
+    params = {
+        "model": cfg["model"],
+        "max_tokens": tokens,
+        "min_tokens": tokens,
+        "ignore_eos": True,
+        "return_token_ids": True,
+        "chat_template_kwargs": {"enable_thinking": False},
+    }
+    before = httpx.get(f"{url}/metrics").text
+    replies = d1_local.chat_all(url, [texts[i] for i in order], workload["score_concurrency"], **params)
+    responses = d1_local.asyncio.run(d1_local.asyncio.wait_for(replies, timeout_s))
+    scores = reply_scores(order, responses, workload["score_tokens"])
+    metrics = d3_spike.settled_metrics(url, before, len(texts))
+    reference = np.array(workload["score_reference"]) if "score_reference" in workload else None
+    summary = stage_summary(scores, metrics["scores"], reference, shift_stop_for(arm, workload))
+    if time.time() - started > timeout_s:
+        raise TimeoutError(f"the score stage passed its {timeout_s:g} s timeout waiting for /metrics")
+    np.savez(run_dir / "score.npz", ids=np.array(workload["score_ids"]), scores=scores, order=order)
+    return {
+        "rows": len(scores),
+        "concurrency": workload["score_concurrency"],
+        "metrics": metrics,
+        "seconds": round(time.time() - started, 1),
+        **summary,
+    }
+
+
 def run_arm(arm: str, rnd: int, cfg: dict, workload: dict, out: Path, rate: float | None,
             timeouts: Timeouts, calibrate: bool = False, score: bool = False) -> dict:  # fmt: skip
     """One arm-run. rate is the fixed-rate bench's, None in round 0's baseline, which sets it. A
@@ -686,15 +788,24 @@ def run_arm(arm: str, rnd: int, cfg: dict, workload: dict, out: Path, rate: floa
                 result["fixed_rate"] = rate
                 stage, stage_started = "fixed", time.time()
                 result["fixed"] = bench(url, cfg, workload, dataset, run_dir, "fixed", rate, n_fixed, deadline)
-            result["counters"] = d1_local.step_tokens(before, httpx.get(f"{url}/metrics").text)
+            after_benches = httpx.get(f"{url}/metrics").text
+            result["counters"] = d1_local.step_tokens(before, after_benches)
+            if arm == CACHING_ARM:
+                result["cache"] = cache_counters(before, after_benches)
             if arm == "lens":
                 result["hook_results"] = len(VLLMLensClient(url).collect_hook_results())
             if score:
                 peaks.stop.set()  # the peaks are the benches'
                 before = httpx.get(f"{url}/metrics").text
                 stage, stage_started = "score", time.time()
-                result["score"] = score_stage(url, cfg, workload, rnd, run_dir, timeouts.score)
-                result["score"]["counters"] = d1_local.step_tokens(before, httpx.get(f"{url}/metrics").text)
+                if arm in SCORING_ARMS:
+                    result["score"] = reply_score_stage(url, cfg, workload, rnd, run_dir, timeouts.score, arm)
+                else:
+                    result["score"] = score_stage(url, cfg, workload, rnd, run_dir, timeouts.score)
+                after_stage = httpx.get(f"{url}/metrics").text
+                result["score"]["counters"] = d1_local.step_tokens(before, after_stage)
+                if arm == CACHING_ARM:
+                    result["score"]["cache"] = cache_counters(before, after_stage)
     except (RuntimeError, TimeoutError, subprocess.SubprocessError, httpx.HTTPError) as error:
         result["error"] = f"{type(error).__name__}: {str(error) or 'the measurement timeout passed'}"
         if stage and isinstance(error, (TimeoutError, subprocess.TimeoutExpired)):

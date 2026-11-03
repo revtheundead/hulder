@@ -135,3 +135,119 @@ def test_a_changed_reply_stops_the_scoring_arm_but_only_gets_reported_with_cachi
     assert results["generation"]["r0_scoring_caching"]["diverged"]
     results, _ = fake_runs(monkeypatch, tmp_path, r.OVERHEAD_QWEN3, saturation, diverged=("scoring",))
     assert "greedy replies changed" in results["stopped"]
+
+
+def reply(tokens, score):
+    return {"prompt_token_ids": tokens, "kv_transfer_params": {"hulder_score": score}}
+
+
+EXPECTED = [[1], [2], [3], [4]]
+ORDER = np.array([2, 0, 3, 1])
+
+
+def stage_replies(scores_in_prompt_order):
+    return [reply(EXPECTED[i], scores_in_prompt_order[i]) for i in ORDER]
+
+
+def test_reply_scores_come_back_in_prompt_order_with_nan_for_a_missing_one():
+    scores = r.reply_scores(ORDER, stage_replies([0.1, None, 0.3, 0.4]), EXPECTED)
+    assert scores[[0, 2, 3]].tolist() == pytest.approx([0.1, 0.3, 0.4])
+    assert np.isnan(scores[1])
+
+
+def test_reply_scores_stop_on_too_few_rows_or_other_tokens():
+    with pytest.raises(RuntimeError, match="3 of 4 rows"):
+        r.reply_scores(ORDER[:3], stage_replies([0.1, 0.2, 0.3, 0.4])[:3], EXPECTED)
+    replies = stage_replies([0.1, 0.2, 0.3, 0.4])
+    replies[0]["prompt_token_ids"] = [99]
+    with pytest.raises(RuntimeError, match="token ids"):
+        r.reply_scores(ORDER, replies, EXPECTED)
+
+
+@pytest.mark.parametrize("bad", [float("nan"), float("inf"), -0.1, 1.1])
+def test_reply_scores_stop_on_a_score_that_isnt_a_probability(bad):
+    with pytest.raises(RuntimeError, match="isn't a probability"):
+        r.reply_scores(ORDER, stage_replies([0.1, bad, 0.3, 0.4]), EXPECTED)
+
+
+def scores_with(missing, n=1000):
+    return np.array([np.nan] * missing + [0.5] * (n - missing))
+
+
+def test_the_stage_summary_counts_and_allows_up_to_one_percent_missing():
+    assert r.stage_summary(scores_with(10), metrics_scores=1000)["without_score"] == 10
+    with pytest.raises(RuntimeError, match="11 of 1000 replies"):
+        r.stage_summary(scores_with(11), metrics_scores=1000)
+
+
+def test_the_stage_summary_stops_on_a_score_lost_on_the_way_to_metrics():
+    with pytest.raises(RuntimeError, match="999 scores for 1000 requests"):
+        r.stage_summary(scores_with(0), metrics_scores=999)
+
+
+def test_the_stage_summary_reports_the_shift_over_rows_with_a_score_and_stops_past_the_limit():
+    scores = np.array([np.nan, 0.5, 0.6])
+    reference = np.array([0.9, 0.4, 0.6])
+    summary = r.stage_summary(scores, metrics_scores=3, reference=reference, allowed_missing=1.0)
+    assert summary["mean_abs_dscore"] == pytest.approx(0.05)
+    assert "mean_abs_dscore" not in r.stage_summary(scores, metrics_scores=3, allowed_missing=1.0)
+    with pytest.raises(RuntimeError, match="above its stop rule"):
+        r.stage_summary(scores, metrics_scores=3, reference=reference, shift_stop=0.04, allowed_missing=1.0)
+
+
+def test_the_shift_stop_is_three_times_d1s_highest_zero_draft_stage():
+    assert r.SCORE_SHIFT_STOP == pytest.approx(3 * 0.001951430574990809)
+
+
+METRICS = """\
+# TYPE vllm:prefix_cache_queries counter
+vllm:prefix_cache_queries_total{{engine="0",model_name="m"}} {queries}
+# TYPE vllm:prefix_cache_hits counter
+vllm:prefix_cache_hits_total{{engine="0",model_name="m"}} {hits}
+"""
+
+
+def test_cache_counters_are_the_difference_between_two_scrapes():
+    pytest.importorskip("prometheus_client")  # from the vllm extra
+    before, after = METRICS.format(queries=100, hits=16), METRICS.format(queries=500, hits=48)
+    assert r.cache_counters(before, after) == {"queried_tokens": 400, "hit_tokens": 32}
+
+
+def test_the_scoring_arms_stage_only_stops_on_shift_for_the_caching_off_arm():
+    workload = {"score_reference": [0.5], "score_shift_stop": 0.01}
+    assert r.shift_stop_for("scoring", workload) == 0.01
+    assert r.shift_stop_for("scoring_caching", workload) is None
+    assert r.shift_stop_for("scoring", {}) is None
+
+
+def test_the_reply_stage_saves_scores_in_prompt_order_and_sends_prompts_as_the_capture_templates_them(
+    monkeypatch, tmp_path
+):
+    import d3_spike
+
+    sent = {}
+
+    async def chat_all(url, texts, concurrency, **params):
+        sent.update(texts=texts, concurrency=concurrency, params=params)
+        by_text = {"a": ([1], 0.1), "b": ([2], 0.2), "c": ([3], 0.3)}
+        return [reply(*by_text[t]) for t in texts]
+
+    monkeypatch.setattr(r.d1_local, "chat_all", chat_all)
+    monkeypatch.setattr(pytest.importorskip("httpx"), "get", lambda *a, **k: type("R", (), {"text": ""}))
+    monkeypatch.setattr(d3_spike, "settled_metrics", lambda url, before, expected: {"scores": expected})
+    workload = {
+        "score_prompts": ["a", "b", "c"],
+        "score_ids": ["x", "y", "z"],
+        "score_tokens": [[1], [2], [3]],
+        "score_output_tokens": 16,
+        "score_concurrency": 64,
+    }
+    result = r.reply_score_stage("url", {"model": "m"}, workload, 1, tmp_path, 60, "scoring")
+    assert sent["concurrency"] == 64
+    assert sent["params"]["max_tokens"] == sent["params"]["min_tokens"] == 16
+    assert sent["params"]["chat_template_kwargs"] == {"enable_thinking": False}
+    assert result["rows"] == 3
+    assert result["without_score"] == 0
+    with np.load(tmp_path / "score.npz", allow_pickle=False) as saved:
+        assert saved["ids"].tolist() == ["x", "y", "z"]
+        assert saved["scores"].tolist() == pytest.approx([0.1, 0.2, 0.3])
