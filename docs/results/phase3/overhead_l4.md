@@ -95,7 +95,7 @@ uv run python experiments/phase3/overhead_report.py .cache/overhead-smoke --mode
 
 The rerun's floor is 0.000208, and every stage is above it with 0 flips. Caching on is the highest of the four.
 
-**One thing to watch, not a result.** Saturation fell from 15 to 18 req/s on the baseline to 5.8 to 12 on both scoring arms. That's 16 short requests on a GPU whose throughput isn't representative (docs/design.md §8.1), and the workload is mostly prefill, unlike the L4's 128-token replies, where zero-draft B lost 1.5%. It still could be a real cost of the connector or of extraction on prefill-heavy traffic, and the cause isn't known. The L4 run should show it if it's the connector.
+**The saturation drop this smoke seemed to show didn't reproduce.** Saturation fell from 15 to 18 req/s on the baseline to 5.7 to 12 on both scoring arms. A 5-round check on the same workload (`d3_drop.md`) found about 15% to 18%, all of it at the extraction path and none at the connector.
 
 ## What the draft doesn't settle
 
