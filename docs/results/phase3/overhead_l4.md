@@ -1,10 +1,69 @@
 # Phase 3 overhead table on the L4
 
-**Not run yet.** This page fixes the setup, the rules and the cost before any data exists. Only the local smoke below has run, and it says nothing about overhead.
+**On Qwen3-4B on an L4, the scoring connector on zero-draft B passes the cost rule on all three metrics, with no drafts and no stop rule fired, and turning prefix caching on holds at the frozen threshold.** The small model's run hasn't happened, so this table isn't complete. The setup, the rules and the cost were fixed on this page before the run.
+
+| Model | Run | Saturation loss | p99 TTFT | p99 TPOT | `scoring` | Short replies, `scoring` | Caching on |
+|---|---|---|---|---|---|---|---|
+| Qwen3-4B | `20261103T212652Z` | −1.68 to 0.88% | −1.57 to −0.72% | 0.84 to 1.72% | **Passes** | −1.70 to 3.35%, within 5% | **Holds**, PASS on 3 of 3 stages, 26.1% of tokens hit |
+| Qwen2.5-1.5B | Not run | | | | | | |
+
+Records are in [`modal/20261103T212652Z/`](modal/20261103T212652Z/).
+
+## Qwen3-4B
+
+Modal L4 (Ada, 24 GB, driver 610.57.04), one GPU and one container, at `afb17ce4ba16`. 12 arm-runs and 6 score stages, with 0 failed requests, all on Model Runner V2 with async scheduling on. The fixed rate was 13.2 req/s, 70% of the slowest arm's calibration saturation.
+
+**Estimated cost $1.21,** from the measure call's 3,487 s of wall time, with almost no wait for a GPU. The actual charge is on Modal's usage page.
+
+| Metric | Threshold | Baseline's range | `scoring` by round | Verdict | `scoring_caching` by round |
+|---|---|---|---|---|---|
+| Saturation throughput loss | 5% | 1.17% | −0.79, −1.68, 0.08, 0.88% | Pass | −0.41, −0.85, 0.46, 0.24% |
+| Fixed-rate p99 TTFT | 10% | 2.07% | −0.83, −0.72, −1.57% | Pass | 1.71, −1.24, −0.96% |
+| Fixed-rate p99 TPOT | 10% | 0.86% | 1.72, 0.84, 0.96% | Pass | 1.90, 0.89, 0.56% |
+
+The baseline stayed within half of every threshold, so these are passes rather than D1 confirmation's inconclusive verdict. p99 TTFT was 191 to 198 ms and p99 TPOT 51.8 to 52.8 ms. `scoring_caching` is caching on against the caching-off baseline, so it doesn't separate the two effects.
+
+**Draft tokens: 0** in every arm-run, benches and score stages. **Greedy replies: 0 changes.** `scoring` diverged from the baseline on 4 prompts per server and `scoring_caching` on 4 to 6, all at exact ties or within the tie bound. Fresh baselines diverged on 0. **Margin:** measurement took at most 208 s of its 240 s limit.
+
+### Score stages against `kept/`
+
+All 2,101 rows at threshold 0.8025, with 0 replies without a score and `/metrics` counting every score. The rerun's floor is 0.001641 with 4 flips.
+
+| Stage | `hulder check` | Flips | Mean \|Δscore\| | Past the floor | Tokens hit |
+|---|---|---|---|---|---|
+| r1 `scoring` | PASS | 1 | 0.001831 | Yes | |
+| r2 `scoring` | PASS | 5 | 0.001862 | Yes | |
+| r3 `scoring` | PASS | 4 | 0.001777 | Yes | |
+| r1 `scoring_caching` | PASS | 4 | 0.001880 | Yes | 26.1% |
+| r2 `scoring_caching` | PASS | 2 | 0.001742 | No | 26.1% |
+| r3 `scoring_caching` | PASS | 2 | 0.001679 | No | 26.1% |
+
+**Caching on holds at this threshold on this set,** under the rule fixed before the run, with prefix caching declared a change under test. Its shift falls in the same range as the caching-off stages. `scoring` in round 2 has one flip more than the floor, and flips aren't an input to the verdict.
+
+**Hit rates.** 18,912 of 72,360 tokens in each score stage, 26.1%. 3,232 of 5,760 in each short bench, 56.1%, since it repeats the saturation bench's prompts. 6,464 of 26,880 from the saturation bench through the fixed-rate one in measured rounds, 24.0%.
+
+### Short replies
+
+| Arm | Loss against baseline, rounds 0 to 3 | Past 5% |
+|---|---|---|
+| `scoring` | 1.61, 3.35, −1.70, −0.01% | No |
+| `scoring_caching` | −12.3, −17.6, −13.9, −18.7%, faster on its hits | No |
+
+**This is a known limit: it doesn't test prefill-heavy traffic.** The short bench's prompts come to about 19 tokens each (5,760 tokens over 300 requests), so with 16-token replies it spends little on prefill. The 2070's check, which found about 15% to 18% at the extraction path (`d3_drop.md`), had prompts of about 85 tokens. So this run neither confirms nor refutes that cost, and long prompts on an L4 are unmeasured. Each bench also lasted only about 3 s.
+
+### Where this falls short
+
+- **Numerical paths weren't observable.** This run keeps scores, not hidden states, so it can't make the bit comparisons that showed D1's servers changing path, 4 of 12 extraction servers in the confirmation and zero-draft runs (`d1_confirmation_l4.md`). Any such change here sits inside the stages' shifts.
+- **vllm-lens on Qwen3-4B is cross-day** (below).
+- Three latency rounds and four throughput rounds give ranges, not intervals. One model, one GPU, and 128-token replies at up to 256 running requests.
+- Caching on is tested only with unique, short prompts, and not on a shared-prefix workload (below).
+- The 60 s fixed-rate bench means about 790 requests behind each p99, fewer than D1's.
+
+## Setup
 
 Each model gets its own call, on its own day, with every arm-run in one container and each a fresh `vllm serve`. Arm order rotates by round. Round 0 calibrates, with no fixed-rate bench. Every later round runs a greedy check, a saturation bench of 300 prompts, a short-reply saturation bench of the same 300 prompts at 16 output tokens, and a fixed-rate bench of up to 60 s, with EOS ignored and 128 output tokens outside the short bench. Round 0 has both saturation benches.
 
-**Why the short bench.** Every other timed bench is 128-token replies, and a local check found a cost there that those wouldn't show: about 15% to 18% of saturation throughput on short replies on the 2070, all of it at the extraction path (`d3_drop.md`). **Why 60 s.** The short bench takes about 30 s, and that's an estimate from a bench process's 24 s start. D1's fixed-rate bench ran 75 s. At 60 s, a Qwen3-4B arm-run's measurement is about 203 s of its 240 s limit, against 188 s measured in D1, which keeps over 30 s of margin. At about 14 req/s it means about 840 requests rather than 1,050 behind each p99, so these latencies aren't from the same length of bench as D1's.
+**Why the short bench.** Every other timed bench is 128-token replies, and a local check found a cost there that those wouldn't show: about 15% to 18% of saturation throughput on short replies on the 2070, all of it at the extraction path (`d3_drop.md`). **Why 60 s.** The short bench takes about 30 s, and that's an estimate from a bench process's 24 s start. D1's fixed-rate bench ran 75 s. At 60 s, a Qwen3-4B arm-run's measurement was at most 208 s of its 240 s limit, against 188 s in D1, which keeps over 30 s of margin. It means about 790 requests behind each p99, so these latencies aren't from the same length of bench as D1's.
 
 | | Qwen3-4B at `1cfa9a72` | Qwen2.5-1.5B-Instruct at `989aa798` |
 |---|---|---|
@@ -45,7 +104,7 @@ It isn't a run with no hits, though. The local smoke's counts show two sources:
 - **Repeats.** The benches reuse prompts on one server. 46% to 52% of tokens hit by the end of the fixed-rate bench, measured before the short bench was added.
 - **The short bench itself.** It sends the prompts the saturation bench just sent, so with caching on it's almost all hits: 90% of tokens in the smoke, where `scoring_caching` ran 33% to 40% faster than the baseline. That says nothing about the connector on short replies, so read `scoring` for that. The run reports this bench's hit rate too.
 
-On the L4, the Qwen3-4B score stage reuses the bench's prompts on the same server, so it gets repeat hits too. The small model's stage uses prompts the benches don't. The run reports every stage's hit rate, and the Qwen3-4B stage's shift should be read with it.
+On the L4, the Qwen3-4B score stage reuses the bench's prompts on the same server, though its measured 26.1% is lower than this suggested, because these prompts are short and a hit needs a full 16-token block. The small model's stage uses prompts the benches don't.
 
 ## Rules, fixed before the run
 
@@ -75,7 +134,7 @@ At about $0.000345/s for the L4 with 4 CPUs and 32 GiB, from `experiments/modal/
 | Measure call's limit, plus 333 s of container startup | 7,500 s | 7,860 s |
 | The guard's worst case, with download and pre-flight | $2.78 | $2.90 |
 | Room under the $3 daily guard | $0.22 | $0.10 |
-| Expected, arm time only | About 3,480 s, $1.20 | About 3,680 s, $1.27, not measured on an L4 |
+| Expected, arm time only | About 3,480 s, $1.20. Came to 3,487 s, $1.21 | About 3,680 s, $1.27, not measured on an L4 |
 | With about 57 minutes of queueing charged, as an upper estimate | About $2.40 | About $2.45 |
 
 The short bench and the shorter fixed-rate bench add about 15 s to each arm-run. The guard's worst cases don't change, because the 240 s limit on measurement stays.
@@ -106,9 +165,9 @@ The rerun's floor is 0.000208, and every stage is above it with 0 flips. Caching
 
 **The saturation drop this smoke seemed to show didn't reproduce.** Saturation fell from 15 to 18 req/s on the baseline to 5.7 to 12 on both scoring arms. A 5-round check on the same workload (`d3_drop.md`) found about 15% to 18%, all of it at the extraction path and none at the connector.
 
-## What the draft doesn't settle
+## What the small model's run hasn't settled
 
-- Whether `scoring_caching` needs its own compile. If it does, Qwen3-4B's 270 s cold start stops the run in round 0, for about $0.22.
-- The small model's fixed rate and timing on an L4.
-- That the Modal path works. `d1_modal.py`'s experiments have been imported and costed, not called.
-- Two measured rounds on the small model give a thin range, and the baseline's noise could leave more metrics inconclusive.
+- Its fixed rate and timing on an L4, and its 420 s cold start, since nothing is compiled for it yet.
+- Two measured rounds give a thin range, and the baseline's noise could leave more metrics inconclusive.
+
+`scoring_caching` needed no compile of its own on Qwen3-4B, starting in about 90 s, and the Modal path worked there.
