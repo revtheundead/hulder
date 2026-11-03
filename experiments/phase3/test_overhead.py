@@ -271,3 +271,153 @@ def test_the_demo_score_workload_has_all_prompts_with_their_tokens_and_reference
     assert workload["score_concurrency"] == 8
     assert all(0 <= s <= 1 for s in workload["score_reference"])
     assert "score_shift_stop" not in workload
+
+
+def test_the_overhead_workload_has_a_60_s_fixed_rate_and_16_token_short_replies():
+    assert r.OVERHEAD_WORKLOAD == {
+        "gen_tokens": 64,
+        "saturation_prompts": 300,
+        "fixed_seconds": 60,
+        "output_len": 128,
+        "short_output_len": 16,
+    }
+
+
+def fake_server(monkeypatch, tmp_path):
+    """run_arm's collaborators faked, with each bench's name, rate and output length in order."""
+    import contextlib
+
+    httpx = pytest.importorskip("httpx")
+    benches = []
+
+    def bench(url, cfg, workload, dataset, out, name, rate, n, deadline):
+        benches.append((name, rate, workload["output_len"], n))
+        return {"failed": 0, "request_throughput": 10.0}
+
+    @contextlib.contextmanager
+    def serve(command, env, log, timeout):
+        log.write_text("")
+        yield "http://x"
+
+    class Peaks:
+        def __init__(self, url):
+            self.stop, self.peaks = type("E", (), {"set": lambda self: None})(), {}
+
+        def start(self):
+            pass
+
+        def join(self):
+            pass
+
+    async def chat_all(*args, **kwargs):
+        return ["reply"]
+
+    monkeypatch.setattr(r, "bench", bench)
+    monkeypatch.setattr(r, "serve", serve)
+    monkeypatch.setattr(r, "Peaks", Peaks)
+    monkeypatch.setattr(r, "free_gpu_memory", dict)
+    monkeypatch.setattr(r.d1_local, "chat_all", chat_all)
+    monkeypatch.setattr(r.d1_local, "step_tokens", lambda a, b: {"draft_tokens": 0})
+    monkeypatch.setattr(r, "cache_counters", lambda a, b: {"queried_tokens": 10, "hit_tokens": 5})
+    monkeypatch.setattr(httpx, "get", lambda *a, **k: type("R", (), {"text": ""}))
+    return benches
+
+
+LOAD = {
+    "gen_prompts": ["a"],
+    "gen_tokens": 4,
+    "bench_prompts": ["a", "b", "c"],
+    "saturation_prompts": 3,
+    "fixed_seconds": 1,
+    "output_len": 128,
+    "short_output_len": 16,
+}
+
+
+def test_the_short_bench_follows_saturation_and_comes_before_the_fixed_rate(monkeypatch, tmp_path):
+    benches = fake_server(monkeypatch, tmp_path)
+    cfg = {**CFG}
+    run = r.run_arm("baseline", 1, cfg, LOAD, tmp_path, 2.0, r.OVERHEAD_QWEN3_TIMEOUTS)
+    assert [(name, rate, tokens) for name, rate, tokens, _ in benches] == [
+        ("saturation", None, 128),
+        ("short_saturation", None, 16),
+        ("fixed", 2.0, 128),
+    ]
+    assert benches[1][3] == 3  # as many prompts as the long bench
+    assert run["short_saturation"]["request_throughput"] == 10.0
+
+
+def test_a_calibration_arm_run_also_has_the_short_bench(monkeypatch, tmp_path):
+    benches = fake_server(monkeypatch, tmp_path)
+    r.run_arm("baseline", 0, {**CFG}, LOAD, tmp_path, None, r.OVERHEAD_QWEN3_TIMEOUTS, calibrate=True)
+    assert [name for name, *_ in benches] == ["saturation", "short_saturation"]
+
+
+def test_a_workload_without_short_replies_runs_only_the_old_benches(monkeypatch, tmp_path):
+    benches = fake_server(monkeypatch, tmp_path)
+    load = {k: v for k, v in LOAD.items() if k != "short_output_len"}
+    run = r.run_arm("baseline", 1, {**CFG}, load, tmp_path, 2.0, r.OVERHEAD_QWEN3_TIMEOUTS)
+    assert [name for name, *_ in benches] == ["saturation", "fixed"]
+    assert "short_saturation" not in run
+
+
+def test_the_caching_arm_reports_the_short_benchs_hit_rate(monkeypatch, tmp_path):
+    fake_server(monkeypatch, tmp_path)
+    run = r.run_arm("scoring_caching", 1, {**CFG}, LOAD, tmp_path, 2.0, r.OVERHEAD_QWEN3_TIMEOUTS)
+    assert run["short_cache"] == {"queried_tokens": 10, "hit_tokens": 5}
+
+
+def short_run(arm, rnd, throughput, failed=0):
+    return {"arm": arm, "round": rnd, "short_saturation": {"request_throughput": throughput, "failed": failed}}
+
+
+def test_short_reply_overheads_pair_by_round_and_mark_the_5_percent_line_without_a_verdict():
+    runs = [
+        short_run("baseline", 0, 100.0),
+        short_run("scoring", 0, 96.0),
+        short_run("baseline", 1, 50.0),
+        short_run("scoring", 1, 45.0),
+        short_run("lens", 1, 10.0),
+    ]
+    result = r.short_reply_overheads(runs)
+    assert result["scoring"]["overheads"] == pytest.approx({0: 0.04, 1: 0.10})
+    assert result["scoring"]["past_threshold"] is True
+    assert result["scoring"]["threshold"] == 0.05
+    assert result["lens"]["overheads"] == pytest.approx({1: 0.8})
+    assert "passes" not in result["scoring"]
+    assert "baseline" not in result
+
+
+def test_short_reply_overheads_within_the_threshold_are_not_past_it():
+    runs = [short_run("baseline", 0, 100.0), short_run("scoring", 0, 96.0)]
+    assert r.short_reply_overheads(runs)["scoring"]["past_threshold"] is False
+
+
+def test_a_failed_short_request_stops_the_run_and_the_verdicts_ignore_the_short_bench(monkeypatch, tmp_path):
+    monkeypatch.setattr(r.d1_local, "compare_generations", lambda a, b: {"diverged": []})
+
+    def run_arm(arm, rnd, cfg, workload, out, rate, timeouts, calibrate=False, score=False):
+        bench = {"failed": 0, "request_throughput": 10.0, "p99_ttft_ms": 100.0, "p99_tpot_ms": 20.0}
+        short = {"failed": 1 if (rnd, arm) == (1, "scoring") else 0, "request_throughput": 1.0}
+        result = {
+            "arm": arm,
+            "round": rnd,
+            "generate": ["reply"],
+            "saturation": bench,
+            "short_saturation": short,
+            "counters": {"draft_tokens": 0},
+            "startup": {"model_runner": "V2", "async_scheduling": True},
+        }
+        return {**result, **({} if calibrate else {"fixed": bench, "fixed_rate": rate})}
+
+    monkeypatch.setattr(r, "run_arm", run_arm)
+    results = r.run_all({}, {}, tmp_path, r.OVERHEAD_QWEN3, r.OVERHEAD_QWEN3_TIMEOUTS)
+    assert "1 failed requests" in results["stopped"]
+    assert results["short_replies"]["scoring"]["overheads"]
+    # Saturation at 10 req/s on both arms, however slow the short bench: it isn't in the verdicts.
+    assert results["verdicts"]["scoring"]["throughput"]["overheads"] == [0.0]
+
+
+def test_the_guards_worst_cases_dont_change_with_the_short_bench():
+    assert r.measure_call_seconds(r.OVERHEAD_QWEN3, r.OVERHEAD_QWEN3_TIMEOUTS) == 7500
+    assert r.measure_call_seconds(r.OVERHEAD_15B, r.OVERHEAD_15B_TIMEOUTS) == 7860

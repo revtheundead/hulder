@@ -25,7 +25,9 @@ so a mismatch stops it before any GPU time. d1_scores_report.py then scores its 
 overhead_report.py), one model per call so each comparison stays in one container. Qwen3-4B has the
 baseline, the scoring connector on zero-draft and that with prefix caching on, over a calibration round
 and three more. The small model adds lens, over a calibration round and two more, since it has no L4
-lens data. Both arms with the connector run a score stage from their replies.
+lens data. Both arms with the connector run a score stage from their replies. Each of these arm-runs adds a
+saturation bench of 300 16-token replies after the 128-token one, reported beside the verdicts, and has a
+60 s fixed-rate bench rather than 75 s.
 
 Each container's first act is `python -m vllm.collect_env`, saved as collect_env.txt with the run's
 files and committed to the Volume under the run id, so a call that fails still leaves it (d1_l4.py).
@@ -302,13 +304,17 @@ def git(*args: str) -> str:
     return subprocess.run(["git", *args], cwd=ROOT, capture_output=True, text=True, check=True).stdout.strip()
 
 
+def workload_settings(experiment: str) -> dict:
+    return d1_l4.OVERHEAD_WORKLOAD if experiment.startswith("overhead") else WORKLOAD
+
+
 def workload(experiment: str = "cost") -> dict:
     import pandas as pd
 
     rows = pd.read_parquet(lib.SLABS_SPLITS, columns=["id", "split", "text"])
     calibration = rows[rows["split"] == "calibration"].sort_values("id", kind="stable")
     texts = [str(t) for t in calibration["text"]]
-    out = {**WORKLOAD, "gen_prompts": texts[:N_GENERATE], "bench_prompts": texts}
+    out = {**workload_settings(experiment), "gen_prompts": texts[:N_GENERATE], "bench_prompts": texts}
     if experiment == "overhead_15b":
         return out | d1_l4.demo_score_workload()
     if EXPERIMENTS[experiment].scored_arms:
@@ -473,7 +479,7 @@ def main(
         "spent_before_usd": spent_usd,
         "worst_case_usd": round(worst, 4),
         "cfg": cfg_for(experiment),
-        "workload": WORKLOAD,
+        "workload": workload_settings(experiment),
         "arms": EXPERIMENTS[experiment].arms,
         "rounds": EXPERIMENTS[experiment].rounds,
         "calibration_rounds": EXPERIMENTS[experiment].calibration_rounds,
@@ -557,7 +563,7 @@ def main(
         (run_dir / name).write_bytes(data)
     (run_dir / "d1_l4.json").write_text(json.dumps(returned["results"], indent=2, default=str) + "\n")
     record()
-    keys = ("stopped", "fixed_rate", "verdicts", "stock_vs_zero_draft", "divergences")
+    keys = ("stopped", "fixed_rate", "verdicts", "short_replies", "stock_vs_zero_draft", "divergences")
     print(json.dumps({k: returned["results"].get(k) for k in keys}, indent=2))
     print(
         f"Run {run_id} in {run_dir}, estimated ${manifest['estimated_usd']}. Check the actual charge on Modal's usage page."

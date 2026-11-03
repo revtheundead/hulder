@@ -128,6 +128,17 @@ CONFIRMATION = Experiment(
 OVERHEAD_QWEN3 = Experiment((BASELINE, *SCORING_ARMS), 4, calibration_rounds=1, scored_arms=SCORING_ARMS)
 OVERHEAD_15B = Experiment((BASELINE, *SCORING_ARMS, LENS), 3, calibration_rounds=1, scored_arms=SCORING_ARMS)
 
+# Every timed bench was 128-token replies, and a local check found a short-reply cost at the extraction
+# path (docs/results/phase3/d3_drop.md). The fixed-rate bench gives up 15 s for the short bench's roughly
+# 30 s, which leaves about 35 s of a Qwen3-4B arm-run's 240 s measure limit.
+OVERHEAD_WORKLOAD = {
+    "gen_tokens": 64,
+    "saturation_prompts": 300,
+    "fixed_seconds": 60,
+    "output_len": 128,
+    "short_output_len": 16,
+}
+
 
 def score_stages(experiment: Experiment) -> int:
     return (experiment.rounds - experiment.calibration_rounds) * len(experiment.scored_arms)
@@ -251,6 +262,30 @@ def verdicts(runs: dict, baseline: str = BASELINE, measurement_timeouts: dict | 
             passes = False if any(t["outcome"] == UNSUSTAINED for t in timeouts) else passes and None
         result["passes"] = passes
         out[arm] = result
+    return out
+
+
+def short_reply_overheads(runs: list[dict]) -> dict:
+    """Each arm's short-reply saturation loss against the same round's baseline. Reported beside the
+    verdicts and not in them, so an arm's verdict stays comparable with D1's."""
+    throughput = {
+        (run["round"], run["arm"]): run["short_saturation"]["request_throughput"]
+        for run in runs
+        if "short_saturation" in run
+    }
+    out = {}
+    for arm in sorted({a for _, a in throughput} - {BASELINE}):
+        overheads = {
+            rnd: 1 - throughput[(rnd, a)] / throughput[(rnd, BASELINE)]
+            for rnd, a in sorted(throughput)
+            if a == arm and (rnd, BASELINE) in throughput
+        }
+        threshold = THRESHOLDS["throughput"]
+        out[arm] = {
+            "overheads": overheads,
+            "threshold": threshold,
+            "past_threshold": max(overheads.values(), default=0) > threshold,
+        }
     return out
 
 
@@ -793,6 +828,13 @@ def run_arm(arm: str, rnd: int, cfg: dict, workload: dict, out: Path, rate: floa
             stage, stage_started = "saturation", time.time()
             n_sat = workload["saturation_prompts"]
             result["saturation"] = bench(url, cfg, workload, dataset, run_dir, "saturation", None, n_sat, deadline)
+            if "short_output_len" in workload:
+                short = {**workload, "output_len": workload["short_output_len"]}
+                scrape = httpx.get(f"{url}/metrics").text
+                stage, stage_started = "short_saturation", time.time()
+                result["short_saturation"] = bench(url, cfg, short, dataset, run_dir, stage, None, n_sat, deadline)
+                if arm == CACHING_ARM:
+                    result["short_cache"] = cache_counters(scrape, httpx.get(f"{url}/metrics").text)
             if not calibrate:
                 rate = rate or fixed_rate([result["saturation"]["request_throughput"]])
                 n_fixed = min(len(workload["bench_prompts"]), max(1, round(rate * workload["fixed_seconds"])))
@@ -855,7 +897,7 @@ def run_all(cfg: dict, workload: dict, out: Path, experiment: Experiment, timeou
         if "error" in run and not lens_timed_out:
             results["stopped"] = f"round {rnd} {arm}: {run['error']}"
             break
-        if failed := sum(run[b]["failed"] for b in ("saturation", "fixed") if b in run):
+        if failed := sum(run[b]["failed"] for b in ("saturation", "short_saturation", "fixed") if b in run):
             results["stopped"] = f"round {rnd} {arm}: {failed} failed requests"
             break
         if reason := zero_draft_stop(run) or (experiment.scored_arms and stock_stop(run)):
@@ -891,6 +933,8 @@ def run_all(cfg: dict, workload: dict, out: Path, experiment: Experiment, timeou
     results["divergences"] = divergence_table(results.get("generation", {}))
     if experiment.scored_arms:
         results["stock_vs_zero_draft"] = stock_against_zero_draft(results["runs"])
+    if any("short_saturation" in run for run in results["runs"]):
+        results["short_replies"] = short_reply_overheads(results["runs"])
     return results
 
 
@@ -1093,12 +1137,12 @@ def smoke_overhead(workload: dict, out: Path, timeouts: Timeouts, lens: bool) ->
     model's four arms, under `uv run --with vllm-lens==1.3.0`. Without, Qwen3-4B's three arms."""
     experiment = (OVERHEAD_15B if lens else OVERHEAD_QWEN3)._replace(rounds=2)
     cfg = {**SMOKE, "probe_path": bundled_probe_path()}
-    workload = {**workload, **demo_score_workload(concurrency=8)}
+    workload = {**workload, "short_output_len": 8, **demo_score_workload(concurrency=8)}
     returned = in_container(cfg, workload, out, experiment, timeouts, out.parent / f"{out.name}-volume", lambda: None)
     results = returned["results"]
     (out / "d1_l4.json").write_text(json.dumps(results, indent=2, default=str) + "\n")
     (out / "manifest.json").write_text(json.dumps({"environment": returned["environment"]}, indent=2) + "\n")
-    print(json.dumps({k: results.get(k) for k in ("stopped", "fixed_rate", "verdicts")}, indent=2))
+    print(json.dumps({k: results.get(k) for k in ("stopped", "fixed_rate", "verdicts", "short_replies")}, indent=2))
     return 0 if results["stopped"] is None else 1
 
 
