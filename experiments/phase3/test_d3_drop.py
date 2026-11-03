@@ -50,3 +50,53 @@ def test_a_scoring_arm_faster_than_the_stock_write_counts_as_no_scoring_loss():
     result = d.attribute(rows((20.0, 8.0, 10.0), (20.0, 8.5, 10.0), (20.0, 8.0, 9.5)))
     assert result["finding"] == "extraction"
     assert result["scoring_share"] == 0
+
+
+def arm_run(arm, rnd, *tpots):
+    return {"arm": arm, "round": rnd, "benches": [{"p50_tpot_ms": t} for t in tpots]}
+
+
+def test_a_bench_at_over_twice_its_arms_median_tpot_disturbs_its_round():
+    runs = [
+        arm_run("baseline", 0, 52.0),
+        arm_run("baseline", 1, 14.5),
+        arm_run("baseline", 2, 14.4),
+        arm_run("scoring", 0, 21.0),
+        arm_run("scoring", 1, 27.0),
+        arm_run("scoring", 2, 24.0),
+    ]
+    assert d.disturbed_rounds(runs, bench=0) == [0]
+
+
+def test_exactly_twice_the_median_is_not_disturbed():
+    runs = [arm_run("baseline", 0, 20.0), arm_run("baseline", 1, 10.0), arm_run("baseline", 2, 10.0)]
+    assert d.disturbed_rounds(runs, bench=0) == []
+
+
+def test_no_round_is_disturbed_when_the_arms_agree():
+    runs = [arm_run("baseline", r, 14.0 + r) for r in range(3)]
+    assert d.disturbed_rounds(runs, bench=0) == []
+
+
+def test_the_gpu_state_parses_nvidia_smis_line():
+    assert d.parse_gpu_state("1605, 7000, P0, 123.45, 71, 0x0000000000000000") == {
+        "clock_mhz": 1605,
+        "memory_clock_mhz": 7000,
+        "pstate": "P0",
+        "power_w": 123.45,
+        "temperature_c": 71,
+        "throttle_reasons": "0x0000000000000000",
+    }
+
+
+def test_the_attribution_is_reported_with_and_without_disturbed_rounds():
+    triples = [(5.0, 2.0, 13.0), (19.0, 13.0, 12.0), (18.0, 13.0, 13.0)]
+    runs = []
+    for i, (b, z, s) in enumerate(triples):
+        tpot = 50.0 if i == 0 else 14.0
+        for arm, rate in (("baseline", b), ("b_zero_draft", z), ("scoring", s)):
+            runs.append({"arm": arm, "round": i, "benches": [{"p50_tpot_ms": tpot, "request_throughput": rate}]})
+    result = d.summarise(runs, benches=1)["bench_0"]
+    assert result["disturbed_rounds"] == [0]
+    assert result["all_rounds"]["finding"] == "no drop"
+    assert result["undisturbed"]["finding"] == "extraction"
