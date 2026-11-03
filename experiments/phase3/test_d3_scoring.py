@@ -61,3 +61,49 @@ def test_a_forgotten_request_leaves_no_state():
     t.finished_prefill(step(new=[("a", 20, 0)], scheduled={"a": 20}, blocks={"a": [7, 9]}))
     t.forget("a")
     assert t.finished_prefill(step(new=[("a", 20, 0)], scheduled={"a": 20}, blocks={"a": [7, 9]})) == [("a", 9, 3)]
+
+
+def ledger():
+    return s.ScoreLedger(threshold=0.5)
+
+
+def test_a_score_that_arrives_before_the_reply_ends_goes_in_the_reply():
+    book = ledger()
+    book.score_arrived("a", 0.7)
+    assert book.reply_finished("a") == 0.7
+    assert book.drain() == {"scores": [0.7], "flagged": 1, "replies_with_score": 1, "replies_without_score": 0}
+
+
+def test_a_reply_that_ends_first_comes_back_without_a_score_and_is_counted_but_the_late_score_still_counts():
+    book = ledger()
+    assert book.reply_finished("a") is None
+    book.score_arrived("a", 0.2)
+    assert book.drain() == {"scores": [0.2], "flagged": 0, "replies_with_score": 0, "replies_without_score": 1}
+
+
+def test_a_late_score_is_not_held_for_a_later_request_with_the_same_id():
+    book = ledger()
+    book.reply_finished("a")
+    book.score_arrived("a", 0.2)
+    assert book.reply_finished("a") is None
+
+
+def test_flagging_is_strictly_above_the_threshold():
+    book = ledger()
+    book.score_arrived("a", 0.5)
+    assert book.drain()["flagged"] == 0
+
+
+def test_drain_starts_a_new_interval():
+    book = ledger()
+    book.score_arrived("a", 0.7)
+    book.drain()
+    assert book.drain() == {"scores": [], "flagged": 0, "replies_with_score": 0, "replies_without_score": 0}
+
+
+def test_a_request_that_never_finished_prefill_leaves_nothing_waiting_for_a_score():
+    book = ledger()
+    assert book.reply_finished("a", score_expected=False) is None
+    book.score_arrived("a", 0.7)  # can't happen for this request, so it would be held if it did
+    assert book.reply_finished("a") == 0.7
+    assert book.drain()["replies_without_score"] == 1

@@ -42,3 +42,49 @@ class PrefillTracker:
     def forget(self, req_id: str) -> None:
         self._prompt_lengths.pop(req_id, None)
         self._reported.discard(req_id)
+
+
+class ScoreLedger:
+    """What a finished reply carries, and the counts /metrics reads. Scores arrive with engine
+    steps, so a reply can end first. It then goes without one, and the late score still counts
+    towards the distribution, since the probe did read that request."""
+
+    def __init__(self, threshold: float):
+        self.threshold = threshold
+        self._held: dict[str, float] = {}
+        self._awaiting_late_score: set[str] = set()
+        self._reset()
+
+    def _reset(self) -> None:
+        self._scores: list[float] = []
+        self._flagged = 0
+        self._with_score = 0
+        self._without_score = 0
+
+    def score_arrived(self, req_id: str, score: float) -> None:
+        self._scores.append(score)
+        self._flagged += score > self.threshold
+        if req_id in self._awaiting_late_score:
+            self._awaiting_late_score.discard(req_id)
+        else:
+            self._held[req_id] = score
+
+    def reply_finished(self, req_id: str, score_expected: bool = True) -> float | None:
+        score = self._held.pop(req_id, None)
+        if score is not None:
+            self._with_score += 1
+            return score
+        self._without_score += 1
+        if score_expected:
+            self._awaiting_late_score.add(req_id)
+        return None
+
+    def drain(self) -> dict:
+        counts = {
+            "scores": self._scores,
+            "flagged": self._flagged,
+            "replies_with_score": self._with_score,
+            "replies_without_score": self._without_score,
+        }
+        self._reset()
+        return counts
