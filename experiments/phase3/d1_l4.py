@@ -43,7 +43,8 @@ small model and a tiny workload, needs vllm-lens layered on:
     source scripts/dev-env.sh
     uv run --with vllm-lens==1.3.0 python experiments/phase3/d1_l4.py --smoke --out .cache/d1-l4-smoke
 
---smoke --zero-draft does the same for the zero-draft experiment, with a calibration round and one
+--smoke --overhead and --smoke --overhead-lens do the same for the Phase 3 overhead table's two
+experiments, and overhead_report.py scores their stages. --smoke --zero-draft does the same for the zero-draft experiment, with a calibration round and one
 more, and without vllm-lens. --smoke --confirmation does the same for the confirmation run, and
 d1_scores_report.py --smoke scores its stages.
 """
@@ -72,6 +73,9 @@ BASELINE = "baseline"
 LENS = "lens"
 STOCK_ARM = "b_stock"
 ZERO_DRAFT_ARM = "b_zero_draft"
+SCORING_ARM = "scoring"
+CACHING_ARM = "scoring_caching"
+SCORING_ARMS = (SCORING_ARM, CACHING_ARM)
 THRESHOLDS = {"throughput": 0.05, "p99_ttft": 0.10, "p99_tpot": 0.10}
 FIXED_RATE_FRACTION = 0.7
 # A greedy divergence starting where the reference's top two candidates are this close is a tie
@@ -90,6 +94,10 @@ STOP_GRACE_S = 30  # from SIGTERM to SIGKILL when a server is stopped
 # 128-token replies at an eager 60 ms a token. One that hasn't did not sustain the rate.
 SUSTAIN_GRACE_S = 30
 UNSUSTAINED = "did not sustain the fixed rate"
+# Three times D1 confirmation's highest zero-draft stage against kept/ (mean |Δscore|): far enough past
+# normal that the connector is more likely reading the wrong thing than a server having moved.
+SCORE_SHIFT_STOP = 3 * 0.001951430574990809
+MAX_MISSING_SCORES = 0.01  # the share of a stage's 16-token replies that may come back without a score
 SCORE_OUTPUT_TOKENS = 16  # as the 2070's check, so decode steps share batches with prefills
 COLLECT_ENV_FILE = "collect_env.txt"
 IMAGE_UV_DIR = "/.uv"  # where Modal's uv_sync leaves uv, not on PATH
@@ -113,6 +121,23 @@ ZERO_DRAFT = Experiment((BASELINE, ZERO_DRAFT_ARM), 4, calibration_rounds=1)
 CONFIRMATION = Experiment(
     (BASELINE, STOCK_ARM, ZERO_DRAFT_ARM), 4, calibration_rounds=1, scored_arms=(STOCK_ARM, ZERO_DRAFT_ARM)
 )
+
+# The Phase 3 overhead table. Qwen3-4B leaves lens to its 2026-10-31 result in d1_l4.md, cross-day but
+# a 75% effect, so its three arms fit three measured rounds under the daily guard. The small model has
+# no L4 lens data, so it keeps lens, and four arms fit two measured rounds.
+OVERHEAD_QWEN3 = Experiment((BASELINE, *SCORING_ARMS), 4, calibration_rounds=1, scored_arms=SCORING_ARMS)
+OVERHEAD_15B = Experiment((BASELINE, *SCORING_ARMS, LENS), 3, calibration_rounds=1, scored_arms=SCORING_ARMS)
+
+# Every timed bench was 128-token replies, and a local check found a short-reply cost at the extraction
+# path (docs/results/phase3/d3_drop.md). The fixed-rate bench gives up 15 s for the short bench's roughly
+# 30 s, which leaves about 35 s of a Qwen3-4B arm-run's 240 s measure limit.
+OVERHEAD_WORKLOAD = {
+    "gen_tokens": 64,
+    "saturation_prompts": 300,
+    "fixed_seconds": 60,
+    "output_len": 128,
+    "short_output_len": 16,
+}
 
 
 def score_stages(experiment: Experiment) -> int:
@@ -147,6 +172,12 @@ def worst_case_seconds(timeouts: Timeouts, rounds: int, arms: tuple[str, ...] = 
 # The compile caches for all three arms are on the Volume, and at 480 s of cold start the guard total
 # is $3.00 and leaves no room. A cold start would stop the run in round 0 for about $0.22.
 CONFIRMATION_TIMEOUTS = Timeouts(cold_startup=270, warm_startup=270, measure=240, score=120)
+# Qwen3-4B's zero-draft compile is on the Volume, though whether caching on reuses it is unverified. A
+# cold start would stop the run in round 0, as above.
+OVERHEAD_QWEN3_TIMEOUTS = Timeouts(cold_startup=270, warm_startup=270, measure=240, score=120)
+# Nothing is compiled for the small model yet. Qwen3-4B's cold start took 386.6 s, and 420 s keeps the
+# guard total below $3.
+OVERHEAD_15B_TIMEOUTS = Timeouts(cold_startup=420, warm_startup=270, measure=240, score=120)
 
 
 def measure_call_seconds(experiment: Experiment, timeouts: Timeouts) -> float:
@@ -163,10 +194,12 @@ def fixed_rate(saturations: list[float]) -> float:
 def zero_draft_stop(run: dict) -> str | None:
     """Why a b_zero_draft arm-run stops the run, or None. The setting only works on V2, and on any
     other runner, or if it stopped working, it would be measuring B under another name."""
-    if run["arm"] != ZERO_DRAFT_ARM:
+    if run["arm"] not in (ZERO_DRAFT_ARM, *SCORING_ARMS):
         return None
     if run["startup"]["model_runner"] != "V2":
         return f"its startup log isn't V2: {run['startup']['model_runner']}"
+    if run["arm"] in SCORING_ARMS and run["startup"]["async_scheduling"] is False:
+        return "async scheduling is off, where zero-draft drafts again"
     if drafts := run["counters"]["draft_tokens"]:
         return f"{drafts} draft tokens"
     if drafts := run.get("score", {}).get("counters", {}).get("draft_tokens"):
@@ -203,8 +236,10 @@ def verdicts(runs: dict, baseline: str = BASELINE, measurement_timeouts: dict | 
         result = {}
         for name, (bench, key, overhead) in metrics.items() if paired else ():
             base = [runs[(r, baseline)][bench][key] for r in rounds if bench in runs[(r, baseline)]]
-            spread = (max(base) - min(base)) / (sum(base) / len(base))
             measured = [r for r in paired if bench in runs[(r, arm)] and bench in runs[(r, baseline)]]
+            if not measured:  # a run stopped before this bench has nothing to say about this metric
+                continue
+            spread = (max(base) - min(base)) / (sum(base) / len(base))
             overheads = [overhead(runs[(r, arm)][bench][key], runs[(r, baseline)][bench][key]) for r in measured]
             threshold = THRESHOLDS[name]
             if min(overheads) > threshold + spread:
@@ -224,11 +259,37 @@ def verdicts(runs: dict, baseline: str = BASELINE, measurement_timeouts: dict | 
         passes = (
             False if "fail" in settled else None if "inconclusive" in settled else all(v == "pass" for v in settled)
         )
+        if len(settled) < len(metrics) and passes:
+            passes = None  # not every metric was measured, so nothing says it would pass
         if timeouts:
             result["measurement_timeouts"] = timeouts
             passes = False if any(t["outcome"] == UNSUSTAINED for t in timeouts) else passes and None
         result["passes"] = passes
         out[arm] = result
+    return out
+
+
+def short_reply_overheads(runs: list[dict]) -> dict:
+    """Each arm's short-reply saturation loss against the same round's baseline. Reported beside the
+    verdicts and not in them, so an arm's verdict stays comparable with D1's."""
+    throughput = {
+        (run["round"], run["arm"]): run["short_saturation"]["request_throughput"]
+        for run in runs
+        if "short_saturation" in run
+    }
+    out = {}
+    for arm in sorted({a for _, a in throughput} - {BASELINE}):
+        overheads = {
+            rnd: 1 - throughput[(rnd, a)] / throughput[(rnd, BASELINE)]
+            for rnd, a in sorted(throughput)
+            if a == arm and (rnd, BASELINE) in throughput
+        }
+        threshold = THRESHOLDS["throughput"]
+        out[arm] = {
+            "overheads": overheads,
+            "threshold": threshold,
+            "past_threshold": max(overheads.values(), default=0) > threshold,
+        }
     return out
 
 
@@ -411,7 +472,15 @@ def preflight(model: str, revision: str, score: dict | None = None) -> dict:
     )
     templated = tokenizer(text, add_special_tokens=False)["input_ids"]
     sys.path.insert(0, str(HERE))
-    for module in ("no_write_connector", "vllm_lens", "vllm_lens.client", "prometheus_client.parser", "httpx"):
+    for module in (
+        "no_write_connector",
+        "scoring_connector",
+        "d3_spike",
+        "vllm_lens",
+        "vllm_lens.client",
+        "prometheus_client.parser",
+        "httpx",
+    ):
         try:
             importlib.import_module(module)
         except ImportError as error:
@@ -447,16 +516,18 @@ def free_gpu_memory() -> dict:
 
 def arm_command(arm: str, cfg: dict, storage: Path) -> tuple[list[str], dict]:
     """The `vllm serve` command and extra environment for one arm."""
-    command = [sys.executable, "-m", "vllm.entrypoints.cli.main", "serve", cfg["model"], *cfg["serve"]]
+    serve_flags = ["--enable-prefix-caching" if f == "--no-enable-prefix-caching" else f for f in cfg["serve"]]
+    serve_flags = serve_flags if arm == CACHING_ARM else cfg["serve"]
+    command = [sys.executable, "-m", "vllm.entrypoints.cli.main", "serve", cfg["model"], *serve_flags]
     command += ["--port", str(PORT)]
     env = {} if arm == "lens" else {"VLLM_LENS_DISABLE": "1"}
-    if arm in (STOCK_ARM, "b_noop", ZERO_DRAFT_ARM):
+    if arm in (STOCK_ARM, "b_noop", ZERO_DRAFT_ARM, *SCORING_ARMS):
         speculative = {
             "method": "extract_hidden_states",
             "num_speculative_tokens": 1,
             "draft_model_config": {"hf_config": {"eagle_aux_hidden_state_layer_ids": [cfg["layer"]]}},
         }
-        if arm == ZERO_DRAFT_ARM:
+        if arm in (ZERO_DRAFT_ARM, *SCORING_ARMS):
             speculative["num_speculative_tokens_per_batch_size"] = [[1, 1, 0]]
         transfer = {
             "kv_connector": "ExampleHiddenStatesConnector",
@@ -466,6 +537,12 @@ def arm_command(arm: str, cfg: dict, storage: Path) -> tuple[list[str], dict]:
         if arm == "b_noop":
             transfer["kv_connector"] = "NoWriteHiddenStatesConnector"
             transfer["kv_connector_module_path"] = "no_write_connector"
+            transfer["kv_connector_extra_config"]["use_synchronization_lock"] = False
+            env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(HERE), os.environ.get("PYTHONPATH")]))
+        if arm in SCORING_ARMS:
+            transfer["kv_connector"] = "ScoringHiddenStatesConnector"
+            transfer["kv_connector_module_path"] = "scoring_connector"
+            transfer["kv_connector_extra_config"]["probe_path"] = str(cfg["probe_path"])
             transfer["kv_connector_extra_config"]["use_synchronization_lock"] = False
             env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(HERE), os.environ.get("PYTHONPATH")]))
         command += ["--speculative-config", json.dumps(speculative), "--kv-transfer-config", json.dumps(transfer)]
@@ -617,6 +694,106 @@ def score_stage(url: str, cfg: dict, workload: dict, rnd: int, run_dir: Path, ti
     return {"rows": len(rows), "concurrency": workload["score_concurrency"], "seconds": round(time.time() - started, 1)}
 
 
+def reply_scores(order: np.ndarray, responses: list[dict], expected: list[list[int]]) -> np.ndarray:
+    """A stage's scores from its replies, in prompt order, NaN where a reply came back without one.
+    Raises RuntimeError, a stop rule, on too few rows, other tokens or a score that isn't a probability."""
+    if len(responses) != len(expected):
+        raise RuntimeError(f"the score stage returned {len(responses)} of {len(expected)} rows")
+    scores = np.full(len(expected), np.nan)
+    for i, response in zip(order, responses, strict=True):
+        if list(response["prompt_token_ids"]) != list(expected[i]):
+            raise RuntimeError(f"prompt {i}'s token ids don't match the expected tokens")
+        score = response["kv_transfer_params"]["hulder_score"]
+        if score is None:
+            continue
+        if not 0 <= score <= 1:
+            raise RuntimeError(f"prompt {i}'s score {score} isn't a probability")
+        scores[i] = score
+    return scores
+
+
+def stage_summary(scores: np.ndarray, metrics_scores: int, reference: np.ndarray | None = None,
+                  shift_stop: float | None = None, allowed_missing: float = MAX_MISSING_SCORES) -> dict:  # fmt: skip
+    """A stage's counts and any shift against a reference. Raises RuntimeError, a stop rule, on too many
+    replies without a score, a score /metrics didn't count, or a shift past shift_stop."""
+    present = ~np.isnan(scores)
+    missing = int((~present).sum())
+    if missing > allowed_missing * len(scores):
+        raise RuntimeError(f"{missing} of {len(scores)} replies came back without a score")
+    if metrics_scores != len(scores):
+        raise RuntimeError(f"/metrics has {metrics_scores} scores for {len(scores)} requests")
+    summary = {"without_score": missing}
+    if reference is not None:
+        summary["mean_abs_dscore"] = float(np.abs(scores[present] - reference[present]).mean())
+        if shift_stop is not None and summary["mean_abs_dscore"] > shift_stop:
+            raise RuntimeError(
+                f"mean |Δscore| {summary['mean_abs_dscore']:.6f} is above its stop rule, {shift_stop:.6f}"
+            )
+    return summary
+
+
+def shift_stop_for(arm: str, workload: dict) -> float | None:
+    """Only the caching-off arm stops on shift. With caching on, the shift is what's being measured."""
+    return workload.get("score_shift_stop") if arm == SCORING_ARM else None
+
+
+CACHE_COUNTERS = {"queried_tokens": "vllm:prefix_cache_queries_total", "hit_tokens": "vllm:prefix_cache_hits_total"}
+
+
+def cache_counters(before: str, after: str) -> dict:
+    """Prefix-cache tokens queried and hit between two /metrics scrapes."""
+    from prometheus_client.parser import text_string_to_metric_families
+
+    def read(text: str) -> dict:
+        totals = dict.fromkeys(CACHE_COUNTERS.values(), 0.0)
+        for family in text_string_to_metric_families(text):
+            for sample in family.samples:
+                if sample.name in totals:
+                    totals[sample.name] += sample.value
+        return totals
+
+    b, a = read(before), read(after)
+    return {key: round(a[name] - b[name]) for key, name in CACHE_COUNTERS.items()}
+
+
+def reply_score_stage(url: str, cfg: dict, workload: dict, rnd: int, run_dir: Path, timeout_s: float, arm: str) -> dict:
+    """score_stage for the scoring connector: the same prompts and order, with each score read from its
+    reply and /metrics, and no hidden states. Saves score.npz. Raises TimeoutError past timeout_s, and
+    RuntimeError on any other stop rule."""
+    import d3_spike
+    import httpx
+
+    started = time.time()
+    texts = workload["score_prompts"]
+    order = np.random.default_rng(rnd).permutation(len(texts))
+    tokens = workload["score_output_tokens"]
+    params = {
+        "model": cfg["model"],
+        "max_tokens": tokens,
+        "min_tokens": tokens,
+        "ignore_eos": True,
+        "return_token_ids": True,
+        "chat_template_kwargs": {"enable_thinking": False},
+    }
+    before = httpx.get(f"{url}/metrics").text
+    replies = d1_local.chat_all(url, [texts[i] for i in order], workload["score_concurrency"], **params)
+    responses = d1_local.asyncio.run(d1_local.asyncio.wait_for(replies, timeout_s))
+    scores = reply_scores(order, responses, workload["score_tokens"])
+    metrics = d3_spike.settled_metrics(url, before, len(texts))
+    reference = np.array(workload["score_reference"]) if "score_reference" in workload else None
+    summary = stage_summary(scores, metrics["scores"], reference, shift_stop_for(arm, workload))
+    if time.time() - started > timeout_s:
+        raise TimeoutError(f"the score stage passed its {timeout_s:g} s timeout waiting for /metrics")
+    np.savez(run_dir / "score.npz", ids=np.array(workload["score_ids"]), scores=scores, order=order)
+    return {
+        "rows": len(scores),
+        "concurrency": workload["score_concurrency"],
+        "metrics": metrics,
+        "seconds": round(time.time() - started, 1),
+        **summary,
+    }
+
+
 def run_arm(arm: str, rnd: int, cfg: dict, workload: dict, out: Path, rate: float | None,
             timeouts: Timeouts, calibrate: bool = False, score: bool = False) -> dict:  # fmt: skip
     """One arm-run. rate is the fixed-rate bench's, None in round 0's baseline, which sets it. A
@@ -655,21 +832,37 @@ def run_arm(arm: str, rnd: int, cfg: dict, workload: dict, out: Path, rate: floa
             stage, stage_started = "saturation", time.time()
             n_sat = workload["saturation_prompts"]
             result["saturation"] = bench(url, cfg, workload, dataset, run_dir, "saturation", None, n_sat, deadline)
+            if "short_output_len" in workload:
+                short = {**workload, "output_len": workload["short_output_len"]}
+                scrape = httpx.get(f"{url}/metrics").text
+                stage, stage_started = "short_saturation", time.time()
+                result["short_saturation"] = bench(url, cfg, short, dataset, run_dir, stage, None, n_sat, deadline)
+                if arm == CACHING_ARM:
+                    result["short_cache"] = cache_counters(scrape, httpx.get(f"{url}/metrics").text)
             if not calibrate:
                 rate = rate or fixed_rate([result["saturation"]["request_throughput"]])
                 n_fixed = min(len(workload["bench_prompts"]), max(1, round(rate * workload["fixed_seconds"])))
                 result["fixed_rate"] = rate
                 stage, stage_started = "fixed", time.time()
                 result["fixed"] = bench(url, cfg, workload, dataset, run_dir, "fixed", rate, n_fixed, deadline)
-            result["counters"] = d1_local.step_tokens(before, httpx.get(f"{url}/metrics").text)
+            after_benches = httpx.get(f"{url}/metrics").text
+            result["counters"] = d1_local.step_tokens(before, after_benches)
+            if arm == CACHING_ARM:
+                result["cache"] = cache_counters(before, after_benches)
             if arm == "lens":
                 result["hook_results"] = len(VLLMLensClient(url).collect_hook_results())
             if score:
                 peaks.stop.set()  # the peaks are the benches'
                 before = httpx.get(f"{url}/metrics").text
                 stage, stage_started = "score", time.time()
-                result["score"] = score_stage(url, cfg, workload, rnd, run_dir, timeouts.score)
-                result["score"]["counters"] = d1_local.step_tokens(before, httpx.get(f"{url}/metrics").text)
+                if arm in SCORING_ARMS:
+                    result["score"] = reply_score_stage(url, cfg, workload, rnd, run_dir, timeouts.score, arm)
+                else:
+                    result["score"] = score_stage(url, cfg, workload, rnd, run_dir, timeouts.score)
+                after_stage = httpx.get(f"{url}/metrics").text
+                result["score"]["counters"] = d1_local.step_tokens(before, after_stage)
+                if arm == CACHING_ARM:
+                    result["score"]["cache"] = cache_counters(before, after_stage)
     except (RuntimeError, TimeoutError, subprocess.SubprocessError, httpx.HTTPError) as error:
         result["error"] = f"{type(error).__name__}: {str(error) or 'the measurement timeout passed'}"
         if stage and isinstance(error, (TimeoutError, subprocess.TimeoutExpired)):
@@ -708,7 +901,7 @@ def run_all(cfg: dict, workload: dict, out: Path, experiment: Experiment, timeou
         if "error" in run and not lens_timed_out:
             results["stopped"] = f"round {rnd} {arm}: {run['error']}"
             break
-        if failed := sum(run[b]["failed"] for b in ("saturation", "fixed") if b in run):
+        if failed := sum(run[b]["failed"] for b in ("saturation", "short_saturation", "fixed") if b in run):
             results["stopped"] = f"round {rnd} {arm}: {failed} failed requests"
             break
         if reason := zero_draft_stop(run) or (experiment.scored_arms and stock_stop(run)):
@@ -723,7 +916,8 @@ def run_all(cfg: dict, workload: dict, out: Path, experiment: Experiment, timeou
         if experiment.calibration_rounds == 0 and rnd == 0 and arm == BASELINE:
             rate = run["fixed_rate"]
         if calibrate and len(results["runs"]) == experiment.calibration_rounds * len(experiment.arms):
-            saturations = [r["saturation"]["request_throughput"] for r in runs.values()]
+            # Lens, at about a quarter of the baseline, would set a rate well below serving load.
+            saturations = [r["saturation"]["request_throughput"] for (_, a), r in runs.items() if a != LENS]
             rate = results["fixed_rate"] = fixed_rate(saturations)
         reference = replies[(0, BASELINE)]
         comparisons = {
@@ -733,7 +927,9 @@ def run_all(cfg: dict, workload: dict, out: Path, experiment: Experiment, timeou
         }
         plain = [c for (r, a), c in comparisons.items() if a == BASELINE]
         results["generation"] = {f"r{r}_{a}": c for (r, a), c in comparisons.items()}
-        fails = [f"r{r}_{a}" for (r, a), c in comparisons.items() if a != BASELINE and generation_fails(c, plain)]
+        # Caching on can change replies, since it changes the numbers. That's reported, not a stop.
+        judged = {k: c for k, c in comparisons.items() if k[1] not in (BASELINE, CACHING_ARM)}
+        fails = [f"r{r}_{a}" for (r, a), c in judged.items() if generation_fails(c, plain)]
         if fails:
             results["stopped"] = f"greedy replies changed beyond a fresh baseline's: {', '.join(fails)}"
             break
@@ -741,6 +937,8 @@ def run_all(cfg: dict, workload: dict, out: Path, experiment: Experiment, timeou
     results["divergences"] = divergence_table(results.get("generation", {}))
     if experiment.scored_arms:
         results["stock_vs_zero_draft"] = stock_against_zero_draft(results["runs"])
+    if any("short_saturation" in run for run in results["runs"]):
+        results["short_replies"] = short_reply_overheads(results["runs"])
     return results
 
 
@@ -886,6 +1084,72 @@ SMOKE = {
 }
 
 
+def bundled_probe_path() -> str:
+    from importlib.resources import files
+
+    return str(files("hulder") / "data" / "probe_demo.npz")
+
+
+OVERHEAD_15B_CFG = {
+    "model": "Qwen/Qwen2.5-1.5B-Instruct",
+    "hidden_size": 1536,
+    "layer": 20,
+    "probe_path": bundled_probe_path(),
+    # fp16 to match the probe and its reference, captured in fp16 on the 2070.
+    "serve": [
+        "--revision", d1_local.REVISION, "--dtype", "float16", "--max-model-len", "2048",
+        "--enable-chunked-prefill", "--no-enable-prefix-caching", "--seed", "0",
+    ],
+}  # fmt: skip
+
+
+def templated_demo_tokens(texts: list[str]) -> list[list[int]]:
+    """Each demo prompt's tokens, templated as a score stage's requests are."""
+    from transformers import AutoTokenizer
+
+    tokenizer = AutoTokenizer.from_pretrained(d1_local.MODEL, revision=d1_local.REVISION)
+    return [
+        tokenizer(
+            tokenizer.apply_chat_template(
+                d1_local.messages(text), tokenize=False, add_generation_prompt=True, enable_thinking=False
+            ),
+            add_special_tokens=False,
+        )["input_ids"]
+        for text in texts
+    ]
+
+
+def demo_score_workload(concurrency: int = 64, tokens_for=templated_demo_tokens) -> dict:
+    """The 360 demo prompts as a reply score stage, with the bundled reference's scores to report against."""
+    import hulder
+
+    rows = d1_local.prompts()
+    ids, texts = [p["id"] for p in rows], [p["text"] for p in rows]
+    reference = hulder.Snapshot.load(d1_local.DATA / "demo_fp16.npz")
+    if list(reference.ids) != ids:
+        raise SystemExit("demo prompts and the bundled reference aren't in the same order")
+    probe = hulder.Probe.load(bundled_probe_path())
+    return {
+        **score_workload(ids, texts, dict(zip(ids, tokens_for(texts), strict=True)), concurrency=concurrency),
+        "score_reference": hulder.apply_probe(probe, reference.activations).tolist(),
+    }
+
+
+def smoke_overhead(workload: dict, out: Path, timeouts: Timeouts, lens: bool) -> int:
+    """An overhead experiment's whole path on the local GPU, through in_container as a container runs
+    it: a calibration round and one more, all 360 demo prompts in its score stages. With lens, the small
+    model's four arms, under `uv run --with vllm-lens==1.3.0`. Without, Qwen3-4B's three arms."""
+    experiment = (OVERHEAD_15B if lens else OVERHEAD_QWEN3)._replace(rounds=2)
+    cfg = {**SMOKE, "probe_path": bundled_probe_path()}
+    workload = {**workload, "short_output_len": 8, **demo_score_workload(concurrency=8)}
+    returned = in_container(cfg, workload, out, experiment, timeouts, out.parent / f"{out.name}-volume", lambda: None)
+    results = returned["results"]
+    (out / "d1_l4.json").write_text(json.dumps(results, indent=2, default=str) + "\n")
+    (out / "manifest.json").write_text(json.dumps({"environment": returned["environment"]}, indent=2) + "\n")
+    print(json.dumps({k: results.get(k) for k in ("stopped", "fixed_rate", "verdicts", "short_replies")}, indent=2))
+    return 0 if results["stopped"] is None else 1
+
+
 def smoke_confirmation(workload: dict, out: Path, timeouts: Timeouts) -> int:
     """The confirmation run's whole path on the local GPU, through in_container as a container runs
     it, with all 360 demo prompts in its score stage, for d1_scores_report.py --smoke. Writes what
@@ -931,6 +1195,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--confirmation", action="store_true", help="smoke the confirmation run: a calibration round and one more"
     )
+    parser.add_argument(
+        "--overhead", action="store_true", help="smoke Qwen3-4B's overhead arms: a calibration round and one more"
+    )
+    parser.add_argument(
+        "--overhead-lens", action="store_true", help="smoke the small model's four overhead arms, with vllm-lens"
+    )
     parser.add_argument("--out", type=Path)
     parser.add_argument(
         "--rejudge", type=Path, help="print the verdicts and divergences recomputed from this d1_l4.json"
@@ -955,6 +1225,8 @@ def main(argv: list[str] | None = None) -> int:
     timeouts = Timeouts(900, 900, 900)
     if args.confirmation:
         return smoke_confirmation(workload, args.out, timeouts)
+    if args.overhead or args.overhead_lens:
+        return smoke_overhead(workload, args.out, timeouts, lens=args.overhead_lens)
     args.out.mkdir(parents=True, exist_ok=True)
     experiment = ZERO_DRAFT._replace(rounds=2) if args.zero_draft else COST._replace(rounds=1)
     results = run_all(SMOKE, workload, args.out, experiment, timeouts=timeouts)

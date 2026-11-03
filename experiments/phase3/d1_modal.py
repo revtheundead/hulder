@@ -21,6 +21,14 @@ stage on both B arms in rounds 1 to 3 (d1_l4.py) and a 4.5 minute cold start, si
 are on the Volume. Its pre-flight templates the 2,101 calibration prompts on CPU against kept/'s tokens,
 so a mismatch stops it before any GPU time. d1_scores_report.py then scores its stages locally.
 
+`--experiment overhead_qwen3` and `--experiment overhead_15b` run the Phase 3 overhead table (d1_l4.py,
+overhead_report.py), one model per call so each comparison stays in one container. Qwen3-4B has the
+baseline, the scoring connector on zero-draft and that with prefix caching on, over a calibration round
+and three more. The small model adds lens, over a calibration round and two more, since it has no L4
+lens data. Both arms with the connector run a score stage from their replies. Each of these arm-runs adds a
+saturation bench of 300 16-token replies after the 128-token one, reported beside the verdicts, and has a
+60 s fixed-rate bench rather than 75 s.
+
 Each container's first act is `python -m vllm.collect_env`, saved as collect_env.txt with the run's
 files and committed to the Volume under the run id, so a call that fails still leaves it (d1_l4.py).
 `--environment-only` runs just that, on one L4 container, with no model, pre-flight or arm-run.
@@ -80,6 +88,7 @@ CFG = {
     "model": MODEL,
     "hidden_size": 2560,
     "layer": 18,
+    "probe_path": f"{PHASE3}/18_-1.npz",
     "serve": [
         "--revision", REVISION, "--dtype", "bfloat16", "--max-model-len", "2048",
         "--enable-chunked-prefill", "--no-enable-prefix-caching", "--seed", "0",
@@ -87,8 +96,20 @@ CFG = {
 }  # fmt: skip
 WORKLOAD = {"gen_tokens": 64, "saturation_prompts": 300, "fixed_seconds": 75, "output_len": 128}
 N_GENERATE = 16
-EXPERIMENTS = {"cost": d1_l4.COST, "zero_draft": d1_l4.ZERO_DRAFT, "confirmation": d1_l4.CONFIRMATION}
-RUN_NAMES = {"cost": "d1_cost", "zero_draft": "d1_zero_draft", "confirmation": "d1_confirmation"}
+EXPERIMENTS = {
+    "cost": d1_l4.COST,
+    "zero_draft": d1_l4.ZERO_DRAFT,
+    "confirmation": d1_l4.CONFIRMATION,
+    "overhead_qwen3": d1_l4.OVERHEAD_QWEN3,
+    "overhead_15b": d1_l4.OVERHEAD_15B,
+}
+RUN_NAMES = {
+    "cost": "d1_cost",
+    "zero_draft": "d1_zero_draft",
+    "confirmation": "d1_confirmation",
+    "overhead_qwen3": "overhead_qwen3",
+    "overhead_15b": "overhead_15b",
+}
 KEPT_TOKEN_IDS = ROOT / ".cache" / "modal-runs" / "20261022T125644Z" / "kept" / lib.TOKEN_IDS_FILE
 # From run 20261030T191447Z's baseline: a cold start of 386.6 s, 174 s of it compiling. At this
 # workload its measurement is about 185 s: 39 s of greedy replies, about 24 s for each bench's own
@@ -97,7 +118,19 @@ TIMEOUTS = d1_l4.Timeouts(cold_startup=8 * 60, warm_startup=270, measure=4 * 60)
 
 
 def timeouts_for(experiment: str) -> d1_l4.Timeouts:
-    return d1_l4.CONFIRMATION_TIMEOUTS if experiment == "confirmation" else TIMEOUTS
+    return {
+        "confirmation": d1_l4.CONFIRMATION_TIMEOUTS,
+        "overhead_qwen3": d1_l4.OVERHEAD_QWEN3_TIMEOUTS,
+        "overhead_15b": d1_l4.OVERHEAD_15B_TIMEOUTS,
+    }.get(experiment, TIMEOUTS)
+
+
+def cfg_for(experiment: str) -> dict:
+    return d1_l4.OVERHEAD_15B_CFG if experiment == "overhead_15b" else CFG
+
+
+def revision_for(experiment: str) -> str:
+    return d1_l4.d1_local.REVISION if experiment == "overhead_15b" else REVISION
 
 
 def measure_timeout_s(experiment: str) -> float:
@@ -116,6 +149,9 @@ UV_ATTEMPTS = {
 }
 # The pre-flight: CPU only, on the same image and Volume, before any GPU is asked for.
 PREFLIGHT_CPU, PREFLIGHT_MEMORY_GIB, PREFLIGHT_TIMEOUT_S = 2.0, 8, 10 * 60
+
+
+QWEN3_PROBE = ROOT / ".cache" / "probe" / "qwen3" / "18_-1.npz"
 
 
 def build_wheel() -> Path:
@@ -148,6 +184,10 @@ image = (
     .add_local_file(str(HERE / "d1_local.py"), f"{PHASE3}/d1_local.py")
     .add_local_file(str(HERE / "d1_l4.py"), f"{PHASE3}/d1_l4.py")
     .add_local_file(str(HERE / "no_write_connector.py"), f"{PHASE3}/no_write_connector.py")
+    .add_local_file(str(HERE / "scoring_connector.py"), f"{PHASE3}/scoring_connector.py")
+    .add_local_file(str(HERE / "d3_scoring.py"), f"{PHASE3}/d3_scoring.py")
+    .add_local_file(str(HERE / "d3_spike.py"), f"{PHASE3}/d3_spike.py")
+    .add_local_file(str(QWEN3_PROBE), f"{PHASE3}/18_-1.npz")
 )
 app = modal.App("hulder-d1", image=image)
 hf = modal.Volume.from_name("hulder-hf", create_if_missing=True)
@@ -160,13 +200,13 @@ hf = modal.Volume.from_name("hulder-hf", create_if_missing=True)
     timeout=DOWNLOAD_TIMEOUT_S,
     retries=0,
 )
-def download() -> dict:
+def download(model: str = MODEL, revision: str = REVISION) -> dict:
     """The model at its pinned revision in the Volume's HF cache, fetched if it isn't there yet."""
     os.environ.update(CACHE_ENV)
     from huggingface_hub import snapshot_download
 
     start = time.time()
-    snapshot_download(MODEL, revision=REVISION)
+    snapshot_download(model, revision=revision)
     hf.commit()
     return {"seconds": round(time.time() - start, 1)}
 
@@ -178,11 +218,11 @@ def download() -> dict:
     timeout=PREFLIGHT_TIMEOUT_S,
     retries=0,
 )
-def preflight(score: dict | None = None) -> dict:
+def preflight(score: dict | None = None, model: str = MODEL, revision: str = REVISION) -> dict:
     """d1_l4.preflight on this image with the Volume's HF cache and the Hub offline, as measure
     runs, and the image's package list."""
     os.environ.update({**CACHE_ENV, **ENGINE_ENV})
-    return {"facts": d1_l4.preflight(MODEL, REVISION, score), "packages": d1_l4.installed_packages()}
+    return {"facts": d1_l4.preflight(model, revision, score), "packages": d1_l4.installed_packages()}
 
 
 def nvidia_smi() -> str:
@@ -209,7 +249,9 @@ def measure(workload: dict, experiment: str, run_id: str) -> dict:
     from huggingface_hub import snapshot_download
 
     gpu = nvidia_smi()
-    cfg = {**CFG, "tokenizer": snapshot_download(MODEL, revision=REVISION, local_files_only=True)}
+    base = cfg_for(experiment)
+    tokenizer = snapshot_download(base["model"], revision=revision_for(experiment), local_files_only=True)
+    cfg = {**base, "tokenizer": tokenizer}
     returned = d1_l4.in_container(
         cfg,
         workload,
@@ -262,17 +304,40 @@ def git(*args: str) -> str:
     return subprocess.run(["git", *args], cwd=ROOT, capture_output=True, text=True, check=True).stdout.strip()
 
 
+def workload_settings(experiment: str) -> dict:
+    return d1_l4.OVERHEAD_WORKLOAD if experiment.startswith("overhead") else WORKLOAD
+
+
 def workload(experiment: str = "cost") -> dict:
     import pandas as pd
 
     rows = pd.read_parquet(lib.SLABS_SPLITS, columns=["id", "split", "text"])
     calibration = rows[rows["split"] == "calibration"].sort_values("id", kind="stable")
     texts = [str(t) for t in calibration["text"]]
-    out = {**WORKLOAD, "gen_prompts": texts[:N_GENERATE], "bench_prompts": texts}
+    out = {**workload_settings(experiment), "gen_prompts": texts[:N_GENERATE], "bench_prompts": texts}
+    if experiment == "overhead_15b":
+        return out | d1_l4.demo_score_workload()
     if EXPERIMENTS[experiment].scored_arms:
         tokens = dict(zip(*lib.load_token_ids(KEPT_TOKEN_IDS), strict=True))
         out |= d1_l4.score_workload([str(i) for i in calibration["id"]], texts, tokens)
+    if experiment == "overhead_qwen3":
+        out |= overhead_reference(out["score_ids"])
     return out
+
+
+def overhead_reference(ids: list[str]) -> dict:
+    """kept/ scored by the frozen primary probe, whose hash and threshold frozen_inputs checks, in the
+    stage's prompt order, and the shift a caching-off stage stops at."""
+    import d1_scores_report
+
+    import hulder
+
+    reference, _, probe_path, _ = d1_scores_report.frozen_inputs()
+    if probe_path.resolve() != QWEN3_PROBE.resolve():
+        raise SystemExit(f"the frozen probe is {probe_path}, not the one in the image, {QWEN3_PROBE}")
+    scores = hulder.apply_probe(hulder.Probe.load(probe_path), reference.activations)
+    by_id = dict(zip((str(i) for i in reference.ids), scores.tolist(), strict=True))
+    return {"score_reference": [by_id[i] for i in ids], "score_shift_stop": d1_l4.SCORE_SHIFT_STOP}
 
 
 def download_worst_case_usd() -> float:
@@ -413,8 +478,8 @@ def main(
         "rates_usd_per_s": {"L4": lib.L4_PER_S, "cpu_core": lib.CPU_CORE_PER_S, "memory_gib": lib.MEMORY_GIB_PER_S},
         "spent_before_usd": spent_usd,
         "worst_case_usd": round(worst, 4),
-        "cfg": CFG,
-        "workload": WORKLOAD,
+        "cfg": cfg_for(experiment),
+        "workload": workload_settings(experiment),
         "arms": EXPERIMENTS[experiment].arms,
         "rounds": EXPERIMENTS[experiment].rounds,
         "calibration_rounds": EXPERIMENTS[experiment].calibration_rounds,
@@ -429,14 +494,17 @@ def main(
 
     record()
     start = time.time()
-    manifest["download"] = download.remote()
+    model, revision = cfg_for(experiment)["model"], revision_for(experiment)
+    manifest["download"] = download.remote(model, revision)
     wall = time.time() - start
     manifest["download"]["estimated_usd"] = round(
         lib.estimate_cost(wall, gpu=False, cpu=lib.DOWNLOAD_CPU, memory_gib=lib.DOWNLOAD_MEMORY_GIB), 4
     )
     record()
     start = time.time()
-    checked = preflight.remote(score)
+    checked = preflight.remote(
+        {k: score[k] for k in ("score_prompts", "score_tokens")} if score else None, model, revision
+    )
     wall = time.time() - start
     manifest["preflight"] = {
         **checked["facts"],
@@ -495,7 +563,7 @@ def main(
         (run_dir / name).write_bytes(data)
     (run_dir / "d1_l4.json").write_text(json.dumps(returned["results"], indent=2, default=str) + "\n")
     record()
-    keys = ("stopped", "verdicts", "stock_vs_zero_draft", "divergences")
+    keys = ("stopped", "fixed_rate", "verdicts", "short_replies", "stock_vs_zero_draft", "divergences")
     print(json.dumps({k: returned["results"].get(k) for k in keys}, indent=2))
     print(
         f"Run {run_id} in {run_dir}, estimated ${manifest['estimated_usd']}. Check the actual charge on Modal's usage page."
