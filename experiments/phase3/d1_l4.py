@@ -236,8 +236,10 @@ def verdicts(runs: dict, baseline: str = BASELINE, measurement_timeouts: dict | 
         result = {}
         for name, (bench, key, overhead) in metrics.items() if paired else ():
             base = [runs[(r, baseline)][bench][key] for r in rounds if bench in runs[(r, baseline)]]
-            spread = (max(base) - min(base)) / (sum(base) / len(base))
             measured = [r for r in paired if bench in runs[(r, arm)] and bench in runs[(r, baseline)]]
+            if not measured:  # a run stopped before this bench has nothing to say about this metric
+                continue
+            spread = (max(base) - min(base)) / (sum(base) / len(base))
             overheads = [overhead(runs[(r, arm)][bench][key], runs[(r, baseline)][bench][key]) for r in measured]
             threshold = THRESHOLDS[name]
             if min(overheads) > threshold + spread:
@@ -257,6 +259,8 @@ def verdicts(runs: dict, baseline: str = BASELINE, measurement_timeouts: dict | 
         passes = (
             False if "fail" in settled else None if "inconclusive" in settled else all(v == "pass" for v in settled)
         )
+        if len(settled) < len(metrics) and passes:
+            passes = None  # not every metric was measured, so nothing says it would pass
         if timeouts:
             result["measurement_timeouts"] = timeouts
             passes = False if any(t["outcome"] == UNSUSTAINED for t in timeouts) else passes and None

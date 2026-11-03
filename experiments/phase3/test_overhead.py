@@ -421,3 +421,12 @@ def test_a_failed_short_request_stops_the_run_and_the_verdicts_ignore_the_short_
 def test_the_guards_worst_cases_dont_change_with_the_short_bench():
     assert r.measure_call_seconds(r.OVERHEAD_QWEN3, r.OVERHEAD_QWEN3_TIMEOUTS) == 7500
     assert r.measure_call_seconds(r.OVERHEAD_15B, r.OVERHEAD_15B_TIMEOUTS) == 7860
+
+
+def test_a_run_stopped_before_any_fixed_rate_bench_still_gets_verdicts_and_none_reads_as_a_pass():
+    bench = {"request_throughput": 10.0}
+    runs = {(0, "baseline"): {"saturation": bench}, (0, "scoring"): {"saturation": bench}}
+    result = r.verdicts(runs)["scoring"]
+    assert result["throughput"]["verdict"] == "pass"
+    assert "p99_ttft" not in result
+    assert result["passes"] is None
