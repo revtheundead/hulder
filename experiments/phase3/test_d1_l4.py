@@ -250,9 +250,11 @@ def test_installed_packages_lists_every_distribution_once_as_name_and_version_so
 
 
 def test_preflight_fails_clearly_when_the_model_isnt_in_the_hf_cache(tmp_path, monkeypatch):
-    pytest.importorskip("huggingface_hub")  # from the vllm extra
-    monkeypatch.setenv("HF_HOME", str(tmp_path))
-    monkeypatch.setenv("HF_HUB_OFFLINE", "1")
+    # huggingface_hub reads its environment once, at first import, so setting HF_HOME here only works
+    # if nothing imported it first. Without that, a real cache holding only the model's config.json
+    # reached the tokenizer and failed there.
+    constants = pytest.importorskip("huggingface_hub.constants")  # from the vllm extra
+    monkeypatch.setattr(constants, "HF_HUB_CACHE", str(tmp_path))
     with pytest.raises(RuntimeError, match="isn't in the HF cache"):
         r.preflight("Qwen/Qwen3-4B", "1cfa9a7208912126459214e8b04321603b3df60c")
 
