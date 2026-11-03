@@ -385,7 +385,7 @@ A rerun on the reference's path measures a zero floor, and a candidate that devi
 
 **Prefix caching changes activations even without cache hits.** The cause is unexplained (`docs/results/phase1/extraction_prototype.md`). `hulder.capture` requires it off (§5).
 
-**The runtime plugin can flag a request but not stop it.** v0.3 is monitor-only, so tokens can reach the client before the score exists (§5 D3). A streamed reply carries no score, and a very short non-streamed reply can come back without one, as every 1-token reply and most 2-token replies did on the 2070 (`docs/results/phase3/d3_spike.md`). `/metrics` still counts those scores.
+**The runtime plugin can flag a request but not stop it.** v0.3 is monitor-only, so tokens can reach the client before the score exists (§5 D3). A streamed reply carries no score, and a very short non-streamed reply can come back without one. On the 2070, of 360 requests, no 1-token reply carried a score at concurrency 1 or 8, and 344 of the 2-token replies went without at concurrency 8 and 190 at concurrency 1. All replies of 3 tokens or more carried one, which depends on timing and may differ on another GPU. `/metrics` still counts every score, including those that replies missed (`docs/results/phase3/d3_spike.md`).
 
 **Fixed tolerance bands.** The candidate FPR must stay between 0.5 and 2 times the target, FNR within 0.05 of the reference, and ΔAUROC above -0.02. These are constants in `hulder/gate/check.py`, not options.
 
