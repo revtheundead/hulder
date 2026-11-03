@@ -7,7 +7,7 @@ Operating activation probes on self-hosted LLM serving, and telling when a servi
 ### Serving
 
 **Serving config**:
-Everything about how a model is served that can change a scorer's scores: weight format, KV-cache format, engine version, batching. Reference and candidate are roles a serving config plays, not separate concepts.
+Everything about how a model is served that can change a scorer's scores: weight format, KV-cache format, engine version, batching, prefix caching. Reference and candidate are roles a serving config plays, not separate concepts.
 _Avoid_: configuration, setup, deployment
 
 **Reference**:
