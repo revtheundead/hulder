@@ -39,6 +39,9 @@ class PrefillTracker:
             finished.append((req_id, block_ids[block], offset))
         return finished
 
+    def reported(self, req_id: str) -> bool:
+        return req_id in self._reported
+
     def forget(self, req_id: str) -> None:
         self._prompt_lengths.pop(req_id, None)
         self._reported.discard(req_id)

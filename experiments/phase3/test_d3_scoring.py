@@ -107,3 +107,9 @@ def test_a_request_that_never_finished_prefill_leaves_nothing_waiting_for_a_scor
     book.score_arrived("a", 0.7)  # can't happen for this request, so it would be held if it did
     assert book.reply_finished("a") == 0.7
     assert book.drain()["replies_without_score"] == 1
+
+
+def test_the_tracker_says_whether_a_request_reached_the_end_of_prefill():
+    t = tracker()
+    t.finished_prefill(step(new=[("a", 20, 0), ("b", 20, 0)], scheduled={"a": 20, "b": 16}, blocks={"a": [7, 9], "b": [5]}))
+    assert t.reported("a") and not t.reported("b")
