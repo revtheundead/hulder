@@ -22,7 +22,6 @@ import sys
 import warnings
 from pathlib import Path
 
-import d1_scores_report as scores_report
 import numpy as np
 
 import hulder
@@ -135,6 +134,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("run_dir", type=Path)
     parser.add_argument("--model", choices=("qwen3", "1.5b"), required=True)
     args = parser.parse_args(argv)
+    import d1_scores_report as scores_report  # needs scikit-learn, which the base install lacks
+
     inputs = scores_report.frozen_inputs() if args.model == "qwen3" else scores_report.smoke_inputs()
     reference, rerun, probe_path, _ = inputs
     result = report(args.run_dir, reference, rerun, probe_path)
