@@ -251,3 +251,23 @@ def test_the_reply_stage_saves_scores_in_prompt_order_and_sends_prompts_as_the_c
     with np.load(tmp_path / "score.npz", allow_pickle=False) as saved:
         assert saved["ids"].tolist() == ["x", "y", "z"]
         assert saved["scores"].tolist() == pytest.approx([0.1, 0.2, 0.3])
+
+
+def test_the_small_models_config_matches_its_probe_and_the_l4_runs_settings():
+    cfg = r.OVERHEAD_15B_CFG
+    assert (cfg["model"], cfg["layer"], cfg["hidden_size"]) == ("Qwen/Qwen2.5-1.5B-Instruct", 20, 1536)
+    assert cfg["serve"][cfg["serve"].index("--dtype") + 1] == "float16"
+    assert cfg["serve"][cfg["serve"].index("--max-model-len") + 1] == "2048"
+    assert "--enable-chunked-prefill" in cfg["serve"]
+    assert "--no-enable-prefix-caching" in cfg["serve"]
+    assert cfg["probe_path"].endswith("probe_demo.npz")
+
+
+def test_the_demo_score_workload_has_all_prompts_with_their_tokens_and_reference_scores():
+    pytest.importorskip("transformers")  # from the vllm extra
+    workload = r.demo_score_workload(concurrency=8, tokens_for=lambda texts: [[len(t)] for t in texts])
+    assert len(workload["score_prompts"]) == len(workload["score_tokens"]) == len(workload["score_reference"]) == 360
+    assert workload["score_tokens"][0] == [len(workload["score_prompts"][0])]
+    assert workload["score_concurrency"] == 8
+    assert all(0 <= s <= 1 for s in workload["score_reference"])
+    assert "score_shift_stop" not in workload

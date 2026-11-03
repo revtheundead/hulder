@@ -43,7 +43,8 @@ small model and a tiny workload, needs vllm-lens layered on:
     source scripts/dev-env.sh
     uv run --with vllm-lens==1.3.0 python experiments/phase3/d1_l4.py --smoke --out .cache/d1-l4-smoke
 
---smoke --zero-draft does the same for the zero-draft experiment, with a calibration round and one
+--smoke --overhead and --smoke --overhead-lens do the same for the Phase 3 overhead table's two
+experiments, and overhead_report.py scores their stages. --smoke --zero-draft does the same for the zero-draft experiment, with a calibration round and one
 more, and without vllm-lens. --smoke --confirmation does the same for the confirmation run, and
 d1_scores_report.py --smoke scores its stages.
 """
@@ -432,7 +433,15 @@ def preflight(model: str, revision: str, score: dict | None = None) -> dict:
     )
     templated = tokenizer(text, add_special_tokens=False)["input_ids"]
     sys.path.insert(0, str(HERE))
-    for module in ("no_write_connector", "scoring_connector", "d3_spike", "vllm_lens", "vllm_lens.client", "prometheus_client.parser", "httpx"):
+    for module in (
+        "no_write_connector",
+        "scoring_connector",
+        "d3_spike",
+        "vllm_lens",
+        "vllm_lens.client",
+        "prometheus_client.parser",
+        "httpx",
+    ):
         try:
             importlib.import_module(module)
         except ImportError as error:
@@ -678,7 +687,9 @@ def stage_summary(scores: np.ndarray, metrics_scores: int, reference: np.ndarray
     if reference is not None:
         summary["mean_abs_dscore"] = float(np.abs(scores[present] - reference[present]).mean())
         if shift_stop is not None and summary["mean_abs_dscore"] > shift_stop:
-            raise RuntimeError(f"mean |Δscore| {summary['mean_abs_dscore']:.6f} is above its stop rule, {shift_stop:.6f}")
+            raise RuntimeError(
+                f"mean |Δscore| {summary['mean_abs_dscore']:.6f} is above its stop rule, {shift_stop:.6f}"
+            )
     return summary
 
 
@@ -1025,6 +1036,72 @@ SMOKE = {
 }
 
 
+def bundled_probe_path() -> str:
+    from importlib.resources import files
+
+    return str(files("hulder") / "data" / "probe_demo.npz")
+
+
+OVERHEAD_15B_CFG = {
+    "model": "Qwen/Qwen2.5-1.5B-Instruct",
+    "hidden_size": 1536,
+    "layer": 20,
+    "probe_path": bundled_probe_path(),
+    # fp16 to match the probe and its reference, captured in fp16 on the 2070.
+    "serve": [
+        "--revision", d1_local.REVISION, "--dtype", "float16", "--max-model-len", "2048",
+        "--enable-chunked-prefill", "--no-enable-prefix-caching", "--seed", "0",
+    ],
+}  # fmt: skip
+
+
+def templated_demo_tokens(texts: list[str]) -> list[list[int]]:
+    """Each demo prompt's tokens, templated as a score stage's requests are."""
+    from transformers import AutoTokenizer
+
+    tokenizer = AutoTokenizer.from_pretrained(d1_local.MODEL, revision=d1_local.REVISION)
+    return [
+        tokenizer(
+            tokenizer.apply_chat_template(
+                d1_local.messages(text), tokenize=False, add_generation_prompt=True, enable_thinking=False
+            ),
+            add_special_tokens=False,
+        )["input_ids"]
+        for text in texts
+    ]
+
+
+def demo_score_workload(concurrency: int = 64, tokens_for=templated_demo_tokens) -> dict:
+    """The 360 demo prompts as a reply score stage, with the bundled reference's scores to report against."""
+    import hulder
+
+    rows = d1_local.prompts()
+    ids, texts = [p["id"] for p in rows], [p["text"] for p in rows]
+    reference = hulder.Snapshot.load(d1_local.DATA / "demo_fp16.npz")
+    if list(reference.ids) != ids:
+        raise SystemExit("demo prompts and the bundled reference aren't in the same order")
+    probe = hulder.Probe.load(bundled_probe_path())
+    return {
+        **score_workload(ids, texts, dict(zip(ids, tokens_for(texts), strict=True)), concurrency=concurrency),
+        "score_reference": hulder.apply_probe(probe, reference.activations).tolist(),
+    }
+
+
+def smoke_overhead(workload: dict, out: Path, timeouts: Timeouts, lens: bool) -> int:
+    """An overhead experiment's whole path on the local GPU, through in_container as a container runs
+    it: a calibration round and one more, all 360 demo prompts in its score stages. With lens, the small
+    model's four arms, under `uv run --with vllm-lens==1.3.0`. Without, Qwen3-4B's three arms."""
+    experiment = (OVERHEAD_15B if lens else OVERHEAD_QWEN3)._replace(rounds=2)
+    cfg = {**SMOKE, "probe_path": bundled_probe_path()}
+    workload = {**workload, **demo_score_workload(concurrency=8)}
+    returned = in_container(cfg, workload, out, experiment, timeouts, out.parent / f"{out.name}-volume", lambda: None)
+    results = returned["results"]
+    (out / "d1_l4.json").write_text(json.dumps(results, indent=2, default=str) + "\n")
+    (out / "manifest.json").write_text(json.dumps({"environment": returned["environment"]}, indent=2) + "\n")
+    print(json.dumps({k: results.get(k) for k in ("stopped", "fixed_rate", "verdicts")}, indent=2))
+    return 0 if results["stopped"] is None else 1
+
+
 def smoke_confirmation(workload: dict, out: Path, timeouts: Timeouts) -> int:
     """The confirmation run's whole path on the local GPU, through in_container as a container runs
     it, with all 360 demo prompts in its score stage, for d1_scores_report.py --smoke. Writes what
@@ -1070,6 +1147,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--confirmation", action="store_true", help="smoke the confirmation run: a calibration round and one more"
     )
+    parser.add_argument(
+        "--overhead", action="store_true", help="smoke Qwen3-4B's overhead arms: a calibration round and one more"
+    )
+    parser.add_argument(
+        "--overhead-lens", action="store_true", help="smoke the small model's four overhead arms, with vllm-lens"
+    )
     parser.add_argument("--out", type=Path)
     parser.add_argument(
         "--rejudge", type=Path, help="print the verdicts and divergences recomputed from this d1_l4.json"
@@ -1094,6 +1177,8 @@ def main(argv: list[str] | None = None) -> int:
     timeouts = Timeouts(900, 900, 900)
     if args.confirmation:
         return smoke_confirmation(workload, args.out, timeouts)
+    if args.overhead or args.overhead_lens:
+        return smoke_overhead(workload, args.out, timeouts, lens=args.overhead_lens)
     args.out.mkdir(parents=True, exist_ok=True)
     experiment = ZERO_DRAFT._replace(rounds=2) if args.zero_draft else COST._replace(rounds=1)
     results = run_all(SMOKE, workload, args.out, experiment, timeouts=timeouts)
