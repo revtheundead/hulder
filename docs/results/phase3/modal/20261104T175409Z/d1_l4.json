@@ -1,0 +1,1811 @@
+{
+  "schedule": [
+    [
+      0,
+      "baseline"
+    ],
+    [
+      0,
+      "scoring"
+    ],
+    [
+      0,
+      "scoring_caching"
+    ],
+    [
+      0,
+      "lens"
+    ],
+    [
+      1,
+      "scoring"
+    ],
+    [
+      1,
+      "scoring_caching"
+    ],
+    [
+      1,
+      "lens"
+    ],
+    [
+      1,
+      "baseline"
+    ],
+    [
+      2,
+      "scoring_caching"
+    ],
+    [
+      2,
+      "lens"
+    ],
+    [
+      2,
+      "baseline"
+    ],
+    [
+      2,
+      "scoring"
+    ]
+  ],
+  "runs": [
+    {
+      "arm": "baseline",
+      "round": 0,
+      "free_gpu_before": {
+        "used_mib": 6,
+        "free_mib": 22587
+      },
+      "command": [
+        "/.uv/.venv/bin/python",
+        "-m",
+        "vllm.entrypoints.cli.main",
+        "serve",
+        "Qwen/Qwen2.5-1.5B-Instruct",
+        "--revision",
+        "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
+        "--dtype",
+        "float16",
+        "--max-model-len",
+        "2048",
+        "--enable-chunked-prefill",
+        "--no-enable-prefix-caching",
+        "--seed",
+        "0",
+        "--port",
+        "8766"
+      ],
+      "env": {
+        "VLLM_LENS_DISABLE": "1"
+      },
+      "startup_seconds": 132.2,
+      "saturation": {
+        "duration": 7.079023629999995,
+        "completed": 300,
+        "failed": 0,
+        "request_throughput": 42.378725609650246,
+        "output_throughput": 5424.4768780352315,
+        "total_token_throughput": 7128.101647543171,
+        "max_concurrent_requests": 300,
+        "mean_ttft_ms": 1477.252924443334,
+        "p50_ttft_ms": 1003.8321134999961,
+        "p99_ttft_ms": 5032.62781356999,
+        "mean_tpot_ms": 29.925616593517063,
+        "p50_tpot_ms": 31.91121573622051,
+        "p99_tpot_ms": 33.44446438118125,
+        "p50_itl_ms": 29.169469999999365,
+        "p99_itl_ms": 123.32841415999498,
+        "p99_e2el_ms": 7029.783660770002
+      },
+      "short_saturation": {
+        "duration": 1.9133274380000103,
+        "completed": 300,
+        "failed": 0,
+        "request_throughput": 156.7949082011745,
+        "output_throughput": 2508.718531218792,
+        "total_token_throughput": 8811.873840906006,
+        "max_concurrent_requests": 300,
+        "mean_ttft_ms": 978.7301080133326,
+        "p50_ttft_ms": 919.9547784999993,
+        "p99_ttft_ms": 1651.4669126500073,
+        "mean_tpot_ms": 45.41386784488887,
+        "p50_tpot_ms": 50.33478946666605,
+        "p99_tpot_ms": 60.03009370800056,
+        "p50_itl_ms": 30.6304819999923,
+        "p99_itl_ms": 138.12401656000702,
+        "p99_e2el_ms": 1861.6985034900215
+      },
+      "counters": {
+        "steps": 353,
+        "tokens": 67320,
+        "draft_tokens": 0,
+        "accepted_tokens": 0
+      },
+      "peaks": {
+        "running": 256.0,
+        "kv_cache_usage": 0.0691823899371069
+      },
+      "seconds": 211.4,
+      "startup": {
+        "kv_cache_tokens": 592768,
+        "max_concurrency": 289.44,
+        "model_runner": "V2",
+        "scheduled_token_budget": null,
+        "async_scheduling": true
+      }
+    },
+    {
+      "arm": "scoring",
+      "round": 0,
+      "free_gpu_before": {
+        "used_mib": 6,
+        "free_mib": 22587
+      },
+      "command": [
+        "/.uv/.venv/bin/python",
+        "-m",
+        "vllm.entrypoints.cli.main",
+        "serve",
+        "Qwen/Qwen2.5-1.5B-Instruct",
+        "--revision",
+        "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
+        "--dtype",
+        "float16",
+        "--max-model-len",
+        "2048",
+        "--enable-chunked-prefill",
+        "--no-enable-prefix-caching",
+        "--seed",
+        "0",
+        "--port",
+        "8766",
+        "--speculative-config",
+        "{\"method\": \"extract_hidden_states\", \"num_speculative_tokens\": 1, \"draft_model_config\": {\"hf_config\": {\"eagle_aux_hidden_state_layer_ids\": [20]}}, \"num_speculative_tokens_per_batch_size\": [[1, 1, 0]]}",
+        "--kv-transfer-config",
+        "{\"kv_connector\": \"ScoringHiddenStatesConnector\", \"kv_role\": \"kv_producer\", \"kv_connector_extra_config\": {\"shared_storage_path\": \"/tmp/d1/r0_scoring/hidden_states\", \"probe_path\": \"/.uv/.venv/lib/python3.12/site-packages/hulder/data/probe_demo.npz\", \"use_synchronization_lock\": false}, \"kv_connector_module_path\": \"scoring_connector\"}"
+      ],
+      "env": {
+        "VLLM_LENS_DISABLE": "1",
+        "PYTHONPATH": "/root/experiments/phase3:/pkg/:/root/"
+      },
+      "startup_seconds": 100.1,
+      "saturation": {
+        "duration": 7.287818281,
+        "completed": 300,
+        "failed": 0,
+        "request_throughput": 41.16458292904024,
+        "output_throughput": 5269.066614917151,
+        "total_token_throughput": 6923.882848664569,
+        "max_concurrent_requests": 300,
+        "mean_ttft_ms": 1498.9231273133325,
+        "p50_ttft_ms": 990.5590184999937,
+        "p99_ttft_ms": 5190.802860320007,
+        "mean_tpot_ms": 31.13134973839894,
+        "p50_tpot_ms": 33.271367625984134,
+        "p99_tpot_ms": 34.74331945921255,
+        "p50_itl_ms": 30.611475499995322,
+        "p99_itl_ms": 124.073717640034,
+        "p99_e2el_ms": 7241.010129380031
+      },
+      "short_saturation": {
+        "duration": 1.8973118689999637,
+        "completed": 300,
+        "failed": 0,
+        "request_throughput": 158.1184437317225,
+        "output_throughput": 2529.89509970756,
+        "total_token_throughput": 8886.256537722804,
+        "max_concurrent_requests": 300,
+        "mean_ttft_ms": 950.3405243533325,
+        "p50_ttft_ms": 888.6764240000105,
+        "p99_ttft_ms": 1636.505907020022,
+        "mean_tpot_ms": 46.19726214355564,
+        "p50_tpot_ms": 51.0848981,
+        "p99_tpot_ms": 60.113507823333336,
+        "p50_itl_ms": 31.632608999984768,
+        "p99_itl_ms": 133.89135795996594,
+        "p99_e2el_ms": 1854.4102048700079
+      },
+      "counters": {
+        "steps": 338,
+        "tokens": 67320,
+        "draft_tokens": 0,
+        "accepted_tokens": 0
+      },
+      "peaks": {
+        "running": 256.0,
+        "kv_cache_usage": 0.07712250797151121
+      },
+      "seconds": 178.8,
+      "startup": {
+        "kv_cache_tokens": 536928,
+        "max_concurrency": 262.17,
+        "model_runner": "V2",
+        "scheduled_token_budget": 2048,
+        "async_scheduling": true
+      }
+    },
+    {
+      "arm": "scoring_caching",
+      "round": 0,
+      "free_gpu_before": {
+        "used_mib": 6,
+        "free_mib": 22587
+      },
+      "command": [
+        "/.uv/.venv/bin/python",
+        "-m",
+        "vllm.entrypoints.cli.main",
+        "serve",
+        "Qwen/Qwen2.5-1.5B-Instruct",
+        "--revision",
+        "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
+        "--dtype",
+        "float16",
+        "--max-model-len",
+        "2048",
+        "--enable-chunked-prefill",
+        "--enable-prefix-caching",
+        "--seed",
+        "0",
+        "--port",
+        "8766",
+        "--speculative-config",
+        "{\"method\": \"extract_hidden_states\", \"num_speculative_tokens\": 1, \"draft_model_config\": {\"hf_config\": {\"eagle_aux_hidden_state_layer_ids\": [20]}}, \"num_speculative_tokens_per_batch_size\": [[1, 1, 0]]}",
+        "--kv-transfer-config",
+        "{\"kv_connector\": \"ScoringHiddenStatesConnector\", \"kv_role\": \"kv_producer\", \"kv_connector_extra_config\": {\"shared_storage_path\": \"/tmp/d1/r0_scoring_caching/hidden_states\", \"probe_path\": \"/.uv/.venv/lib/python3.12/site-packages/hulder/data/probe_demo.npz\", \"use_synchronization_lock\": false}, \"kv_connector_module_path\": \"scoring_connector\"}"
+      ],
+      "env": {
+        "VLLM_LENS_DISABLE": "1",
+        "PYTHONPATH": "/root/experiments/phase3:/pkg/:/root/"
+      },
+      "startup_seconds": 76.1,
+      "saturation": {
+        "duration": 6.958011244999966,
+        "completed": 300,
+        "failed": 0,
+        "request_throughput": 43.11576820396493,
+        "output_throughput": 5518.818330107511,
+        "total_token_throughput": 7252.072211906902,
+        "max_concurrent_requests": 300,
+        "mean_ttft_ms": 1348.830269539999,
+        "p50_ttft_ms": 833.7752380000438,
+        "p99_ttft_ms": 4853.238765120014,
+        "mean_tpot_ms": 30.00372381984254,
+        "p50_tpot_ms": 32.366509082677354,
+        "p99_tpot_ms": 33.02080190007862,
+        "p50_itl_ms": 30.079425500048274,
+        "p99_itl_ms": 68.14075500005288,
+        "p99_e2el_ms": 6908.423919449985
+      },
+      "short_saturation": {
+        "duration": 1.5756626920000372,
+        "completed": 300,
+        "failed": 0,
+        "request_throughput": 190.39608002598624,
+        "output_throughput": 3046.33728041578,
+        "total_token_throughput": 10700.259697460428,
+        "max_concurrent_requests": 300,
+        "mean_ttft_ms": 829.4552468699987,
+        "p50_ttft_ms": 778.4578675000375,
+        "p99_ttft_ms": 1293.402953000076,
+        "mean_tpot_ms": 26.13029091577798,
+        "p50_tpot_ms": 28.08345970000043,
+        "p99_tpot_ms": 32.34624795399684,
+        "p50_itl_ms": 23.575764499980778,
+        "p99_itl_ms": 46.05095189995835,
+        "p99_e2el_ms": 1520.0733195599844
+      },
+      "short_cache": {
+        "queried_tokens": 12060,
+        "hit_tokens": 10048
+      },
+      "counters": {
+        "steps": 362,
+        "tokens": 52488,
+        "draft_tokens": 0,
+        "accepted_tokens": 0
+      },
+      "cache": {
+        "queried_tokens": 24120,
+        "hit_tokens": 14832
+      },
+      "peaks": {
+        "running": 256.0,
+        "kv_cache_usage": 0.0703783906997949
+      },
+      "seconds": 154.5,
+      "startup": {
+        "kv_cache_tokens": 561552,
+        "max_concurrency": 274.2,
+        "model_runner": "V2",
+        "scheduled_token_budget": 2048,
+        "async_scheduling": true
+      }
+    },
+    {
+      "arm": "lens",
+      "round": 0,
+      "free_gpu_before": {
+        "used_mib": 6,
+        "free_mib": 22587
+      },
+      "command": [
+        "/.uv/.venv/bin/python",
+        "-m",
+        "vllm.entrypoints.cli.main",
+        "serve",
+        "Qwen/Qwen2.5-1.5B-Instruct",
+        "--revision",
+        "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
+        "--dtype",
+        "float16",
+        "--max-model-len",
+        "2048",
+        "--enable-chunked-prefill",
+        "--no-enable-prefix-caching",
+        "--seed",
+        "0",
+        "--port",
+        "8766"
+      ],
+      "env": {},
+      "startup_seconds": 316.4,
+      "saturation": {
+        "duration": 44.76780674700001,
+        "completed": 300,
+        "failed": 0,
+        "request_throughput": 6.701244081386759,
+        "output_throughput": 857.7592424175051,
+        "total_token_throughput": 1127.1492544892528,
+        "max_concurrent_requests": 300,
+        "mean_ttft_ms": 6355.264802666672,
+        "p50_ttft_ms": 1535.834581500012,
+        "p99_ttft_ms": 34868.70101042001,
+        "mean_tpot_ms": 234.93465266727034,
+        "p50_tpot_ms": 262.25475550787417,
+        "p99_tpot_ms": 263.3203778107092,
+        "p50_itl_ms": 260.9266890000299,
+        "p99_itl_ms": 292.1340074400496,
+        "p99_e2el_ms": 44724.757218000035
+      },
+      "short_saturation": {
+        "duration": 6.52841848599985,
+        "completed": 300,
+        "failed": 0,
+        "request_throughput": 45.95293647969228,
+        "output_throughput": 735.2469836750765,
+        "total_token_throughput": 2582.5550301587064,
+        "max_concurrent_requests": 300,
+        "mean_ttft_ms": 2028.974405103328,
+        "p50_ttft_ms": 1478.6761729999398,
+        "p99_ttft_ms": 5378.084650949978,
+        "mean_tpot_ms": 227.5389151733335,
+        "p50_tpot_ms": 258.3029827666602,
+        "p99_tpot_ms": 267.20179008133124,
+        "p50_itl_ms": 261.4378260000194,
+        "p99_itl_ms": 338.6427498599369,
+        "p99_e2el_ms": 6481.247221080063
+      },
+      "counters": {
+        "steps": 312,
+        "tokens": 67320,
+        "draft_tokens": 0,
+        "accepted_tokens": 0
+      },
+      "hook_results": 0,
+      "peaks": {
+        "running": 256.0,
+        "kv_cache_usage": 0.06850229882105152
+      },
+      "seconds": 468.0,
+      "startup": {
+        "kv_cache_tokens": 622944,
+        "max_concurrency": 304.17,
+        "model_runner": "V1",
+        "scheduled_token_budget": null,
+        "async_scheduling": true
+      }
+    },
+    {
+      "arm": "scoring",
+      "round": 1,
+      "free_gpu_before": {
+        "used_mib": 6,
+        "free_mib": 22587
+      },
+      "command": [
+        "/.uv/.venv/bin/python",
+        "-m",
+        "vllm.entrypoints.cli.main",
+        "serve",
+        "Qwen/Qwen2.5-1.5B-Instruct",
+        "--revision",
+        "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
+        "--dtype",
+        "float16",
+        "--max-model-len",
+        "2048",
+        "--enable-chunked-prefill",
+        "--no-enable-prefix-caching",
+        "--seed",
+        "0",
+        "--port",
+        "8766",
+        "--speculative-config",
+        "{\"method\": \"extract_hidden_states\", \"num_speculative_tokens\": 1, \"draft_model_config\": {\"hf_config\": {\"eagle_aux_hidden_state_layer_ids\": [20]}}, \"num_speculative_tokens_per_batch_size\": [[1, 1, 0]]}",
+        "--kv-transfer-config",
+        "{\"kv_connector\": \"ScoringHiddenStatesConnector\", \"kv_role\": \"kv_producer\", \"kv_connector_extra_config\": {\"shared_storage_path\": \"/tmp/d1/r1_scoring/hidden_states\", \"probe_path\": \"/.uv/.venv/lib/python3.12/site-packages/hulder/data/probe_demo.npz\", \"use_synchronization_lock\": false}, \"kv_connector_module_path\": \"scoring_connector\"}"
+      ],
+      "env": {
+        "VLLM_LENS_DISABLE": "1",
+        "PYTHONPATH": "/root/experiments/phase3:/pkg/:/root/"
+      },
+      "startup_seconds": 74.1,
+      "saturation": {
+        "duration": 7.474438989999953,
+        "completed": 300,
+        "failed": 0,
+        "request_throughput": 40.13679159082973,
+        "output_throughput": 5137.5093236262055,
+        "total_token_throughput": 6751.008345577561,
+        "max_concurrent_requests": 300,
+        "mean_ttft_ms": 1566.1067794999954,
+        "p50_ttft_ms": 974.5661574999076,
+        "p99_ttft_ms": 5344.29709385,
+        "mean_tpot_ms": 31.99352906984247,
+        "p50_tpot_ms": 34.64852185039297,
+        "p99_tpot_ms": 35.74329272259811,
+        "p50_itl_ms": 31.24352650002038,
+        "p99_itl_ms": 129.94965177008226,
+        "p99_e2el_ms": 7417.236575099881
+      },
+      "short_saturation": {
+        "duration": 1.91572470899996,
+        "completed": 300,
+        "failed": 0,
+        "request_throughput": 156.5987005286396,
+        "output_throughput": 2505.5792084582336,
+        "total_token_throughput": 8800.846969709546,
+        "max_concurrent_requests": 300,
+        "mean_ttft_ms": 966.169366916666,
+        "p50_ttft_ms": 942.1126475000392,
+        "p99_ttft_ms": 1663.801243559924,
+        "mean_tpot_ms": 45.25594073933341,
+        "p50_tpot_ms": 49.744660266666564,
+        "p99_tpot_ms": 61.045428252663896,
+        "p50_itl_ms": 30.955030999848532,
+        "p99_itl_ms": 141.49279554002533,
+        "p99_e2el_ms": 1868.1124478999527
+      },
+      "fixed_rate": 28.815208050328167,
+      "fixed": {
+        "duration": 62.10504166800001,
+        "completed": 1729,
+        "failed": 0,
+        "request_throughput": 27.839929795762096,
+        "output_throughput": 3563.5110138575483,
+        "total_token_throughput": 4689.297232209369,
+        "max_concurrent_requests": 122,
+        "mean_ttft_ms": 69.52016765470843,
+        "p50_ttft_ms": 68.31543499993131,
+        "p99_ttft_ms": 100.37113728002623,
+        "mean_tpot_ms": 19.3713301497657,
+        "p50_tpot_ms": 19.485708299212128,
+        "p99_tpot_ms": 20.97329280062967,
+        "p50_itl_ms": 18.38124449989209,
+        "p99_itl_ms": 26.329860410014575,
+        "p99_e2el_ms": 2734.2959685999813
+      },
+      "counters": {
+        "steps": 3588,
+        "tokens": 358549,
+        "draft_tokens": 0,
+        "accepted_tokens": 0
+      },
+      "score": {
+        "rows": 360,
+        "concurrency": 64,
+        "metrics": {
+          "scores": 360,
+          "flagged": 188,
+          "replies_with_score": 360,
+          "replies_without_score": 0
+        },
+        "seconds": 3.5,
+        "without_score": 0,
+        "mean_abs_dscore": 0.0003553288122121659,
+        "counters": {
+          "steps": 141,
+          "tokens": 28182,
+          "draft_tokens": 0,
+          "accepted_tokens": 0
+        }
+      },
+      "peaks": {
+        "running": 256.0,
+        "kv_cache_usage": 0.07718828356507867
+      },
+      "seconds": 249.6,
+      "startup": {
+        "kv_cache_tokens": 561552,
+        "max_concurrency": 274.2,
+        "model_runner": "V2",
+        "scheduled_token_budget": 2048,
+        "async_scheduling": true
+      }
+    },
+    {
+      "arm": "scoring_caching",
+      "round": 1,
+      "free_gpu_before": {
+        "used_mib": 6,
+        "free_mib": 22587
+      },
+      "command": [
+        "/.uv/.venv/bin/python",
+        "-m",
+        "vllm.entrypoints.cli.main",
+        "serve",
+        "Qwen/Qwen2.5-1.5B-Instruct",
+        "--revision",
+        "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
+        "--dtype",
+        "float16",
+        "--max-model-len",
+        "2048",
+        "--enable-chunked-prefill",
+        "--enable-prefix-caching",
+        "--seed",
+        "0",
+        "--port",
+        "8766",
+        "--speculative-config",
+        "{\"method\": \"extract_hidden_states\", \"num_speculative_tokens\": 1, \"draft_model_config\": {\"hf_config\": {\"eagle_aux_hidden_state_layer_ids\": [20]}}, \"num_speculative_tokens_per_batch_size\": [[1, 1, 0]]}",
+        "--kv-transfer-config",
+        "{\"kv_connector\": \"ScoringHiddenStatesConnector\", \"kv_role\": \"kv_producer\", \"kv_connector_extra_config\": {\"shared_storage_path\": \"/tmp/d1/r1_scoring_caching/hidden_states\", \"probe_path\": \"/.uv/.venv/lib/python3.12/site-packages/hulder/data/probe_demo.npz\", \"use_synchronization_lock\": false}, \"kv_connector_module_path\": \"scoring_connector\"}"
+      ],
+      "env": {
+        "VLLM_LENS_DISABLE": "1",
+        "PYTHONPATH": "/root/experiments/phase3:/pkg/:/root/"
+      },
+      "startup_seconds": 76.1,
+      "saturation": {
+        "duration": 7.009977774000163,
+        "completed": 300,
+        "failed": 0,
+        "request_throughput": 42.79614139615288,
+        "output_throughput": 5477.906098707569,
+        "total_token_throughput": 7198.310982832915,
+        "max_concurrent_requests": 300,
+        "mean_ttft_ms": 1367.814491009999,
+        "p50_ttft_ms": 819.0485750000107,
+        "p99_ttft_ms": 4897.165641480069,
+        "mean_tpot_ms": 30.036238829081363,
+        "p50_tpot_ms": 32.49856024015797,
+        "p99_tpot_ms": 32.88714504362217,
+        "p50_itl_ms": 29.99052999984997,
+        "p99_itl_ms": 65.3608027199789,
+        "p99_e2el_ms": 6960.365976790072
+      },
+      "short_saturation": {
+        "duration": 1.673054840000077,
+        "completed": 300,
+        "failed": 0,
+        "request_throughput": 179.3127115904857,
+        "output_throughput": 2869.003385447771,
+        "total_token_throughput": 10077.374391385296,
+        "max_concurrent_requests": 300,
+        "mean_ttft_ms": 892.374596623337,
+        "p50_ttft_ms": 849.524265500122,
+        "p99_ttft_ms": 1370.8146266299034,
+        "mean_tpot_ms": 22.840619996000235,
+        "p50_tpot_ms": 24.389897200004874,
+        "p99_tpot_ms": 27.467935984001087,
+        "p50_itl_ms": 22.661491000008027,
+        "p99_itl_ms": 36.242416320064876,
+        "p99_e2el_ms": 1621.341716080051
+      },
+      "short_cache": {
+        "queried_tokens": 12060,
+        "hit_tokens": 10048
+      },
+      "fixed_rate": 28.815208050328167,
+      "fixed": {
+        "duration": 62.084090737999986,
+        "completed": 1729,
+        "failed": 0,
+        "request_throughput": 27.84932467315215,
+        "output_throughput": 3564.713558163475,
+        "total_token_throughput": 4690.879684926216,
+        "max_concurrent_requests": 116,
+        "mean_ttft_ms": 65.79781589358257,
+        "p50_ttft_ms": 65.36800000003495,
+        "p99_ttft_ms": 90.43068411991955,
+        "mean_tpot_ms": 18.622923729387093,
+        "p50_tpot_ms": 18.60231991338513,
+        "p99_tpot_ms": 20.076448679684813,
+        "p50_itl_ms": 17.961802500053636,
+        "p99_itl_ms": 24.830125040041352,
+        "p99_e2el_ms": 2617.7062347999436
+      },
+      "counters": {
+        "steps": 3724,
+        "tokens": 310757,
+        "draft_tokens": 0,
+        "accepted_tokens": 0
+      },
+      "cache": {
+        "queried_tokens": 94037,
+        "hit_tokens": 47792
+      },
+      "score": {
+        "rows": 360,
+        "concurrency": 64,
+        "metrics": {
+          "scores": 360,
+          "flagged": 188,
+          "replies_with_score": 360,
+          "replies_without_score": 0
+        },
+        "seconds": 3.3,
+        "without_score": 0,
+        "mean_abs_dscore": 0.0003537269438513451,
+        "counters": {
+          "steps": 141,
+          "tokens": 23446,
+          "draft_tokens": 0,
+          "accepted_tokens": 0
+        },
+        "cache": {
+          "queried_tokens": 22422,
+          "hit_tokens": 4736
+        }
+      },
+      "peaks": {
+        "running": 256.0,
+        "kv_cache_usage": 0.0700079781171643
+      },
+      "seconds": 250.2,
+      "startup": {
+        "kv_cache_tokens": 561552,
+        "max_concurrency": 274.2,
+        "model_runner": "V2",
+        "scheduled_token_budget": 2048,
+        "async_scheduling": true
+      }
+    },
+    {
+      "arm": "lens",
+      "round": 1,
+      "free_gpu_before": {
+        "used_mib": 6,
+        "free_mib": 22587
+      },
+      "command": [
+        "/.uv/.venv/bin/python",
+        "-m",
+        "vllm.entrypoints.cli.main",
+        "serve",
+        "Qwen/Qwen2.5-1.5B-Instruct",
+        "--revision",
+        "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
+        "--dtype",
+        "float16",
+        "--max-model-len",
+        "2048",
+        "--enable-chunked-prefill",
+        "--no-enable-prefix-caching",
+        "--seed",
+        "0",
+        "--port",
+        "8766"
+      ],
+      "env": {},
+      "startup_seconds": 64.1,
+      "saturation": {
+        "duration": 45.635822581999946,
+        "completed": 300,
+        "failed": 0,
+        "request_throughput": 6.573783116562655,
+        "output_throughput": 841.4442389200199,
+        "total_token_throughput": 1105.7103202058386,
+        "max_concurrent_requests": 300,
+        "mean_ttft_ms": 6544.076985919994,
+        "p50_ttft_ms": 1801.7196309998553,
+        "p99_ttft_ms": 35724.03830220993,
+        "mean_tpot_ms": 240.58907210173228,
+        "p50_tpot_ms": 267.9793965039365,
+        "p99_tpot_ms": 270.23855979543345,
+        "p50_itl_ms": 267.4393429999782,
+        "p99_itl_ms": 308.0956440999216,
+        "p99_e2el_ms": 45580.22558513012
+      },
+      "short_saturation": {
+        "duration": 6.450163398999848,
+        "completed": 300,
+        "failed": 0,
+        "request_throughput": 46.510449649464306,
+        "output_throughput": 744.1671943914289,
+        "total_token_throughput": 2613.887270299894,
+        "max_concurrent_requests": 300,
+        "mean_ttft_ms": 2004.1051455066734,
+        "p50_ttft_ms": 1516.4140204999512,
+        "p99_ttft_ms": 5338.741987289886,
+        "mean_tpot_ms": 224.99280807133374,
+        "p50_tpot_ms": 253.22798026666837,
+        "p99_tpot_ms": 264.21707242466147,
+        "p50_itl_ms": 258.5516710000775,
+        "p99_itl_ms": 324.16589856003156,
+        "p99_e2el_ms": 6404.1058921498825
+      },
+      "fixed_rate": 28.815208050328167,
+      "error": "TimeoutExpired: Command '['/.uv/.venv/bin/python', '-m', 'vllm.entrypoints.cli.main', 'bench', 'serve', '--backend', 'openai-chat', '--endpoint', '/v1/chat/completions', '--base-url', 'http://127.0.0.1:8766', '--model', 'Qwen/Qwen2.5-1.5B-Instruct', '--tokenizer', '/__modal/volumes/vo-jLVhGKA1eUYgYxMUijaSbV/hf/hub/models--Qwen--Qwen2.5-1.5B-Instruct/snapshots/989aa7980e4cf806f80c7fef2b1adb7bc71aa306', '--dataset-name', 'custom', '--dataset-path', '/tmp/d1/r1_lens/bench.jsonl', '--skip-chat-template', '--custom-output-len', '128', '--ignore-eos', '--temperature', '0', '--num-prompts', '1729', '--request-rate', '28.815', '--seed', '0', '--percentile-metrics', 'ttft,tpot,itl,e2el', '--metric-percentiles', '50,99', '--save-result', '--result-dir', '/tmp/d1/r1_lens', '--result-filename', 'fixed.json']' timed out after 92.88890944513537 seconds",
+      "timeout": {
+        "stage": "fixed",
+        "stage_seconds": 94.0,
+        "bench_seconds": 65,
+        "completed": 285,
+        "of": 1729,
+        "outcome": "did not sustain the fixed rate"
+      },
+      "peaks": {
+        "running": 256.0,
+        "kv_cache_usage": 0.07048005547992708
+      },
+      "seconds": 305.2,
+      "startup": {
+        "kv_cache_tokens": 622944,
+        "max_concurrency": 304.17,
+        "model_runner": "V1",
+        "scheduled_token_budget": null,
+        "async_scheduling": true
+      }
+    },
+    {
+      "arm": "baseline",
+      "round": 1,
+      "free_gpu_before": {
+        "used_mib": 6,
+        "free_mib": 22587
+      },
+      "command": [
+        "/.uv/.venv/bin/python",
+        "-m",
+        "vllm.entrypoints.cli.main",
+        "serve",
+        "Qwen/Qwen2.5-1.5B-Instruct",
+        "--revision",
+        "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
+        "--dtype",
+        "float16",
+        "--max-model-len",
+        "2048",
+        "--enable-chunked-prefill",
+        "--no-enable-prefix-caching",
+        "--seed",
+        "0",
+        "--port",
+        "8766"
+      ],
+      "env": {
+        "VLLM_LENS_DISABLE": "1"
+      },
+      "startup_seconds": 80.1,
+      "saturation": {
+        "duration": 7.393626963000088,
+        "completed": 300,
+        "failed": 0,
+        "request_throughput": 40.57548500908815,
+        "output_throughput": 5193.662081163283,
+        "total_token_throughput": 6824.796578528627,
+        "max_concurrent_requests": 300,
+        "mean_ttft_ms": 1562.246605413327,
+        "p50_ttft_ms": 972.613441500016,
+        "p99_ttft_ms": 5304.616326570011,
+        "mean_tpot_ms": 31.70611665519691,
+        "p50_tpot_ms": 33.80716764173292,
+        "p99_tpot_ms": 35.68199341354446,
+        "p50_itl_ms": 31.69531300000017,
+        "p99_itl_ms": 129.19456138009542,
+        "p99_e2el_ms": 7325.55022214995
+      },
+      "short_saturation": {
+        "duration": 1.9540942430000996,
+        "completed": 300,
+        "failed": 0,
+        "request_throughput": 153.5238134366607,
+        "output_throughput": 2456.3810149865712,
+        "total_token_throughput": 8628.038315140331,
+        "max_concurrent_requests": 300,
+        "mean_ttft_ms": 993.0328144800061,
+        "p50_ttft_ms": 955.3436920000422,
+        "p99_ttft_ms": 1697.1442651200684,
+        "mean_tpot_ms": 47.33867758311084,
+        "p50_tpot_ms": 51.46702866666146,
+        "p99_tpot_ms": 61.19222493532743,
+        "p50_itl_ms": 33.97904649989414,
+        "p99_itl_ms": 128.25737940013596,
+        "p99_e2el_ms": 1898.4742103200665
+      },
+      "fixed_rate": 28.815208050328167,
+      "fixed": {
+        "duration": 62.08336438099991,
+        "completed": 1729,
+        "failed": 0,
+        "request_throughput": 27.849650502013482,
+        "output_throughput": 3564.7552642577257,
+        "total_token_throughput": 4690.934566831049,
+        "max_concurrent_requests": 118,
+        "mean_ttft_ms": 71.3297935558146,
+        "p50_ttft_ms": 67.93918299990764,
+        "p99_ttft_ms": 166.82432715999312,
+        "mean_tpot_ms": 18.94898555183231,
+        "p50_tpot_ms": 18.998826582675946,
+        "p99_tpot_ms": 20.438339726613158,
+        "p50_itl_ms": 17.850197999905504,
+        "p99_itl_ms": 27.552423500242206,
+        "p99_e2el_ms": 2723.5972585198947
+      },
+      "counters": {
+        "steps": 3655,
+        "tokens": 358549,
+        "draft_tokens": 0,
+        "accepted_tokens": 0
+      },
+      "peaks": {
+        "running": 256.0,
+        "kv_cache_usage": 0.058169530000515945
+      },
+      "seconds": 252.5,
+      "startup": {
+        "kv_cache_tokens": 620272,
+        "max_concurrency": 302.87,
+        "model_runner": "V2",
+        "scheduled_token_budget": null,
+        "async_scheduling": true
+      }
+    },
+    {
+      "arm": "scoring_caching",
+      "round": 2,
+      "free_gpu_before": {
+        "used_mib": 6,
+        "free_mib": 22587
+      },
+      "command": [
+        "/.uv/.venv/bin/python",
+        "-m",
+        "vllm.entrypoints.cli.main",
+        "serve",
+        "Qwen/Qwen2.5-1.5B-Instruct",
+        "--revision",
+        "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
+        "--dtype",
+        "float16",
+        "--max-model-len",
+        "2048",
+        "--enable-chunked-prefill",
+        "--enable-prefix-caching",
+        "--seed",
+        "0",
+        "--port",
+        "8766",
+        "--speculative-config",
+        "{\"method\": \"extract_hidden_states\", \"num_speculative_tokens\": 1, \"draft_model_config\": {\"hf_config\": {\"eagle_aux_hidden_state_layer_ids\": [20]}}, \"num_speculative_tokens_per_batch_size\": [[1, 1, 0]]}",
+        "--kv-transfer-config",
+        "{\"kv_connector\": \"ScoringHiddenStatesConnector\", \"kv_role\": \"kv_producer\", \"kv_connector_extra_config\": {\"shared_storage_path\": \"/tmp/d1/r2_scoring_caching/hidden_states\", \"probe_path\": \"/.uv/.venv/lib/python3.12/site-packages/hulder/data/probe_demo.npz\", \"use_synchronization_lock\": false}, \"kv_connector_module_path\": \"scoring_connector\"}"
+      ],
+      "env": {
+        "VLLM_LENS_DISABLE": "1",
+        "PYTHONPATH": "/root/experiments/phase3:/pkg/:/root/"
+      },
+      "startup_seconds": 78.1,
+      "saturation": {
+        "duration": 6.976049590000002,
+        "completed": 300,
+        "failed": 0,
+        "request_throughput": 43.00428145322285,
+        "output_throughput": 5504.548026012525,
+        "total_token_throughput": 7233.320140432084,
+        "max_concurrent_requests": 300,
+        "mean_ttft_ms": 1395.0844507800125,
+        "p50_ttft_ms": 845.4042084999855,
+        "p99_ttft_ms": 4866.542124570215,
+        "mean_tpot_ms": 29.68208259362199,
+        "p50_tpot_ms": 32.09992801181022,
+        "p99_tpot_ms": 32.4544381624402,
+        "p50_itl_ms": 29.33713600032206,
+        "p99_itl_ms": 67.52941700005977,
+        "p99_e2el_ms": 6925.270888980003
+      },
+      "short_saturation": {
+        "duration": 1.6789353039998787,
+        "completed": 300,
+        "failed": 0,
+        "request_throughput": 178.68466955533248,
+        "output_throughput": 2858.9547128853196,
+        "total_token_throughput": 10042.078429009685,
+        "max_concurrent_requests": 300,
+        "mean_ttft_ms": 915.392322036652,
+        "p50_ttft_ms": 876.7495679999229,
+        "p99_ttft_ms": 1372.6784342901647,
+        "mean_tpot_ms": 22.464065029778187,
+        "p50_tpot_ms": 23.645029966655784,
+        "p99_tpot_ms": 28.48445821199827,
+        "p50_itl_ms": 22.0303809996949,
+        "p99_itl_ms": 39.3284186796518,
+        "p99_e2el_ms": 1624.7562544503671
+      },
+      "short_cache": {
+        "queried_tokens": 12060,
+        "hit_tokens": 10048
+      },
+      "fixed_rate": 28.815208050328167,
+      "fixed": {
+        "duration": 62.0999879230003,
+        "completed": 1729,
+        "failed": 0,
+        "request_throughput": 27.842195430759837,
+        "output_throughput": 3563.801015137259,
+        "total_token_throughput": 4689.6788508413865,
+        "max_concurrent_requests": 116,
+        "mean_ttft_ms": 66.21620442742068,
+        "p50_ttft_ms": 65.70394199980001,
+        "p99_ttft_ms": 89.65521220001393,
+        "mean_tpot_ms": 18.58356579306232,
+        "p50_tpot_ms": 18.527279984249702,
+        "p99_tpot_ms": 20.14364243842415,
+        "p50_itl_ms": 17.929578000121182,
+        "p99_itl_ms": 24.5567998799288,
+        "p99_e2el_ms": 2628.578361360105
+      },
+      "counters": {
+        "steps": 3732,
+        "tokens": 310757,
+        "draft_tokens": 0,
+        "accepted_tokens": 0
+      },
+      "cache": {
+        "queried_tokens": 94037,
+        "hit_tokens": 47792
+      },
+      "score": {
+        "rows": 360,
+        "concurrency": 64,
+        "metrics": {
+          "scores": 360,
+          "flagged": 188,
+          "replies_with_score": 360,
+          "replies_without_score": 0
+        },
+        "seconds": 3.2,
+        "without_score": 0,
+        "mean_abs_dscore": 0.00034469479384521644,
+        "counters": {
+          "steps": 137,
+          "tokens": 23446,
+          "draft_tokens": 0,
+          "accepted_tokens": 0
+        },
+        "cache": {
+          "queried_tokens": 22422,
+          "hit_tokens": 4736
+        }
+      },
+      "peaks": {
+        "running": 256.0,
+        "kv_cache_usage": 0.06026327786642349
+      },
+      "seconds": 253.8,
+      "startup": {
+        "kv_cache_tokens": 561552,
+        "max_concurrency": 274.2,
+        "model_runner": "V2",
+        "scheduled_token_budget": 2048,
+        "async_scheduling": true
+      }
+    },
+    {
+      "arm": "lens",
+      "round": 2,
+      "free_gpu_before": {
+        "used_mib": 6,
+        "free_mib": 22587
+      },
+      "command": [
+        "/.uv/.venv/bin/python",
+        "-m",
+        "vllm.entrypoints.cli.main",
+        "serve",
+        "Qwen/Qwen2.5-1.5B-Instruct",
+        "--revision",
+        "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
+        "--dtype",
+        "float16",
+        "--max-model-len",
+        "2048",
+        "--enable-chunked-prefill",
+        "--no-enable-prefix-caching",
+        "--seed",
+        "0",
+        "--port",
+        "8766"
+      ],
+      "env": {},
+      "startup_seconds": 64.1,
+      "saturation": {
+        "duration": 44.67022008899994,
+        "completed": 300,
+        "failed": 0,
+        "request_throughput": 6.715883633487517,
+        "output_throughput": 859.6331050864022,
+        "total_token_throughput": 1129.6116271526005,
+        "max_concurrent_requests": 300,
+        "mean_ttft_ms": 6349.088034543338,
+        "p50_ttft_ms": 1693.4025140001268,
+        "p99_ttft_ms": 34835.62937981998,
+        "mean_tpot_ms": 235.0089244605774,
+        "p50_tpot_ms": 261.77648741732327,
+        "p99_tpot_ms": 263.7584285714931,
+        "p50_itl_ms": 260.7325120002315,
+        "p99_itl_ms": 291.78801332021976,
+        "p99_e2el_ms": 44622.37884639008
+      },
+      "short_saturation": {
+        "duration": 6.586413022000215,
+        "completed": 300,
+        "failed": 0,
+        "request_throughput": 45.54831271557482,
+        "output_throughput": 728.7730034491972,
+        "total_token_throughput": 2559.815174615305,
+        "max_concurrent_requests": 300,
+        "mean_ttft_ms": 2031.665640070011,
+        "p50_ttft_ms": 1488.2480950000172,
+        "p99_ttft_ms": 5438.264246829917,
+        "mean_tpot_ms": 231.50837112333397,
+        "p50_tpot_ms": 261.9589515333246,
+        "p99_tpot_ms": 271.2372834766681,
+        "p50_itl_ms": 268.8237540000955,
+        "p99_itl_ms": 321.4076513201144,
+        "p99_e2el_ms": 6538.629401620236
+      },
+      "fixed_rate": 28.815208050328167,
+      "error": "TimeoutExpired: Command '['/.uv/.venv/bin/python', '-m', 'vllm.entrypoints.cli.main', 'bench', 'serve', '--backend', 'openai-chat', '--endpoint', '/v1/chat/completions', '--base-url', 'http://127.0.0.1:8766', '--model', 'Qwen/Qwen2.5-1.5B-Instruct', '--tokenizer', '/__modal/volumes/vo-jLVhGKA1eUYgYxMUijaSbV/hf/hub/models--Qwen--Qwen2.5-1.5B-Instruct/snapshots/989aa7980e4cf806f80c7fef2b1adb7bc71aa306', '--dataset-name', 'custom', '--dataset-path', '/tmp/d1/r2_lens/bench.jsonl', '--skip-chat-template', '--custom-output-len', '128', '--ignore-eos', '--temperature', '0', '--num-prompts', '1729', '--request-rate', '28.815', '--seed', '0', '--percentile-metrics', 'ttft,tpot,itl,e2el', '--metric-percentiles', '50,99', '--save-result', '--result-dir', '/tmp/d1/r2_lens', '--result-filename', 'fixed.json']' timed out after 95.36464966378207 seconds",
+      "timeout": {
+        "stage": "fixed",
+        "stage_seconds": 96.6,
+        "bench_seconds": 66,
+        "completed": 296,
+        "of": 1729,
+        "outcome": "did not sustain the fixed rate"
+      },
+      "peaks": {
+        "running": 256.0,
+        "kv_cache_usage": 0.06886189094084705
+      },
+      "seconds": 305.4,
+      "startup": {
+        "kv_cache_tokens": 622944,
+        "max_concurrency": 304.17,
+        "model_runner": "V1",
+        "scheduled_token_budget": null,
+        "async_scheduling": true
+      }
+    },
+    {
+      "arm": "baseline",
+      "round": 2,
+      "free_gpu_before": {
+        "used_mib": 6,
+        "free_mib": 22587
+      },
+      "command": [
+        "/.uv/.venv/bin/python",
+        "-m",
+        "vllm.entrypoints.cli.main",
+        "serve",
+        "Qwen/Qwen2.5-1.5B-Instruct",
+        "--revision",
+        "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
+        "--dtype",
+        "float16",
+        "--max-model-len",
+        "2048",
+        "--enable-chunked-prefill",
+        "--no-enable-prefix-caching",
+        "--seed",
+        "0",
+        "--port",
+        "8766"
+      ],
+      "env": {
+        "VLLM_LENS_DISABLE": "1"
+      },
+      "startup_seconds": 78.1,
+      "saturation": {
+        "duration": 7.25431983999988,
+        "completed": 300,
+        "failed": 0,
+        "request_throughput": 41.354669578506616,
+        "output_throughput": 5293.397706048847,
+        "total_token_throughput": 6955.855423104812,
+        "max_concurrent_requests": 300,
+        "mean_ttft_ms": 1530.6833163733352,
+        "p50_ttft_ms": 990.1661865001188,
+        "p99_ttft_ms": 5205.915368680257,
+        "mean_tpot_ms": 30.992233574383157,
+        "p50_tpot_ms": 33.38745234251958,
+        "p99_tpot_ms": 34.71694300629851,
+        "p50_itl_ms": 30.444108999745367,
+        "p99_itl_ms": 118.93132516013789,
+        "p99_e2el_ms": 7204.9068534999515
+      },
+      "short_saturation": {
+        "duration": 1.9291741630004253,
+        "completed": 300,
+        "failed": 0,
+        "request_throughput": 155.50695512810154,
+        "output_throughput": 2488.1112820496246,
+        "total_token_throughput": 8739.490878199307,
+        "max_concurrent_requests": 300,
+        "mean_ttft_ms": 951.6922554266619,
+        "p50_ttft_ms": 959.5220035000693,
+        "p99_ttft_ms": 1682.423933910277,
+        "mean_tpot_ms": 48.148170453999825,
+        "p50_tpot_ms": 50.09745593332203,
+        "p99_tpot_ms": 62.74655811267894,
+        "p50_itl_ms": 41.32310399995731,
+        "p99_itl_ms": 128.5673771998745,
+        "p99_e2el_ms": 1878.5414964398706
+      },
+      "fixed_rate": 28.815208050328167,
+      "fixed": {
+        "duration": 62.05927719500005,
+        "completed": 1729,
+        "failed": 0,
+        "request_throughput": 27.860459840149424,
+        "output_throughput": 3566.1388595391263,
+        "total_token_throughput": 4692.755268239952,
+        "max_concurrent_requests": 118,
+        "mean_ttft_ms": 68.52085696356093,
+        "p50_ttft_ms": 67.76784600015162,
+        "p99_ttft_ms": 93.95165872014331,
+        "mean_tpot_ms": 18.928069222225755,
+        "p50_tpot_ms": 18.956833267716643,
+        "p99_tpot_ms": 20.47935733732221,
+        "p50_itl_ms": 17.833334500210185,
+        "p99_itl_ms": 26.26237739012139,
+        "p99_e2el_ms": 2674.907607839941
+      },
+      "counters": {
+        "steps": 3655,
+        "tokens": 358549,
+        "draft_tokens": 0,
+        "accepted_tokens": 0
+      },
+      "peaks": {
+        "running": 256.0,
+        "kv_cache_usage": 0.0669143063509261
+      },
+      "seconds": 248.9,
+      "startup": {
+        "kv_cache_tokens": 620272,
+        "max_concurrency": 302.87,
+        "model_runner": "V2",
+        "scheduled_token_budget": null,
+        "async_scheduling": true
+      }
+    },
+    {
+      "arm": "scoring",
+      "round": 2,
+      "free_gpu_before": {
+        "used_mib": 6,
+        "free_mib": 22587
+      },
+      "command": [
+        "/.uv/.venv/bin/python",
+        "-m",
+        "vllm.entrypoints.cli.main",
+        "serve",
+        "Qwen/Qwen2.5-1.5B-Instruct",
+        "--revision",
+        "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
+        "--dtype",
+        "float16",
+        "--max-model-len",
+        "2048",
+        "--enable-chunked-prefill",
+        "--no-enable-prefix-caching",
+        "--seed",
+        "0",
+        "--port",
+        "8766",
+        "--speculative-config",
+        "{\"method\": \"extract_hidden_states\", \"num_speculative_tokens\": 1, \"draft_model_config\": {\"hf_config\": {\"eagle_aux_hidden_state_layer_ids\": [20]}}, \"num_speculative_tokens_per_batch_size\": [[1, 1, 0]]}",
+        "--kv-transfer-config",
+        "{\"kv_connector\": \"ScoringHiddenStatesConnector\", \"kv_role\": \"kv_producer\", \"kv_connector_extra_config\": {\"shared_storage_path\": \"/tmp/d1/r2_scoring/hidden_states\", \"probe_path\": \"/.uv/.venv/lib/python3.12/site-packages/hulder/data/probe_demo.npz\", \"use_synchronization_lock\": false}, \"kv_connector_module_path\": \"scoring_connector\"}"
+      ],
+      "env": {
+        "VLLM_LENS_DISABLE": "1",
+        "PYTHONPATH": "/root/experiments/phase3:/pkg/:/root/"
+      },
+      "startup_seconds": 74.1,
+      "saturation": {
+        "duration": 7.22761170800004,
+        "completed": 300,
+        "failed": 0,
+        "request_throughput": 41.507487136855794,
+        "output_throughput": 5312.958353517542,
+        "total_token_throughput": 6981.5593364191445,
+        "max_concurrent_requests": 300,
+        "mean_ttft_ms": 1501.48961560335,
+        "p50_ttft_ms": 985.5899695000971,
+        "p99_ttft_ms": 5138.546763070149,
+        "mean_tpot_ms": 30.696882474120592,
+        "p50_tpot_ms": 32.89533724409563,
+        "p99_tpot_ms": 34.22798765212566,
+        "p50_itl_ms": 30.14969000014389,
+        "p99_itl_ms": 123.69016453995303,
+        "p99_e2el_ms": 7179.132364090142
+      },
+      "short_saturation": {
+        "duration": 1.9238299959997676,
+        "completed": 300,
+        "failed": 0,
+        "request_throughput": 155.93893463756777,
+        "output_throughput": 2495.0229542010843,
+        "total_token_throughput": 8763.768126631308,
+        "max_concurrent_requests": 300,
+        "mean_ttft_ms": 995.552631453326,
+        "p50_ttft_ms": 1003.4014839998235,
+        "p99_ttft_ms": 1663.2828523995522,
+        "mean_tpot_ms": 44.635957355999075,
+        "p50_tpot_ms": 46.024971600005905,
+        "p99_tpot_ms": 58.43467528199866,
+        "p50_itl_ms": 30.05651300009049,
+        "p99_itl_ms": 127.43789669975742,
+        "p99_e2el_ms": 1869.2115200496164
+      },
+      "fixed_rate": 28.815208050328167,
+      "fixed": {
+        "duration": 62.11460982300014,
+        "completed": 1729,
+        "failed": 0,
+        "request_throughput": 27.835641323786863,
+        "output_throughput": 3562.9620894447185,
+        "total_token_throughput": 4688.574891315861,
+        "max_concurrent_requests": 122,
+        "mean_ttft_ms": 68.78778011163084,
+        "p50_ttft_ms": 67.77494099969772,
+        "p99_ttft_ms": 95.7237314399572,
+        "mean_tpot_ms": 19.382068580072197,
+        "p50_tpot_ms": 19.528269881892076,
+        "p99_tpot_ms": 20.95345274582864,
+        "p50_itl_ms": 18.34957950018179,
+        "p99_itl_ms": 26.51827140993191,
+        "p99_e2el_ms": 2737.712189520116
+      },
+      "counters": {
+        "steps": 3578,
+        "tokens": 358549,
+        "draft_tokens": 0,
+        "accepted_tokens": 0
+      },
+      "score": {
+        "rows": 360,
+        "concurrency": 64,
+        "metrics": {
+          "scores": 360,
+          "flagged": 188,
+          "replies_with_score": 360,
+          "replies_without_score": 0
+        },
+        "seconds": 3.6,
+        "without_score": 0,
+        "mean_abs_dscore": 0.00034440895283801686,
+        "counters": {
+          "steps": 137,
+          "tokens": 28182,
+          "draft_tokens": 0,
+          "accepted_tokens": 0
+        }
+      },
+      "peaks": {
+        "running": 256.0,
+        "kv_cache_usage": 0.06807043537725099
+      },
+      "seconds": 247.8,
+      "startup": {
+        "kv_cache_tokens": 561552,
+        "max_concurrency": 274.2,
+        "model_runner": "V2",
+        "scheduled_token_budget": 2048,
+        "async_scheduling": true
+      }
+    }
+  ],
+  "stopped": null,
+  "generation": {
+    "r0_scoring": {
+      "identical": 15,
+      "of": 16,
+      "diverged": [
+        {
+          "prompt": 0,
+          "token": 39,
+          "tokens": [
+            " will",
+            " your"
+          ],
+          "margins": [
+            -2.6875,
+            1.3593750298023224
+          ]
+        }
+      ]
+    },
+    "r0_scoring_caching": {
+      "identical": 15,
+      "of": 16,
+      "diverged": [
+        {
+          "prompt": 0,
+          "token": 39,
+          "tokens": [
+            " will",
+            " your"
+          ],
+          "margins": [
+            -2.6875,
+            1.3593750298023224
+          ]
+        }
+      ]
+    },
+    "r0_lens": {
+      "identical": 15,
+      "of": 16,
+      "diverged": [
+        {
+          "prompt": 6,
+          "token": 0,
+          "tokens": [
+            "I",
+            "As"
+          ],
+          "margins": [
+            0.0,
+            0.015625
+          ]
+        }
+      ]
+    },
+    "r1_scoring": {
+      "identical": 15,
+      "of": 16,
+      "diverged": [
+        {
+          "prompt": 0,
+          "token": 39,
+          "tokens": [
+            " will",
+            " your"
+          ],
+          "margins": [
+            -2.6875,
+            1.3593750298023224
+          ]
+        }
+      ]
+    },
+    "r1_scoring_caching": {
+      "identical": 15,
+      "of": 16,
+      "diverged": [
+        {
+          "prompt": 0,
+          "token": 39,
+          "tokens": [
+            " will",
+            " your"
+          ],
+          "margins": [
+            -2.6875,
+            1.3593750298023224
+          ]
+        }
+      ]
+    },
+    "r1_lens": {
+      "identical": 15,
+      "of": 16,
+      "diverged": [
+        {
+          "prompt": 6,
+          "token": 0,
+          "tokens": [
+            "I",
+            "As"
+          ],
+          "margins": [
+            0.0,
+            0.015625
+          ]
+        }
+      ]
+    },
+    "r1_baseline": {
+      "identical": 16,
+      "of": 16,
+      "diverged": []
+    },
+    "r2_scoring_caching": {
+      "identical": 15,
+      "of": 16,
+      "diverged": [
+        {
+          "prompt": 0,
+          "token": 39,
+          "tokens": [
+            " will",
+            " your"
+          ],
+          "margins": [
+            -2.6875,
+            1.3593750298023224
+          ]
+        }
+      ]
+    },
+    "r2_lens": {
+      "identical": 15,
+      "of": 16,
+      "diverged": [
+        {
+          "prompt": 6,
+          "token": 0,
+          "tokens": [
+            "I",
+            "As"
+          ],
+          "margins": [
+            0.0,
+            0.015625
+          ]
+        }
+      ]
+    },
+    "r2_baseline": {
+      "identical": 16,
+      "of": 16,
+      "diverged": []
+    },
+    "r2_scoring": {
+      "identical": 15,
+      "of": 16,
+      "diverged": [
+        {
+          "prompt": 0,
+          "token": 39,
+          "tokens": [
+            " will",
+            " your"
+          ],
+          "margins": [
+            -2.6875,
+            1.3593750298023224
+          ]
+        }
+      ]
+    }
+  },
+  "fixed_rate": 28.815208050328167,
+  "verdicts": {
+    "lens": {
+      "throughput": {
+        "overheads": [
+          0.8418724493248851
+        ],
+        "upper": 0.8418724493248851,
+        "threshold": 0.05,
+        "baseline_spread": 0.04351838575894587,
+        "verdict": "fail"
+      },
+      "measurement_timeouts": [
+        {
+          "round": 1,
+          "stage": "fixed",
+          "stage_seconds": 94.0,
+          "bench_seconds": 65,
+          "completed": 285,
+          "of": 1729,
+          "outcome": "did not sustain the fixed rate"
+        },
+        {
+          "round": 2,
+          "stage": "fixed",
+          "stage_seconds": 96.6,
+          "bench_seconds": 66,
+          "completed": 296,
+          "of": 1729,
+          "outcome": "did not sustain the fixed rate"
+        }
+      ],
+      "passes": false
+    },
+    "scoring": {
+      "throughput": {
+        "overheads": [
+          0.028649815754099195,
+          0.010811784952420411,
+          -0.0036952914847758755
+        ],
+        "upper": 0.028649815754099195,
+        "threshold": 0.05,
+        "baseline_spread": 0.04351838575894587,
+        "verdict": "inconclusive"
+      },
+      "p99_ttft": {
+        "overheads": [
+          -0.39834232219761845,
+          0.01886153734754603
+        ],
+        "upper": 0.01886153734754603,
+        "threshold": 0.1,
+        "baseline_spread": 0.5588909438413178,
+        "verdict": "inconclusive"
+      },
+      "p99_tpot": {
+        "overheads": [
+          0.026173998532764475,
+          0.023149916313165875
+        ],
+        "upper": 0.026173998532764475,
+        "threshold": 0.1,
+        "baseline_spread": 0.002004883639710218,
+        "verdict": "pass"
+      },
+      "passes": null
+    },
+    "scoring_caching": {
+      "throughput": {
+        "overheads": [
+          -0.01739180647156724,
+          -0.05472901646320061,
+          -0.039889373836844655
+        ],
+        "upper": -0.01739180647156724,
+        "threshold": 0.05,
+        "baseline_spread": 0.04351838575894587,
+        "verdict": "inconclusive"
+      },
+      "p99_ttft": {
+        "overheads": [
+          -0.45792867467589504,
+          -0.045730395595540596
+        ],
+        "upper": -0.045730395595540596,
+        "threshold": 0.1,
+        "baseline_spread": 0.5588909438413178,
+        "verdict": "inconclusive"
+      },
+      "p99_tpot": {
+        "overheads": [
+          -0.01770647967345018,
+          -0.016392843455406925
+        ],
+        "upper": -0.016392843455406925,
+        "threshold": 0.1,
+        "baseline_spread": 0.002004883639710218,
+        "verdict": "pass"
+      },
+      "passes": null
+    }
+  },
+  "divergences": {
+    "tie_bound": {
+      "steps": 2,
+      "step": 0.125,
+      "tolerance": 1e-06
+    },
+    "rows": [
+      {
+        "run": "r0_lens",
+        "prompt": 6,
+        "token": 0,
+        "tokens": [
+          "I",
+          "As"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.015625,
+        "class": "exact tie"
+      },
+      {
+        "run": "r0_scoring",
+        "prompt": 0,
+        "token": 39,
+        "tokens": [
+          " will",
+          " your"
+        ],
+        "reference_margin": -2.6875,
+        "arm_margin": 1.3593750298023224,
+        "class": "within bound"
+      },
+      {
+        "run": "r0_scoring_caching",
+        "prompt": 0,
+        "token": 39,
+        "tokens": [
+          " will",
+          " your"
+        ],
+        "reference_margin": -2.6875,
+        "arm_margin": 1.3593750298023224,
+        "class": "within bound"
+      },
+      {
+        "run": "r1_lens",
+        "prompt": 6,
+        "token": 0,
+        "tokens": [
+          "I",
+          "As"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.015625,
+        "class": "exact tie"
+      },
+      {
+        "run": "r1_scoring",
+        "prompt": 0,
+        "token": 39,
+        "tokens": [
+          " will",
+          " your"
+        ],
+        "reference_margin": -2.6875,
+        "arm_margin": 1.3593750298023224,
+        "class": "within bound"
+      },
+      {
+        "run": "r1_scoring_caching",
+        "prompt": 0,
+        "token": 39,
+        "tokens": [
+          " will",
+          " your"
+        ],
+        "reference_margin": -2.6875,
+        "arm_margin": 1.3593750298023224,
+        "class": "within bound"
+      },
+      {
+        "run": "r2_lens",
+        "prompt": 6,
+        "token": 0,
+        "tokens": [
+          "I",
+          "As"
+        ],
+        "reference_margin": 0.0,
+        "arm_margin": 0.015625,
+        "class": "exact tie"
+      },
+      {
+        "run": "r2_scoring",
+        "prompt": 0,
+        "token": 39,
+        "tokens": [
+          " will",
+          " your"
+        ],
+        "reference_margin": -2.6875,
+        "arm_margin": 1.3593750298023224,
+        "class": "within bound"
+      },
+      {
+        "run": "r2_scoring_caching",
+        "prompt": 0,
+        "token": 39,
+        "tokens": [
+          " will",
+          " your"
+        ],
+        "reference_margin": -2.6875,
+        "arm_margin": 1.3593750298023224,
+        "class": "within bound"
+      }
+    ],
+    "counts": {
+      "r0_lens": {
+        "exact tie": 1,
+        "within bound": 0,
+        "change": 0
+      },
+      "r0_scoring": {
+        "exact tie": 0,
+        "within bound": 1,
+        "change": 0
+      },
+      "r0_scoring_caching": {
+        "exact tie": 0,
+        "within bound": 1,
+        "change": 0
+      },
+      "r1_baseline": {
+        "exact tie": 0,
+        "within bound": 0,
+        "change": 0
+      },
+      "r1_lens": {
+        "exact tie": 1,
+        "within bound": 0,
+        "change": 0
+      },
+      "r1_scoring": {
+        "exact tie": 0,
+        "within bound": 1,
+        "change": 0
+      },
+      "r1_scoring_caching": {
+        "exact tie": 0,
+        "within bound": 1,
+        "change": 0
+      },
+      "r2_baseline": {
+        "exact tie": 0,
+        "within bound": 0,
+        "change": 0
+      },
+      "r2_lens": {
+        "exact tie": 1,
+        "within bound": 0,
+        "change": 0
+      },
+      "r2_scoring": {
+        "exact tie": 0,
+        "within bound": 1,
+        "change": 0
+      },
+      "r2_scoring_caching": {
+        "exact tie": 0,
+        "within bound": 1,
+        "change": 0
+      }
+    }
+  },
+  "stock_vs_zero_draft": [],
+  "short_replies": {
+    "lens": {
+      "overheads": {
+        "0": 0.7069232859224439,
+        "1": 0.6970473270021194,
+        "2": 0.7070979064694977
+      },
+      "threshold": 0.05,
+      "past_threshold": true
+    },
+    "scoring": {
+      "overheads": {
+        "0": -0.00844118948588446,
+        "1": -0.020028730547704265,
+        "2": -0.0027778790286927535
+      },
+      "threshold": 0.05,
+      "past_threshold": false
+    },
+    "scoring_caching": {
+      "overheads": {
+        "0": -0.2143001466712171,
+        "1": -0.16797979138568442,
+        "2": -0.14904615943472033
+      },
+      "threshold": 0.05,
+      "past_threshold": false
+    }
+  }
+}

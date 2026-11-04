@@ -1,0 +1,108 @@
+{
+  "stopped": null,
+  "threshold": 0.3951607346534729,
+  "target_fpr": 0.05,
+  "stages": {
+    "r1_scoring": {
+      "verdict": "PASS",
+      "rows": 360,
+      "without_score": 0,
+      "decision_flips": 0,
+      "mean_abs_shift": 0.0003553288122121659,
+      "noise_floor_mean_abs_shift": 0.00020760514598805457,
+      "noise_floor_decision_flips": 0,
+      "shift_exceeds_noise_floor": true,
+      "changes": [
+        [
+          "batch_size",
+          8,
+          64
+        ]
+      ],
+      "warnings": [],
+      "arm": "scoring",
+      "round": 1,
+      "cache": null
+    },
+    "r1_scoring_caching": {
+      "verdict": "PASS",
+      "rows": 360,
+      "without_score": 0,
+      "decision_flips": 0,
+      "mean_abs_shift": 0.0003537269438513451,
+      "noise_floor_mean_abs_shift": 0.00020760514598805457,
+      "noise_floor_decision_flips": 0,
+      "shift_exceeds_noise_floor": true,
+      "changes": [
+        [
+          "batch_size",
+          8,
+          64
+        ],
+        [
+          "prefix_caching",
+          false,
+          true
+        ]
+      ],
+      "warnings": [],
+      "arm": "scoring_caching",
+      "round": 1,
+      "cache": {
+        "queried_tokens": 22422,
+        "hit_tokens": 4736
+      }
+    },
+    "r2_scoring_caching": {
+      "verdict": "PASS",
+      "rows": 360,
+      "without_score": 0,
+      "decision_flips": 0,
+      "mean_abs_shift": 0.00034469479384521644,
+      "noise_floor_mean_abs_shift": 0.00020760514598805457,
+      "noise_floor_decision_flips": 0,
+      "shift_exceeds_noise_floor": true,
+      "changes": [
+        [
+          "batch_size",
+          8,
+          64
+        ],
+        [
+          "prefix_caching",
+          false,
+          true
+        ]
+      ],
+      "warnings": [],
+      "arm": "scoring_caching",
+      "round": 2,
+      "cache": {
+        "queried_tokens": 22422,
+        "hit_tokens": 4736
+      }
+    },
+    "r2_scoring": {
+      "verdict": "PASS",
+      "rows": 360,
+      "without_score": 0,
+      "decision_flips": 0,
+      "mean_abs_shift": 0.00034440895283801686,
+      "noise_floor_mean_abs_shift": 0.00020760514598805457,
+      "noise_floor_decision_flips": 0,
+      "shift_exceeds_noise_floor": true,
+      "changes": [
+        [
+          "batch_size",
+          8,
+          64
+        ]
+      ],
+      "warnings": [],
+      "arm": "scoring",
+      "round": 2,
+      "cache": null
+    }
+  },
+  "caching_outcome": "holds at this threshold on this set"
+}
