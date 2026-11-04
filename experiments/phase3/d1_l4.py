@@ -312,12 +312,12 @@ def stock_against_zero_draft(runs: list[dict]) -> list[dict]:
 
 
 def divergence_class(reference_margin: float | None) -> str:
-    """A first divergence by the reference's top-two margin there. None means a reply ended early."""
-    if reference_margin == 0:
-        return "exact tie"
-    if reference_margin is not None and reference_margin <= TIE_BOUND + TIE_TOLERANCE:
-        return "within bound"
-    return "change"
+    """A first divergence by the reference's top-two margin there. None means a reply ended early.
+    Only a finite margin of at least 0 says how close the decision was. Anything else, such as a
+    negative margin from logprobs read before a repetition penalty, says nothing, so it's a change."""
+    if reference_margin is None or not 0 <= reference_margin <= TIE_BOUND + TIE_TOLERANCE:
+        return "change"
+    return "exact tie" if reference_margin == 0 else "within bound"
 
 
 def non_tie_divergences(comparison: dict) -> int:

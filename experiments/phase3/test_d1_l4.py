@@ -132,6 +132,16 @@ def test_a_divergence_within_two_bf16_steps_up_to_float_rounding_is_within_bound
     assert r.divergence_class(margin) == expected
 
 
+@pytest.mark.parametrize("margin", [-2.6875, -0.125, -1e-9, float("nan"), float("inf"), float("-inf")])
+def test_a_margin_a_top_two_gap_cannot_have_counts_as_a_change(margin):
+    # -2.6875 is the small model's L4 run: the sampled token listed first, below the raw favourite.
+    assert r.divergence_class(margin) == "change"
+
+
+def test_a_negative_margin_fires_the_generation_stop_rule():
+    assert r.generation_fails(diverged(-2.6875), plain_vs_plain=[diverged()]) is True
+
+
 def test_generation_is_undecided_before_any_plain_against_plain_comparison():
     assert r.generation_fails(diverged(2 * r.TIE_BOUND), plain_vs_plain=[]) is None
 
