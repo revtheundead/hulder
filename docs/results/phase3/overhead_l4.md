@@ -1,6 +1,6 @@
 # Phase 3 overhead table on the L4
 
-**On Qwen3-4B on an L4, the scoring connector on zero-draft B passes the cost rule on all three metrics, with no drafts and no stop rule fired, and turning prefix caching on holds at the frozen threshold.** **On Qwen2.5-1.5B it passes only p99 TPOT.** Throughput and p99 TTFT are inconclusive because the baseline moved too much, though every overhead is under its threshold, and caching on holds there too. The small model's greedy check has a flaw in how it was judged, described in its section. The setup, the rules and the cost were fixed on this page before the runs.
+**On Qwen3-4B on an L4, the scoring connector on zero-draft B passes the cost rule on all three metrics, with no drafts and no stop rule fired, and turning prefix caching on holds at the frozen threshold.** **On Qwen2.5-1.5B it passes only p99 TPOT.** Throughput and p99 TTFT are inconclusive because one baseline server was disturbed, cause unknown, though every overhead is under its threshold, and caching on holds there too. The small model's greedy check has a flaw in how it was judged, described in its section. The setup, the rules and the cost were fixed on this page before the runs.
 
 | Model | Run | Saturation loss | p99 TTFT | p99 TPOT | `scoring` | Short replies, `scoring` | Caching on |
 |---|---|---|---|---|---|---|---|
@@ -71,7 +71,9 @@ Modal L4 (Ada, 24 GB, driver 610.57.04), one GPU and one container, at `063dceb3
 | Fixed-rate p99 TTFT | 10% | 55.9% | −39.8, 1.89% | Inconclusive | −45.8, −4.57% |
 | Fixed-rate p99 TPOT | 10% | 0.20% | 2.62, 2.31% | Pass | −1.77, −1.64% |
 
-**So `scoring` doesn't pass the cost rule here,** and nothing fails it. The rule calls a metric inconclusive when the baseline's range is over half its threshold. p99 TTFT's range comes from one server: the round 1 baseline's 166.8 ms against round 2's 94.0, with the other arms at 89.7 to 100.4, which is why round 1's overheads look like large gains. What disturbed it is unknown. With two measured rounds there's nothing to outvote it. Saturation benches lasted about 7 s, and baseline saturation ran 40.6 to 42.4 req/s.
+**So throughput and p99 TTFT are recorded as inconclusive, and the run isn't being repeated for now.** `scoring` doesn't pass the cost rule here, and nothing fails it. The rule calls a metric inconclusive when the baseline's range is over half its threshold.
+
+The reason is one baseline server, in round 1, and what disturbed it is unknown. Its p99 TTFT was 166.8 ms against round 2's 94.0, with the other arms at 89.7 to 100.4, which is why round 1's overheads look like large gains. It also had the lowest baseline saturation, 40.6 req/s against 41.4 and 42.4. Leaving it out would bring throughput's range to 2.46%, just under its 2.5% allowance, but that's arithmetic after the fact and not a pass. With two measured rounds there's nothing to outvote it. Saturation benches lasted about 7 s.
 
 **Draft tokens: 0** in every arm-run, benches and score stages. **Margin:** the first server's cold start took 132 s of its 420 s, and lens's first took 316 s. Measurement took at most 176 s of its 240 s limit, leaving out lens.
 
