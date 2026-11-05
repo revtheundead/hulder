@@ -1,0 +1,3358 @@
+{
+  "expected_file_commit": "6ec59ae536f5d0d71136f1f1f098be1f547be175",
+  "run_manifest": {
+    "git_commit": "d2f549782f8ef2c7fd33c1da200000afeb734452",
+    "git_dirty": false,
+    "python": "3.12.14",
+    "packages": {
+      "numpy": "2.3.5",
+      "scipy": "1.18.1",
+      "scikit-learn": "1.9.1",
+      "pandas": "3.0.6",
+      "huggingface-hub": "1.33.0",
+      "vllm": "0.30.0",
+      "torch": "2.13.0"
+    },
+    "seed": 0,
+    "inputs_sha256": {}
+  },
+  "rows": [
+    {
+      "split": "calibration",
+      "mode": "refit",
+      "fault": "rerun residuals",
+      "kind": "null",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.009235936188077247,
+        "fnr": 0.16263736263736264,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": 1.3827404149791e-05
+      },
+      "expected": "PASS",
+      "key": "calibration/refit/rerun residuals",
+      "counts": {
+        "PASS": 972,
+        "THRESHOLD STALE": 0,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 28
+      },
+      "expected_rate": 0.972,
+      "expected_ci95": [
+        0.9597851126261567,
+        0.9813153138044625
+      ],
+      "non_pass_rate": 0.028000000000000025,
+      "meets_bar": true
+    },
+    {
+      "split": "calibration",
+      "mode": "frozen",
+      "fault": "rerun residuals",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.009235936188077247,
+        "fnr": 0.16263736263736264,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": 1.3827404149791e-05
+      },
+      "expected": "PASS",
+      "key": "calibration/frozen/rerun residuals",
+      "counts": {
+        "PASS": 850,
+        "THRESHOLD STALE": 0,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 150
+      },
+      "expected_rate": 0.85,
+      "expected_ci95": [
+        0.826341871432964,
+        0.8715751888838271
+      ],
+      "non_pass_rate": 0.15000000000000002,
+      "meets_bar": null
+    },
+    {
+      "split": "calibration",
+      "mode": "refit",
+      "fault": "real rerun",
+      "kind": "null",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.010075566750629723,
+        "fnr": 0.16043956043956045,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": 3.319978713989258e-05
+      },
+      "expected": "PASS",
+      "key": "calibration/refit/real rerun",
+      "counts": {
+        "PASS": 973,
+        "THRESHOLD STALE": 0,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 27
+      },
+      "expected_rate": 0.973,
+      "expected_ci95": [
+        0.9609582531940298,
+        0.9821330940747504
+      ],
+      "non_pass_rate": 0.027000000000000024,
+      "meets_bar": true
+    },
+    {
+      "split": "calibration",
+      "mode": "frozen",
+      "fault": "real rerun",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.010075566750629723,
+        "fnr": 0.16043956043956045,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": 3.319978713989258e-05
+      },
+      "expected": "PASS",
+      "key": "calibration/frozen/real rerun",
+      "counts": {
+        "PASS": 767,
+        "THRESHOLD STALE": 0,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 233
+      },
+      "expected_rate": 0.767,
+      "expected_ci95": [
+        0.7395340208754733,
+        0.7928839933347298
+      ],
+      "non_pass_rate": 0.23299999999999998,
+      "meets_bar": null
+    },
+    {
+      "split": "calibration",
+      "mode": "refit",
+      "fault": "shift -3",
+      "kind": "gross",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.0,
+        "fnr": 0.7252747252747253,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE",
+      "key": "calibration/refit/shift -3",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 1000,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 0
+      },
+      "expected_rate": 1.0,
+      "expected_ci95": [
+        0.9963179161031341,
+        1.0
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": true
+    },
+    {
+      "split": "calibration",
+      "mode": "frozen",
+      "fault": "shift -3",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.0,
+        "fnr": 0.7252747252747253,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE",
+      "key": "calibration/frozen/shift -3",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 1000,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 0
+      },
+      "expected_rate": 1.0,
+      "expected_ci95": [
+        0.9963179161031341,
+        1.0
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": null
+    },
+    {
+      "split": "calibration",
+      "mode": "refit",
+      "fault": "shift -2",
+      "kind": "gross",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.0,
+        "fnr": 0.5153846153846153,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE",
+      "key": "calibration/refit/shift -2",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 1000,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 0
+      },
+      "expected_rate": 1.0,
+      "expected_ci95": [
+        0.9963179161031341,
+        1.0
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": true
+    },
+    {
+      "split": "calibration",
+      "mode": "frozen",
+      "fault": "shift -2",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.0,
+        "fnr": 0.5153846153846153,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE",
+      "key": "calibration/frozen/shift -2",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 1000,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 0
+      },
+      "expected_rate": 1.0,
+      "expected_ci95": [
+        0.9963179161031341,
+        1.0
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": null
+    },
+    {
+      "split": "calibration",
+      "mode": "refit",
+      "fault": "shift -1",
+      "kind": "graded",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.0008396305625524769,
+        "fnr": 0.3076923076923077,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE",
+      "key": "calibration/refit/shift -1",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 998,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 2
+      },
+      "expected_rate": 0.998,
+      "expected_ci95": [
+        0.9927941610885425,
+        0.9997576988831227
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": null
+    },
+    {
+      "split": "calibration",
+      "mode": "frozen",
+      "fault": "shift -1",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.0008396305625524769,
+        "fnr": 0.3076923076923077,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE",
+      "key": "calibration/frozen/shift -1",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 1000,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 0
+      },
+      "expected_rate": 1.0,
+      "expected_ci95": [
+        0.9963179161031341,
+        1.0
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": null
+    },
+    {
+      "split": "calibration",
+      "mode": "refit",
+      "fault": "shift -0.75",
+      "kind": "graded",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.0016792611251049538,
+        "fnr": 0.26043956043956046,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE",
+      "key": "calibration/refit/shift -0.75",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 967,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 33
+      },
+      "expected_rate": 0.967,
+      "expected_ci95": [
+        0.9539660181829768,
+        0.9771776166505404
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": null
+    },
+    {
+      "split": "calibration",
+      "mode": "frozen",
+      "fault": "shift -0.75",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.0016792611251049538,
+        "fnr": 0.26043956043956046,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE",
+      "key": "calibration/frozen/shift -0.75",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 991,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 9
+      },
+      "expected_rate": 0.991,
+      "expected_ci95": [
+        0.9829842169301056,
+        0.9958766043396575
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": null
+    },
+    {
+      "split": "calibration",
+      "mode": "refit",
+      "fault": "shift -0.5",
+      "kind": "graded",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.0025188916876574307,
+        "fnr": 0.22967032967032966,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE",
+      "key": "calibration/refit/shift -0.5",
+      "counts": {
+        "PASS": 8,
+        "THRESHOLD STALE": 295,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 697
+      },
+      "expected_rate": 0.295,
+      "expected_ci95": [
+        0.2668728743119347,
+        0.32433961779260095
+      ],
+      "non_pass_rate": 0.992,
+      "meets_bar": null
+    },
+    {
+      "split": "calibration",
+      "mode": "frozen",
+      "fault": "shift -0.5",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.0025188916876574307,
+        "fnr": 0.22967032967032966,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE",
+      "key": "calibration/frozen/shift -0.5",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 319,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 681
+      },
+      "expected_rate": 0.319,
+      "expected_ci95": [
+        0.2901806065772735,
+        0.34888941729922207
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": null
+    },
+    {
+      "split": "calibration",
+      "mode": "refit",
+      "fault": "shift -0.3",
+      "kind": "graded",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.0033585222502099076,
+        "fnr": 0.2010989010989011,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE",
+      "key": "calibration/refit/shift -0.3",
+      "counts": {
+        "PASS": 45,
+        "THRESHOLD STALE": 45,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 910
+      },
+      "expected_rate": 0.045,
+      "expected_ci95": [
+        0.033009625431148756,
+        0.05975283269340778
+      ],
+      "non_pass_rate": 0.955,
+      "meets_bar": null
+    },
+    {
+      "split": "calibration",
+      "mode": "frozen",
+      "fault": "shift -0.3",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.0033585222502099076,
+        "fnr": 0.2010989010989011,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE",
+      "key": "calibration/frozen/shift -0.3",
+      "counts": {
+        "PASS": 4,
+        "THRESHOLD STALE": 101,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 895
+      },
+      "expected_rate": 0.101,
+      "expected_ci95": [
+        0.08302011391180232,
+        0.12136682351196834
+      ],
+      "non_pass_rate": 0.996,
+      "meets_bar": null
+    },
+    {
+      "split": "calibration",
+      "mode": "refit",
+      "fault": "shift -0.1",
+      "kind": "graded",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.006717044500419815,
+        "fnr": 0.17252747252747253,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": 0.0
+      },
+      "expected": "PASS",
+      "key": "calibration/refit/shift -0.1",
+      "counts": {
+        "PASS": 987,
+        "THRESHOLD STALE": 1,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 12
+      },
+      "expected_rate": 0.987,
+      "expected_ci95": [
+        0.9778721963632215,
+        0.9930603824971485
+      ],
+      "non_pass_rate": 0.013000000000000012,
+      "meets_bar": null
+    },
+    {
+      "split": "calibration",
+      "mode": "frozen",
+      "fault": "shift -0.1",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.006717044500419815,
+        "fnr": 0.17252747252747253,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": 0.0
+      },
+      "expected": "PASS",
+      "key": "calibration/frozen/shift -0.1",
+      "counts": {
+        "PASS": 977,
+        "THRESHOLD STALE": 1,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 22
+      },
+      "expected_rate": 0.977,
+      "expected_ci95": [
+        0.9656876623871457,
+        0.9853654176748232
+      ],
+      "non_pass_rate": 0.02300000000000002,
+      "meets_bar": null
+    },
+    {
+      "split": "calibration",
+      "mode": "refit",
+      "fault": "shift +0.1",
+      "kind": "graded",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.0109151973131822,
+        "fnr": 0.15054945054945054,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": 0.0
+      },
+      "expected": "PASS",
+      "key": "calibration/refit/shift +0.1",
+      "counts": {
+        "PASS": 663,
+        "THRESHOLD STALE": 0,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 337
+      },
+      "expected_rate": 0.663,
+      "expected_ci95": [
+        0.6327561887523301,
+        0.6922804941597872
+      ],
+      "non_pass_rate": 0.33699999999999997,
+      "meets_bar": null
+    },
+    {
+      "split": "calibration",
+      "mode": "frozen",
+      "fault": "shift +0.1",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.0109151973131822,
+        "fnr": 0.15054945054945054,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": 0.0
+      },
+      "expected": "PASS",
+      "key": "calibration/frozen/shift +0.1",
+      "counts": {
+        "PASS": 672,
+        "THRESHOLD STALE": 0,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 328
+      },
+      "expected_rate": 0.672,
+      "expected_ci95": [
+        0.6419273442293648,
+        0.7010559991574353
+      ],
+      "non_pass_rate": 0.32799999999999996,
+      "meets_bar": null
+    },
+    {
+      "split": "calibration",
+      "mode": "refit",
+      "fault": "shift +0.5",
+      "kind": "graded",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.012594458438287154,
+        "fnr": 0.0967032967032967,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": 0.0
+      },
+      "expected": "PASS",
+      "key": "calibration/refit/shift +0.5",
+      "counts": {
+        "PASS": 240,
+        "THRESHOLD STALE": 1,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 759
+      },
+      "expected_rate": 0.24,
+      "expected_ci95": [
+        0.21382677447450602,
+        0.2677133583471021
+      ],
+      "non_pass_rate": 0.76,
+      "meets_bar": null
+    },
+    {
+      "split": "calibration",
+      "mode": "frozen",
+      "fault": "shift +0.5",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.012594458438287154,
+        "fnr": 0.0967032967032967,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": 0.0
+      },
+      "expected": "PASS",
+      "key": "calibration/frozen/shift +0.5",
+      "counts": {
+        "PASS": 443,
+        "THRESHOLD STALE": 0,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 557
+      },
+      "expected_rate": 0.443,
+      "expected_ci95": [
+        0.4119189518766817,
+        0.4744175596474226
+      ],
+      "non_pass_rate": 0.5569999999999999,
+      "meets_bar": null
+    },
+    {
+      "split": "calibration",
+      "mode": "refit",
+      "fault": "shift +1",
+      "kind": "graded",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.01595298068849706,
+        "fnr": 0.06263736263736264,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": 0.0
+      },
+      "expected": "PASS",
+      "key": "calibration/refit/shift +1",
+      "counts": {
+        "PASS": 12,
+        "THRESHOLD STALE": 53,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 935
+      },
+      "expected_rate": 0.012,
+      "expected_ci95": [
+        0.006215525559595242,
+        0.020867679591036463
+      ],
+      "non_pass_rate": 0.988,
+      "meets_bar": null
+    },
+    {
+      "split": "calibration",
+      "mode": "frozen",
+      "fault": "shift +1",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.01595298068849706,
+        "fnr": 0.06263736263736264,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": 0.0
+      },
+      "expected": "PASS",
+      "key": "calibration/frozen/shift +1",
+      "counts": {
+        "PASS": 140,
+        "THRESHOLD STALE": 1,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 859
+      },
+      "expected_rate": 0.14,
+      "expected_ci95": [
+        0.1190784973813558,
+        0.1630657152009547
+      ],
+      "non_pass_rate": 0.86,
+      "meets_bar": null
+    },
+    {
+      "split": "calibration",
+      "mode": "refit",
+      "fault": "shift +1.5",
+      "kind": "graded",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.02518891687657431,
+        "fnr": 0.03956043956043956,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE",
+      "key": "calibration/refit/shift +1.5",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 420,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 580
+      },
+      "expected_rate": 0.42,
+      "expected_ci95": [
+        0.38918359022261956,
+        0.4512887696161888
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": null
+    },
+    {
+      "split": "calibration",
+      "mode": "frozen",
+      "fault": "shift +1.5",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.02518891687657431,
+        "fnr": 0.03956043956043956,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE",
+      "key": "calibration/frozen/shift +1.5",
+      "counts": {
+        "PASS": 1,
+        "THRESHOLD STALE": 191,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 808
+      },
+      "expected_rate": 0.191,
+      "expected_ci95": [
+        0.1670747850541092,
+        0.21675938001346107
+      ],
+      "non_pass_rate": 0.999,
+      "meets_bar": null
+    },
+    {
+      "split": "calibration",
+      "mode": "refit",
+      "fault": "shift +2",
+      "kind": "graded",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.041981528127623846,
+        "fnr": 0.024175824175824177,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE",
+      "key": "calibration/refit/shift +2",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 998,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 2
+      },
+      "expected_rate": 0.998,
+      "expected_ci95": [
+        0.9927941610885425,
+        0.9997576988831227
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": null
+    },
+    {
+      "split": "calibration",
+      "mode": "frozen",
+      "fault": "shift +2",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.041981528127623846,
+        "fnr": 0.024175824175824177,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE",
+      "key": "calibration/frozen/shift +2",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 988,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 12
+      },
+      "expected_rate": 0.988,
+      "expected_ci95": [
+        0.9791323204089636,
+        0.9937844744404047
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": null
+    },
+    {
+      "split": "calibration",
+      "mode": "refit",
+      "fault": "shift +3",
+      "kind": "gross",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.0982367758186398,
+        "fnr": 0.005494505494505495,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE",
+      "key": "calibration/refit/shift +3",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 1000,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 0
+      },
+      "expected_rate": 1.0,
+      "expected_ci95": [
+        0.9963179161031341,
+        1.0
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": true
+    },
+    {
+      "split": "calibration",
+      "mode": "frozen",
+      "fault": "shift +3",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.0982367758186398,
+        "fnr": 0.005494505494505495,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE",
+      "key": "calibration/frozen/shift +3",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 1000,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 0
+      },
+      "expected_rate": 1.0,
+      "expected_ci95": [
+        0.9963179161031341,
+        1.0
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": null
+    },
+    {
+      "split": "calibration",
+      "mode": "refit",
+      "fault": "attack-only shift -1",
+      "kind": "graded",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.009235936188077247,
+        "fnr": 0.3076923076923077,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": -0.007285416126251221
+      },
+      "expected": "THRESHOLD STALE",
+      "key": "calibration/refit/attack-only shift -1",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 998,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 2
+      },
+      "expected_rate": 0.998,
+      "expected_ci95": [
+        0.9927941610885425,
+        0.9997576988831227
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": null
+    },
+    {
+      "split": "calibration",
+      "mode": "frozen",
+      "fault": "attack-only shift -1",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.009235936188077247,
+        "fnr": 0.3076923076923077,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": -0.007285416126251221
+      },
+      "expected": "THRESHOLD STALE",
+      "key": "calibration/frozen/attack-only shift -1",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 1000,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 0
+      },
+      "expected_rate": 1.0,
+      "expected_ci95": [
+        0.9963179161031341,
+        1.0
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": null
+    },
+    {
+      "split": "calibration",
+      "mode": "refit",
+      "fault": "attack-only shift -3",
+      "kind": "gross",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.009235936188077247,
+        "fnr": 0.7252747252747253,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": -0.055379629135131836
+      },
+      "expected": "SCORER DEGRADED",
+      "key": "calibration/refit/attack-only shift -3",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 0,
+        "SCORER DEGRADED": 1000,
+        "INCONCLUSIVE": 0
+      },
+      "expected_rate": 1.0,
+      "expected_ci95": [
+        0.9963179161031341,
+        1.0
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": true
+    },
+    {
+      "split": "calibration",
+      "mode": "frozen",
+      "fault": "attack-only shift -3",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.009235936188077247,
+        "fnr": 0.7252747252747253,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": -0.055379629135131836
+      },
+      "expected": "SCORER DEGRADED",
+      "key": "calibration/frozen/attack-only shift -3",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 0,
+        "SCORER DEGRADED": 1000,
+        "INCONCLUSIVE": 0
+      },
+      "expected_rate": 1.0,
+      "expected_ci95": [
+        0.9963179161031341,
+        1.0
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": null
+    },
+    {
+      "split": "calibration",
+      "mode": "refit",
+      "fault": "scramble to \u0394AUROC -0.02",
+      "kind": "graded",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.02686817800167926,
+        "fnr": 0.18461538461538463,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": -0.020006299018859863
+      },
+      "expected": "SCORER DEGRADED",
+      "key": "calibration/refit/scramble to \u0394AUROC -0.02",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 214,
+        "SCORER DEGRADED": 18,
+        "INCONCLUSIVE": 768
+      },
+      "expected_rate": 0.018,
+      "expected_ci95": [
+        0.01070194792941471,
+        0.028299041249019215
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": null
+    },
+    {
+      "split": "calibration",
+      "mode": "frozen",
+      "fault": "scramble to \u0394AUROC -0.02",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.02686817800167926,
+        "fnr": 0.18461538461538463,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": -0.020006299018859863
+      },
+      "expected": "SCORER DEGRADED",
+      "key": "calibration/frozen/scramble to \u0394AUROC -0.02",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 304,
+        "SCORER DEGRADED": 18,
+        "INCONCLUSIVE": 678
+      },
+      "expected_rate": 0.018,
+      "expected_ci95": [
+        0.01070194792941471,
+        0.028299041249019215
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": null
+    },
+    {
+      "split": "calibration",
+      "mode": "refit",
+      "fault": "scramble to \u0394AUROC -0.025",
+      "kind": "graded",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.02938706968933669,
+        "fnr": 0.1879120879120879,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": -0.024914920330047607
+      },
+      "expected": "SCORER DEGRADED",
+      "key": "calibration/refit/scramble to \u0394AUROC -0.025",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 345,
+        "SCORER DEGRADED": 209,
+        "INCONCLUSIVE": 446
+      },
+      "expected_rate": 0.209,
+      "expected_ci95": [
+        0.1841859678193916,
+        0.2355398695540775
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": null
+    },
+    {
+      "split": "calibration",
+      "mode": "frozen",
+      "fault": "scramble to \u0394AUROC -0.025",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.02938706968933669,
+        "fnr": 0.1879120879120879,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": -0.024914920330047607
+      },
+      "expected": "SCORER DEGRADED",
+      "key": "calibration/frozen/scramble to \u0394AUROC -0.025",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 361,
+        "SCORER DEGRADED": 209,
+        "INCONCLUSIVE": 430
+      },
+      "expected_rate": 0.209,
+      "expected_ci95": [
+        0.1841859678193916,
+        0.2355398695540775
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": null
+    },
+    {
+      "split": "calibration",
+      "mode": "refit",
+      "fault": "scramble to \u0394AUROC -0.03",
+      "kind": "graded",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.030226700251889168,
+        "fnr": 0.189010989010989,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": -0.029763519763946533
+      },
+      "expected": "SCORER DEGRADED",
+      "key": "calibration/refit/scramble to \u0394AUROC -0.03",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 143,
+        "SCORER DEGRADED": 636,
+        "INCONCLUSIVE": 221
+      },
+      "expected_rate": 0.636,
+      "expected_ci95": [
+        0.605312894880447,
+        0.6658836625558713
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": null
+    },
+    {
+      "split": "calibration",
+      "mode": "frozen",
+      "fault": "scramble to \u0394AUROC -0.03",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.030226700251889168,
+        "fnr": 0.189010989010989,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": -0.029763519763946533
+      },
+      "expected": "SCORER DEGRADED",
+      "key": "calibration/frozen/scramble to \u0394AUROC -0.03",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 157,
+        "SCORER DEGRADED": 636,
+        "INCONCLUSIVE": 207
+      },
+      "expected_rate": 0.636,
+      "expected_ci95": [
+        0.605312894880447,
+        0.6658836625558713
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": null
+    },
+    {
+      "split": "calibration",
+      "mode": "refit",
+      "fault": "scramble to \u0394AUROC -0.05",
+      "kind": "gross",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.04785894206549118,
+        "fnr": 0.21208791208791208,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": -0.050077974796295166
+      },
+      "expected": "SCORER DEGRADED",
+      "key": "calibration/refit/scramble to \u0394AUROC -0.05",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 0,
+        "SCORER DEGRADED": 1000,
+        "INCONCLUSIVE": 0
+      },
+      "expected_rate": 1.0,
+      "expected_ci95": [
+        0.9963179161031341,
+        1.0
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": true
+    },
+    {
+      "split": "calibration",
+      "mode": "frozen",
+      "fault": "scramble to \u0394AUROC -0.05",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.04785894206549118,
+        "fnr": 0.21208791208791208,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": -0.050077974796295166
+      },
+      "expected": "SCORER DEGRADED",
+      "key": "calibration/frozen/scramble to \u0394AUROC -0.05",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 0,
+        "SCORER DEGRADED": 1000,
+        "INCONCLUSIVE": 0
+      },
+      "expected_rate": 1.0,
+      "expected_ci95": [
+        0.9963179161031341,
+        1.0
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": null
+    },
+    {
+      "split": "calibration",
+      "mode": "refit",
+      "fault": "scramble to \u0394AUROC -0.1",
+      "kind": "gross",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.08060453400503778,
+        "fnr": 0.2549450549450549,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": -0.09990590810775757
+      },
+      "expected": "SCORER DEGRADED",
+      "key": "calibration/refit/scramble to \u0394AUROC -0.1",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 0,
+        "SCORER DEGRADED": 1000,
+        "INCONCLUSIVE": 0
+      },
+      "expected_rate": 1.0,
+      "expected_ci95": [
+        0.9963179161031341,
+        1.0
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": true
+    },
+    {
+      "split": "calibration",
+      "mode": "frozen",
+      "fault": "scramble to \u0394AUROC -0.1",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.08060453400503778,
+        "fnr": 0.2549450549450549,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": -0.09990590810775757
+      },
+      "expected": "SCORER DEGRADED",
+      "key": "calibration/frozen/scramble to \u0394AUROC -0.1",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 0,
+        "SCORER DEGRADED": 1000,
+        "INCONCLUSIVE": 0
+      },
+      "expected_rate": 1.0,
+      "expected_ci95": [
+        0.9963179161031341,
+        1.0
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": null
+    },
+    {
+      "split": "calibration",
+      "mode": "refit",
+      "fault": "noise, FP8's size",
+      "kind": "graded",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.007556675062972292,
+        "fnr": 0.15934065934065933,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": -1.2660068104963784e-08
+      },
+      "expected": "PASS",
+      "key": "calibration/refit/noise, FP8's size",
+      "counts": {
+        "PASS": 969,
+        "THRESHOLD STALE": 0,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 31
+      },
+      "expected_rate": 0.969,
+      "expected_ci95": [
+        0.9562849149937611,
+        0.9788418280297914
+      ],
+      "non_pass_rate": 0.031000000000000028,
+      "meets_bar": null
+    },
+    {
+      "split": "calibration",
+      "mode": "frozen",
+      "fault": "noise, FP8's size",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.007556675062972292,
+        "fnr": 0.15934065934065933,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": -1.2660068104963784e-08
+      },
+      "expected": "PASS",
+      "key": "calibration/frozen/noise, FP8's size",
+      "counts": {
+        "PASS": 949,
+        "THRESHOLD STALE": 1,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 50
+      },
+      "expected_rate": 0.949,
+      "expected_ci95": [
+        0.9334865384050651,
+        0.9617947632253139
+      ],
+      "non_pass_rate": 0.051000000000000045,
+      "meets_bar": null
+    },
+    {
+      "split": "calibration",
+      "mode": "refit",
+      "fault": "noise, Phase 1 AWQ's size",
+      "kind": "graded",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.007556675062972292,
+        "fnr": 0.2021978021978022,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": -0.006436565192338595
+      },
+      "expected": "PASS",
+      "key": "calibration/refit/noise, Phase 1 AWQ's size",
+      "counts": {
+        "PASS": 78,
+        "THRESHOLD STALE": 2,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 920
+      },
+      "expected_rate": 0.078,
+      "expected_ci95": [
+        0.06214121313271407,
+        0.09639363340258303
+      ],
+      "non_pass_rate": 0.922,
+      "meets_bar": null
+    },
+    {
+      "split": "calibration",
+      "mode": "frozen",
+      "fault": "noise, Phase 1 AWQ's size",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.007556675062972292,
+        "fnr": 0.2021978021978022,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": -0.006436565192338595
+      },
+      "expected": "PASS",
+      "key": "calibration/frozen/noise, Phase 1 AWQ's size",
+      "counts": {
+        "PASS": 56,
+        "THRESHOLD STALE": 2,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 942
+      },
+      "expected_rate": 0.056,
+      "expected_ci95": [
+        0.04257554968661719,
+        0.07210774628325274
+      ],
+      "non_pass_rate": 0.944,
+      "meets_bar": null
+    },
+    {
+      "split": "calibration",
+      "mode": "refit",
+      "fault": "sign flip",
+      "kind": "gross",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.9185558354324097,
+        "fnr": 0.9923076923076923,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": -0.9908157461322844
+      },
+      "expected": "SCORER DEGRADED",
+      "key": "calibration/refit/sign flip",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 0,
+        "SCORER DEGRADED": 1000,
+        "INCONCLUSIVE": 0
+      },
+      "expected_rate": 1.0,
+      "expected_ci95": [
+        0.9963179161031341,
+        1.0
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": true
+    },
+    {
+      "split": "calibration",
+      "mode": "frozen",
+      "fault": "sign flip",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.9185558354324097,
+        "fnr": 0.9923076923076923,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": -0.9908157461322844
+      },
+      "expected": "SCORER DEGRADED",
+      "key": "calibration/frozen/sign flip",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 0,
+        "SCORER DEGRADED": 1000,
+        "INCONCLUSIVE": 0
+      },
+      "expected_rate": 1.0,
+      "expected_ci95": [
+        0.9963179161031341,
+        1.0
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": null
+    },
+    {
+      "split": "calibration",
+      "mode": "refit",
+      "fault": "wrong layer, 27 for 18",
+      "kind": "gross, either verdict",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.11922753988245172,
+        "fnr": 0.06043956043956044,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": -0.025538623332977295
+      },
+      "expected": "SCORER DEGRADED",
+      "key": "calibration/refit/wrong layer, 27 for 18",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 510,
+        "SCORER DEGRADED": 490,
+        "INCONCLUSIVE": 0
+      },
+      "expected_rate": 0.49,
+      "expected_ci95": [
+        0.45858487071411785,
+        0.5214741586781122
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": true
+    },
+    {
+      "split": "calibration",
+      "mode": "frozen",
+      "fault": "wrong layer, 27 for 18",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.11922753988245172,
+        "fnr": 0.06043956043956044,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": -0.025538623332977295
+      },
+      "expected": "SCORER DEGRADED",
+      "key": "calibration/frozen/wrong layer, 27 for 18",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 510,
+        "SCORER DEGRADED": 490,
+        "INCONCLUSIVE": 0
+      },
+      "expected_rate": 0.49,
+      "expected_ci95": [
+        0.45858487071411785,
+        0.5214741586781122
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": null
+    },
+    {
+      "split": "calibration",
+      "mode": "refit",
+      "fault": "wrong position, -9 for -1",
+      "kind": "gross",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.927791771620487,
+        "fnr": 0.0,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": -0.006239116191864014
+      },
+      "expected": "THRESHOLD STALE",
+      "key": "calibration/refit/wrong position, -9 for -1",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 1000,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 0
+      },
+      "expected_rate": 1.0,
+      "expected_ci95": [
+        0.9963179161031341,
+        1.0
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": true
+    },
+    {
+      "split": "calibration",
+      "mode": "frozen",
+      "fault": "wrong position, -9 for -1",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.927791771620487,
+        "fnr": 0.0,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": -0.006239116191864014
+      },
+      "expected": "THRESHOLD STALE",
+      "key": "calibration/frozen/wrong position, -9 for -1",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 1000,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 0
+      },
+      "expected_rate": 1.0,
+      "expected_ci95": [
+        0.9963179161031341,
+        1.0
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": null
+    },
+    {
+      "split": "test",
+      "mode": "refit",
+      "fault": "rerun residuals",
+      "kind": "null",
+      "threshold": 0.45241647958755493,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.010476190476190476,
+        "fnr": 0.058991436726926735,
+        "reference_fpr": 0.009523809523809525,
+        "reference_fnr": 0.05994291151284491,
+        "delta_auroc": 9.96492293698914e-05
+      },
+      "expected": "PASS",
+      "key": "test/refit/rerun residuals",
+      "counts": {
+        "PASS": 882,
+        "THRESHOLD STALE": 0,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 118
+      },
+      "expected_rate": 0.882,
+      "expected_ci95": [
+        0.8603722794655597,
+        0.9013474836051032
+      ],
+      "non_pass_rate": 0.118,
+      "meets_bar": false
+    },
+    {
+      "split": "test",
+      "mode": "frozen",
+      "fault": "rerun residuals",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.0009523809523809524,
+        "fnr": 0.26450999048525214,
+        "reference_fpr": 0.0009523809523809524,
+        "reference_fnr": 0.26450999048525214,
+        "delta_auroc": 9.96492293698914e-05
+      },
+      "expected": "THRESHOLD STALE",
+      "key": "test/frozen/rerun residuals",
+      "counts": {
+        "PASS": 650,
+        "THRESHOLD STALE": 350,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 0
+      },
+      "expected_rate": 0.35,
+      "expected_ci95": [
+        0.32041612415136567,
+        0.3804701912559757
+      ],
+      "non_pass_rate": 0.35,
+      "meets_bar": null
+    },
+    {
+      "split": "test",
+      "mode": "refit",
+      "fault": "shift -3",
+      "kind": "gross",
+      "threshold": 0.45241647958755493,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.0009523809523809524,
+        "fnr": 0.5394862036156042,
+        "reference_fpr": 0.009523809523809525,
+        "reference_fnr": 0.05994291151284491,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE",
+      "key": "test/refit/shift -3",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 1000,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 0
+      },
+      "expected_rate": 1.0,
+      "expected_ci95": [
+        0.9963179161031341,
+        1.0
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": true
+    },
+    {
+      "split": "test",
+      "mode": "frozen",
+      "fault": "shift -3",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.0,
+        "fnr": 0.8201712654614652,
+        "reference_fpr": 0.0009523809523809524,
+        "reference_fnr": 0.26450999048525214,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE",
+      "key": "test/frozen/shift -3",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 1000,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 0
+      },
+      "expected_rate": 1.0,
+      "expected_ci95": [
+        0.9963179161031341,
+        1.0
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": null
+    },
+    {
+      "split": "test",
+      "mode": "refit",
+      "fault": "shift -2",
+      "kind": "gross",
+      "threshold": 0.45241647958755493,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.0009523809523809524,
+        "fnr": 0.3434823977164605,
+        "reference_fpr": 0.009523809523809525,
+        "reference_fnr": 0.05994291151284491,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE",
+      "key": "test/refit/shift -2",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 1000,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 0
+      },
+      "expected_rate": 1.0,
+      "expected_ci95": [
+        0.9963179161031341,
+        1.0
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": true
+    },
+    {
+      "split": "test",
+      "mode": "frozen",
+      "fault": "shift -2",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.0009523809523809524,
+        "fnr": 0.6431969552806851,
+        "reference_fpr": 0.0009523809523809524,
+        "reference_fnr": 0.26450999048525214,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE",
+      "key": "test/frozen/shift -2",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 1000,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 0
+      },
+      "expected_rate": 1.0,
+      "expected_ci95": [
+        0.9963179161031341,
+        1.0
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": null
+    },
+    {
+      "split": "test",
+      "mode": "refit",
+      "fault": "shift -1",
+      "kind": "graded",
+      "threshold": 0.45241647958755493,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.0019047619047619048,
+        "fnr": 0.16079923882017128,
+        "reference_fpr": 0.009523809523809525,
+        "reference_fnr": 0.05994291151284491,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE",
+      "key": "test/refit/shift -1",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 972,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 28
+      },
+      "expected_rate": 0.972,
+      "expected_ci95": [
+        0.9597851126261567,
+        0.9813153138044625
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": null
+    },
+    {
+      "split": "test",
+      "mode": "frozen",
+      "fault": "shift -1",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.0009523809523809524,
+        "fnr": 0.4605137963843958,
+        "reference_fpr": 0.0009523809523809524,
+        "reference_fnr": 0.26450999048525214,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE",
+      "key": "test/frozen/shift -1",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 1000,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 0
+      },
+      "expected_rate": 1.0,
+      "expected_ci95": [
+        0.9963179161031341,
+        1.0
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": null
+    },
+    {
+      "split": "test",
+      "mode": "refit",
+      "fault": "shift -0.75",
+      "kind": "graded",
+      "threshold": 0.45241647958755493,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.0038095238095238095,
+        "fnr": 0.12940057088487156,
+        "reference_fpr": 0.009523809523809525,
+        "reference_fnr": 0.05994291151284491,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE",
+      "key": "test/refit/shift -0.75",
+      "counts": {
+        "PASS": 3,
+        "THRESHOLD STALE": 485,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 512
+      },
+      "expected_rate": 0.485,
+      "expected_ci95": [
+        0.4536073588353028,
+        0.5164811857084032
+      ],
+      "non_pass_rate": 0.997,
+      "meets_bar": null
+    },
+    {
+      "split": "test",
+      "mode": "frozen",
+      "fault": "shift -0.75",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.0009523809523809524,
+        "fnr": 0.40247383444338725,
+        "reference_fpr": 0.0009523809523809524,
+        "reference_fnr": 0.26450999048525214,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE",
+      "key": "test/frozen/shift -0.75",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 1000,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 0
+      },
+      "expected_rate": 1.0,
+      "expected_ci95": [
+        0.9963179161031341,
+        1.0
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": null
+    },
+    {
+      "split": "test",
+      "mode": "refit",
+      "fault": "shift -0.5",
+      "kind": "graded",
+      "threshold": 0.45241647958755493,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.004761904761904762,
+        "fnr": 0.09705042816365367,
+        "reference_fpr": 0.009523809523809525,
+        "reference_fnr": 0.05994291151284491,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE",
+      "key": "test/refit/shift -0.5",
+      "counts": {
+        "PASS": 174,
+        "THRESHOLD STALE": 28,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 798
+      },
+      "expected_rate": 0.028,
+      "expected_ci95": [
+        0.01868468619553757,
+        0.040214887373843294
+      ],
+      "non_pass_rate": 0.8260000000000001,
+      "meets_bar": null
+    },
+    {
+      "split": "test",
+      "mode": "frozen",
+      "fault": "shift -0.5",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.0009523809523809524,
+        "fnr": 0.3615604186489058,
+        "reference_fpr": 0.0009523809523809524,
+        "reference_fnr": 0.26450999048525214,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE",
+      "key": "test/frozen/shift -0.5",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 987,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 13
+      },
+      "expected_rate": 0.987,
+      "expected_ci95": [
+        0.9778721963632215,
+        0.9930603824971485
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": null
+    },
+    {
+      "split": "test",
+      "mode": "refit",
+      "fault": "shift -0.3",
+      "kind": "graded",
+      "threshold": 0.45241647958755493,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.006666666666666667,
+        "fnr": 0.0818268315889629,
+        "reference_fpr": 0.009523809523809525,
+        "reference_fnr": 0.05994291151284491,
+        "delta_auroc": 0.0
+      },
+      "expected": "PASS",
+      "key": "test/refit/shift -0.3",
+      "counts": {
+        "PASS": 843,
+        "THRESHOLD STALE": 0,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 157
+      },
+      "expected_rate": 0.843,
+      "expected_ci95": [
+        0.8189474466392858,
+        0.8650123407930691
+      ],
+      "non_pass_rate": 0.15700000000000003,
+      "meets_bar": null
+    },
+    {
+      "split": "test",
+      "mode": "frozen",
+      "fault": "shift -0.3",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.0009523809523809524,
+        "fnr": 0.3225499524262607,
+        "reference_fpr": 0.0009523809523809524,
+        "reference_fnr": 0.26450999048525214,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE",
+      "key": "test/frozen/shift -0.3",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 352,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 648
+      },
+      "expected_rate": 0.352,
+      "expected_ci95": [
+        0.32237160435453954,
+        0.3825028689345303
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": null
+    },
+    {
+      "split": "test",
+      "mode": "refit",
+      "fault": "shift -0.1",
+      "kind": "graded",
+      "threshold": 0.45241647958755493,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.009523809523809525,
+        "fnr": 0.07040913415794481,
+        "reference_fpr": 0.009523809523809525,
+        "reference_fnr": 0.05994291151284491,
+        "delta_auroc": 0.0
+      },
+      "expected": "PASS",
+      "key": "test/refit/shift -0.1",
+      "counts": {
+        "PASS": 1000,
+        "THRESHOLD STALE": 0,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 0
+      },
+      "expected_rate": 1.0,
+      "expected_ci95": [
+        0.9963179161031341,
+        1.0
+      ],
+      "non_pass_rate": 0.0,
+      "meets_bar": null
+    },
+    {
+      "split": "test",
+      "mode": "frozen",
+      "fault": "shift -0.1",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.0009523809523809524,
+        "fnr": 0.28068506184586106,
+        "reference_fpr": 0.0009523809523809524,
+        "reference_fnr": 0.26450999048525214,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE",
+      "key": "test/frozen/shift -0.1",
+      "counts": {
+        "PASS": 588,
+        "THRESHOLD STALE": 350,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 62
+      },
+      "expected_rate": 0.35,
+      "expected_ci95": [
+        0.32041612415136567,
+        0.3804701912559757
+      ],
+      "non_pass_rate": 0.41200000000000003,
+      "meets_bar": null
+    },
+    {
+      "split": "test",
+      "mode": "refit",
+      "fault": "shift +0.1",
+      "kind": "graded",
+      "threshold": 0.45241647958755493,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.012380952380952381,
+        "fnr": 0.05233111322549953,
+        "reference_fpr": 0.009523809523809525,
+        "reference_fnr": 0.05994291151284491,
+        "delta_auroc": 0.0
+      },
+      "expected": "PASS",
+      "key": "test/refit/shift +0.1",
+      "counts": {
+        "PASS": 542,
+        "THRESHOLD STALE": 0,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 458
+      },
+      "expected_rate": 0.542,
+      "expected_ci95": [
+        0.5105344535729366,
+        0.5732176059285062
+      ],
+      "non_pass_rate": 0.45799999999999996,
+      "meets_bar": null
+    },
+    {
+      "split": "test",
+      "mode": "frozen",
+      "fault": "shift +0.1",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.0009523809523809524,
+        "fnr": 0.2483349191246432,
+        "reference_fpr": 0.0009523809523809524,
+        "reference_fnr": 0.26450999048525214,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE",
+      "key": "test/frozen/shift +0.1",
+      "counts": {
+        "PASS": 650,
+        "THRESHOLD STALE": 350,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 0
+      },
+      "expected_rate": 0.35,
+      "expected_ci95": [
+        0.32041612415136567,
+        0.3804701912559757
+      ],
+      "non_pass_rate": 0.35,
+      "meets_bar": null
+    },
+    {
+      "split": "test",
+      "mode": "refit",
+      "fault": "shift +0.5",
+      "kind": "graded",
+      "threshold": 0.45241647958755493,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.022857142857142857,
+        "fnr": 0.038058991436726926,
+        "reference_fpr": 0.009523809523809525,
+        "reference_fnr": 0.05994291151284491,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE",
+      "key": "test/refit/shift +0.5",
+      "counts": {
+        "PASS": 7,
+        "THRESHOLD STALE": 32,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 961
+      },
+      "expected_rate": 0.032,
+      "expected_ci95": [
+        0.021988849605642423,
+        0.04487590283500926
+      ],
+      "non_pass_rate": 0.993,
+      "meets_bar": null
+    },
+    {
+      "split": "test",
+      "mode": "frozen",
+      "fault": "shift +0.5",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.0019047619047619048,
+        "fnr": 0.18363463368220742,
+        "reference_fpr": 0.0009523809523809524,
+        "reference_fnr": 0.26450999048525214,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE",
+      "key": "test/frozen/shift +0.5",
+      "counts": {
+        "PASS": 876,
+        "THRESHOLD STALE": 124,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 0
+      },
+      "expected_rate": 0.124,
+      "expected_ci95": [
+        0.10420311919524629,
+        0.14603982497054735
+      ],
+      "non_pass_rate": 0.124,
+      "meets_bar": null
+    },
+    {
+      "split": "test",
+      "mode": "refit",
+      "fault": "shift +1",
+      "kind": "graded",
+      "threshold": 0.45241647958755493,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.04380952380952381,
+        "fnr": 0.030447193149381543,
+        "reference_fpr": 0.009523809523809525,
+        "reference_fnr": 0.05994291151284491,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE",
+      "key": "test/refit/shift +1",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 889,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 111
+      },
+      "expected_rate": 0.889,
+      "expected_ci95": [
+        0.8678739382413079,
+        0.9078020927958089
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": null
+    },
+    {
+      "split": "test",
+      "mode": "frozen",
+      "fault": "shift +1",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.004761904761904762,
+        "fnr": 0.1065651760228354,
+        "reference_fpr": 0.0009523809523809524,
+        "reference_fnr": 0.26450999048525214,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE",
+      "key": "test/frozen/shift +1",
+      "counts": {
+        "PASS": 995,
+        "THRESHOLD STALE": 5,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 0
+      },
+      "expected_rate": 0.005,
+      "expected_ci95": [
+        0.0016254195175627604,
+        0.011629470559812172
+      ],
+      "non_pass_rate": 0.0050000000000000044,
+      "meets_bar": null
+    },
+    {
+      "split": "test",
+      "mode": "refit",
+      "fault": "shift +1.5",
+      "kind": "gross",
+      "threshold": 0.45241647958755493,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.09428571428571429,
+        "fnr": 0.015223596574690771,
+        "reference_fpr": 0.009523809523809525,
+        "reference_fnr": 0.05994291151284491,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE",
+      "key": "test/refit/shift +1.5",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 999,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 1
+      },
+      "expected_rate": 0.999,
+      "expected_ci95": [
+        0.9944410757201734,
+        0.9999746825125087
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": true
+    },
+    {
+      "split": "test",
+      "mode": "frozen",
+      "fault": "shift +1.5",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.009523809523809525,
+        "fnr": 0.07040913415794481,
+        "reference_fpr": 0.0009523809523809524,
+        "reference_fnr": 0.26450999048525214,
+        "delta_auroc": 0.0
+      },
+      "expected": "PASS",
+      "key": "test/frozen/shift +1.5",
+      "counts": {
+        "PASS": 786,
+        "THRESHOLD STALE": 0,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 214
+      },
+      "expected_rate": 0.786,
+      "expected_ci95": [
+        0.7592568214400275,
+        0.811047360389367
+      ],
+      "non_pass_rate": 0.21399999999999997,
+      "meets_bar": null
+    },
+    {
+      "split": "test",
+      "mode": "refit",
+      "fault": "shift +2",
+      "kind": "gross",
+      "threshold": 0.45241647958755493,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.17047619047619048,
+        "fnr": 0.008563273073263558,
+        "reference_fpr": 0.009523809523809525,
+        "reference_fnr": 0.05994291151284491,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE",
+      "key": "test/refit/shift +2",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 1000,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 0
+      },
+      "expected_rate": 1.0,
+      "expected_ci95": [
+        0.9963179161031341,
+        1.0
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": true
+    },
+    {
+      "split": "test",
+      "mode": "frozen",
+      "fault": "shift +2",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.01904761904761905,
+        "fnr": 0.04186489058039962,
+        "reference_fpr": 0.0009523809523809524,
+        "reference_fnr": 0.26450999048525214,
+        "delta_auroc": 0.0
+      },
+      "expected": "PASS",
+      "key": "test/frozen/shift +2",
+      "counts": {
+        "PASS": 36,
+        "THRESHOLD STALE": 12,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 952
+      },
+      "expected_rate": 0.036,
+      "expected_ci95": [
+        0.025338914929837735,
+        0.04949291171801236
+      ],
+      "non_pass_rate": 0.964,
+      "meets_bar": null
+    },
+    {
+      "split": "test",
+      "mode": "refit",
+      "fault": "shift +3",
+      "kind": "gross",
+      "threshold": 0.45241647958755493,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.40285714285714286,
+        "fnr": 0.0019029495718363464,
+        "reference_fpr": 0.009523809523809525,
+        "reference_fnr": 0.05994291151284491,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE",
+      "key": "test/refit/shift +3",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 1000,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 0
+      },
+      "expected_rate": 1.0,
+      "expected_ci95": [
+        0.9963179161031341,
+        1.0
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": true
+    },
+    {
+      "split": "test",
+      "mode": "frozen",
+      "fault": "shift +3",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.08857142857142856,
+        "fnr": 0.017126546146527116,
+        "reference_fpr": 0.0009523809523809524,
+        "reference_fnr": 0.26450999048525214,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE",
+      "key": "test/frozen/shift +3",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 1000,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 0
+      },
+      "expected_rate": 1.0,
+      "expected_ci95": [
+        0.9963179161031341,
+        1.0
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": null
+    },
+    {
+      "split": "test",
+      "mode": "refit",
+      "fault": "attack-only shift -1",
+      "kind": "graded",
+      "threshold": 0.45241647958755493,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.009523809523809525,
+        "fnr": 0.16079923882017128,
+        "reference_fpr": 0.009523809523809525,
+        "reference_fnr": 0.05994291151284491,
+        "delta_auroc": -0.01022881269454956
+      },
+      "expected": "THRESHOLD STALE",
+      "key": "test/refit/attack-only shift -1",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 972,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 28
+      },
+      "expected_rate": 0.972,
+      "expected_ci95": [
+        0.9597851126261567,
+        0.9813153138044625
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": null
+    },
+    {
+      "split": "test",
+      "mode": "frozen",
+      "fault": "attack-only shift -1",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.0009523809523809524,
+        "fnr": 0.4605137963843958,
+        "reference_fpr": 0.0009523809523809524,
+        "reference_fnr": 0.26450999048525214,
+        "delta_auroc": -0.01022881269454956
+      },
+      "expected": "THRESHOLD STALE",
+      "key": "test/frozen/attack-only shift -1",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 1000,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 0
+      },
+      "expected_rate": 1.0,
+      "expected_ci95": [
+        0.9963179161031341,
+        1.0
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": null
+    },
+    {
+      "split": "test",
+      "mode": "refit",
+      "fault": "attack-only shift -3",
+      "kind": "gross",
+      "threshold": 0.45241647958755493,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.009523809523809525,
+        "fnr": 0.5394862036156042,
+        "reference_fpr": 0.009523809523809525,
+        "reference_fnr": 0.05994291151284491,
+        "delta_auroc": -0.08328217267990112
+      },
+      "expected": "SCORER DEGRADED",
+      "key": "test/refit/attack-only shift -3",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 0,
+        "SCORER DEGRADED": 1000,
+        "INCONCLUSIVE": 0
+      },
+      "expected_rate": 1.0,
+      "expected_ci95": [
+        0.9963179161031341,
+        1.0
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": true
+    },
+    {
+      "split": "test",
+      "mode": "frozen",
+      "fault": "attack-only shift -3",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.0009523809523809524,
+        "fnr": 0.8201712654614652,
+        "reference_fpr": 0.0009523809523809524,
+        "reference_fnr": 0.26450999048525214,
+        "delta_auroc": -0.08328217267990112
+      },
+      "expected": "SCORER DEGRADED",
+      "key": "test/frozen/attack-only shift -3",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 0,
+        "SCORER DEGRADED": 1000,
+        "INCONCLUSIVE": 0
+      },
+      "expected_rate": 1.0,
+      "expected_ci95": [
+        0.9963179161031341,
+        1.0
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": null
+    },
+    {
+      "split": "test",
+      "mode": "refit",
+      "fault": "scramble to \u0394AUROC -0.02",
+      "kind": "graded",
+      "threshold": 0.45241647958755493,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.02857142857142857,
+        "fnr": 0.07897240723120837,
+        "reference_fpr": 0.009523809523809525,
+        "reference_fnr": 0.05994291151284491,
+        "delta_auroc": -0.020160436630249023
+      },
+      "expected": "SCORER DEGRADED",
+      "key": "test/refit/scramble to \u0394AUROC -0.02",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 367,
+        "SCORER DEGRADED": 18,
+        "INCONCLUSIVE": 615
+      },
+      "expected_rate": 0.018,
+      "expected_ci95": [
+        0.01070194792941471,
+        0.028299041249019215
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": null
+    },
+    {
+      "split": "test",
+      "mode": "frozen",
+      "fault": "scramble to \u0394AUROC -0.02",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.014285714285714285,
+        "fnr": 0.27783063748810655,
+        "reference_fpr": 0.0009523809523809524,
+        "reference_fnr": 0.26450999048525214,
+        "delta_auroc": -0.020160436630249023
+      },
+      "expected": "SCORER DEGRADED",
+      "key": "test/frozen/scramble to \u0394AUROC -0.02",
+      "counts": {
+        "PASS": 41,
+        "THRESHOLD STALE": 0,
+        "SCORER DEGRADED": 18,
+        "INCONCLUSIVE": 941
+      },
+      "expected_rate": 0.018,
+      "expected_ci95": [
+        0.01070194792941471,
+        0.028299041249019215
+      ],
+      "non_pass_rate": 0.959,
+      "meets_bar": null
+    },
+    {
+      "split": "test",
+      "mode": "refit",
+      "fault": "scramble to \u0394AUROC -0.025",
+      "kind": "graded",
+      "threshold": 0.45241647958755493,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.03333333333333333,
+        "fnr": 0.08372978116079924,
+        "reference_fpr": 0.009523809523809525,
+        "reference_fnr": 0.05994291151284491,
+        "delta_auroc": -0.025021076202392578
+      },
+      "expected": "SCORER DEGRADED",
+      "key": "test/refit/scramble to \u0394AUROC -0.025",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 549,
+        "SCORER DEGRADED": 237,
+        "INCONCLUSIVE": 214
+      },
+      "expected_rate": 0.237,
+      "expected_ci95": [
+        0.21094952165312658,
+        0.26460854300542413
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": null
+    },
+    {
+      "split": "test",
+      "mode": "frozen",
+      "fault": "scramble to \u0394AUROC -0.025",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.02095238095238095,
+        "fnr": 0.2844909609895338,
+        "reference_fpr": 0.0009523809523809524,
+        "reference_fnr": 0.26450999048525214,
+        "delta_auroc": -0.025021076202392578
+      },
+      "expected": "SCORER DEGRADED",
+      "key": "test/frozen/scramble to \u0394AUROC -0.025",
+      "counts": {
+        "PASS": 2,
+        "THRESHOLD STALE": 11,
+        "SCORER DEGRADED": 237,
+        "INCONCLUSIVE": 750
+      },
+      "expected_rate": 0.237,
+      "expected_ci95": [
+        0.21094952165312658,
+        0.26460854300542413
+      ],
+      "non_pass_rate": 0.998,
+      "meets_bar": null
+    },
+    {
+      "split": "test",
+      "mode": "refit",
+      "fault": "scramble to \u0394AUROC -0.03",
+      "kind": "graded",
+      "threshold": 0.45241647958755493,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.0380952380952381,
+        "fnr": 0.08848715509039011,
+        "reference_fpr": 0.009523809523809525,
+        "reference_fnr": 0.05994291151284491,
+        "delta_auroc": -0.02997058629989624
+      },
+      "expected": "SCORER DEGRADED",
+      "key": "test/refit/scramble to \u0394AUROC -0.03",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 267,
+        "SCORER DEGRADED": 702,
+        "INCONCLUSIVE": 31
+      },
+      "expected_rate": 0.702,
+      "expected_ci95": [
+        0.6725866614539602,
+        0.7302186685854952
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": null
+    },
+    {
+      "split": "test",
+      "mode": "frozen",
+      "fault": "scramble to \u0394AUROC -0.03",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.022857142857142857,
+        "fnr": 0.28639391056137015,
+        "reference_fpr": 0.0009523809523809524,
+        "reference_fnr": 0.26450999048525214,
+        "delta_auroc": -0.02997058629989624
+      },
+      "expected": "SCORER DEGRADED",
+      "key": "test/frozen/scramble to \u0394AUROC -0.03",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 2,
+        "SCORER DEGRADED": 702,
+        "INCONCLUSIVE": 296
+      },
+      "expected_rate": 0.702,
+      "expected_ci95": [
+        0.6725866614539602,
+        0.7302186685854952
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": null
+    },
+    {
+      "split": "test",
+      "mode": "refit",
+      "fault": "scramble to \u0394AUROC -0.05",
+      "kind": "gross",
+      "threshold": 0.45241647958755493,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.05523809523809524,
+        "fnr": 0.10561370123691723,
+        "reference_fpr": 0.009523809523809525,
+        "reference_fnr": 0.05994291151284491,
+        "delta_auroc": -0.05006211996078491
+      },
+      "expected": "SCORER DEGRADED",
+      "key": "test/refit/scramble to \u0394AUROC -0.05",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 0,
+        "SCORER DEGRADED": 1000,
+        "INCONCLUSIVE": 0
+      },
+      "expected_rate": 1.0,
+      "expected_ci95": [
+        0.9963179161031341,
+        1.0
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": true
+    },
+    {
+      "split": "test",
+      "mode": "frozen",
+      "fault": "scramble to \u0394AUROC -0.05",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.0380952380952381,
+        "fnr": 0.3016175071360609,
+        "reference_fpr": 0.0009523809523809524,
+        "reference_fnr": 0.26450999048525214,
+        "delta_auroc": -0.05006211996078491
+      },
+      "expected": "SCORER DEGRADED",
+      "key": "test/frozen/scramble to \u0394AUROC -0.05",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 0,
+        "SCORER DEGRADED": 1000,
+        "INCONCLUSIVE": 0
+      },
+      "expected_rate": 1.0,
+      "expected_ci95": [
+        0.9963179161031341,
+        1.0
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": null
+    },
+    {
+      "split": "test",
+      "mode": "refit",
+      "fault": "scramble to \u0394AUROC -0.1",
+      "kind": "gross",
+      "threshold": 0.45241647958755493,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.10285714285714286,
+        "fnr": 0.15318744053282587,
+        "reference_fpr": 0.009523809523809525,
+        "reference_fnr": 0.05994291151284491,
+        "delta_auroc": -0.1000661849975586
+      },
+      "expected": "SCORER DEGRADED",
+      "key": "test/refit/scramble to \u0394AUROC -0.1",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 0,
+        "SCORER DEGRADED": 1000,
+        "INCONCLUSIVE": 0
+      },
+      "expected_rate": 1.0,
+      "expected_ci95": [
+        0.9963179161031341,
+        1.0
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": true
+    },
+    {
+      "split": "test",
+      "mode": "frozen",
+      "fault": "scramble to \u0394AUROC -0.1",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.0761904761904762,
+        "fnr": 0.3396764985727878,
+        "reference_fpr": 0.0009523809523809524,
+        "reference_fnr": 0.26450999048525214,
+        "delta_auroc": -0.1000661849975586
+      },
+      "expected": "SCORER DEGRADED",
+      "key": "test/frozen/scramble to \u0394AUROC -0.1",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 0,
+        "SCORER DEGRADED": 1000,
+        "INCONCLUSIVE": 0
+      },
+      "expected_rate": 1.0,
+      "expected_ci95": [
+        0.9963179161031341,
+        1.0
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": null
+    },
+    {
+      "split": "test",
+      "mode": "refit",
+      "fault": "noise, FP8's size",
+      "kind": "graded",
+      "threshold": 0.45241647958755493,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.011428571428571429,
+        "fnr": 0.05708848715509039,
+        "reference_fpr": 0.009523809523809525,
+        "reference_fnr": 0.05994291151284491,
+        "delta_auroc": -0.000562758454921708
+      },
+      "expected": "PASS",
+      "key": "test/refit/noise, FP8's size",
+      "counts": {
+        "PASS": 814,
+        "THRESHOLD STALE": 0,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 186
+      },
+      "expected_rate": 0.814,
+      "expected_ci95": [
+        0.7884716407300623,
+        0.8376640223583917
+      ],
+      "non_pass_rate": 0.18600000000000005,
+      "meets_bar": null
+    },
+    {
+      "split": "test",
+      "mode": "frozen",
+      "fault": "noise, FP8's size",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.0009523809523809524,
+        "fnr": 0.26736441484300666,
+        "reference_fpr": 0.0009523809523809524,
+        "reference_fnr": 0.26450999048525214,
+        "delta_auroc": -0.000562758454921708
+      },
+      "expected": "THRESHOLD STALE",
+      "key": "test/frozen/noise, FP8's size",
+      "counts": {
+        "PASS": 650,
+        "THRESHOLD STALE": 350,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 0
+      },
+      "expected_rate": 0.35,
+      "expected_ci95": [
+        0.32041612415136567,
+        0.3804701912559757
+      ],
+      "non_pass_rate": 0.35,
+      "meets_bar": null
+    },
+    {
+      "split": "test",
+      "mode": "refit",
+      "fault": "noise, Phase 1 AWQ's size",
+      "kind": "graded",
+      "threshold": 0.45241647958755493,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.040952380952380955,
+        "fnr": 0.10085632730732635,
+        "reference_fpr": 0.009523809523809525,
+        "reference_fnr": 0.05994291151284491,
+        "delta_auroc": -0.012908370343825748
+      },
+      "expected": "THRESHOLD STALE",
+      "key": "test/refit/noise, Phase 1 AWQ's size",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 931,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 69
+      },
+      "expected_rate": 0.931,
+      "expected_ci95": [
+        0.9134848906542885,
+        0.9459206642067437
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": null
+    },
+    {
+      "split": "test",
+      "mode": "frozen",
+      "fault": "noise, Phase 1 AWQ's size",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.005714285714285714,
+        "fnr": 0.2987630827783064,
+        "reference_fpr": 0.0009523809523809524,
+        "reference_fnr": 0.26450999048525214,
+        "delta_auroc": -0.012908370343825748
+      },
+      "expected": "PASS",
+      "key": "test/frozen/noise, Phase 1 AWQ's size",
+      "counts": {
+        "PASS": 126,
+        "THRESHOLD STALE": 3,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 871
+      },
+      "expected_rate": 0.126,
+      "expected_ci95": [
+        0.10605683226247975,
+        0.14817371647102673
+      ],
+      "non_pass_rate": 0.874,
+      "meets_bar": null
+    },
+    {
+      "split": "test",
+      "mode": "refit",
+      "fault": "sign flip",
+      "kind": "gross",
+      "threshold": 0.45241647958755493,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.9933333333333333,
+        "fnr": 0.9115128449096099,
+        "reference_fpr": 0.009523809523809525,
+        "reference_fnr": 0.05994291151284491,
+        "delta_auroc": -0.9880295703187585
+      },
+      "expected": "SCORER DEGRADED",
+      "key": "test/refit/sign flip",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 0,
+        "SCORER DEGRADED": 1000,
+        "INCONCLUSIVE": 0
+      },
+      "expected_rate": 1.0,
+      "expected_ci95": [
+        0.9963179161031341,
+        1.0
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": true
+    },
+    {
+      "split": "test",
+      "mode": "frozen",
+      "fault": "sign flip",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.9380952380952381,
+        "fnr": 0.9800190294957184,
+        "reference_fpr": 0.0009523809523809524,
+        "reference_fnr": 0.26450999048525214,
+        "delta_auroc": -0.9880295703187585
+      },
+      "expected": "SCORER DEGRADED",
+      "key": "test/frozen/sign flip",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 0,
+        "SCORER DEGRADED": 1000,
+        "INCONCLUSIVE": 0
+      },
+      "expected_rate": 1.0,
+      "expected_ci95": [
+        0.9963179161031341,
+        1.0
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": null
+    },
+    {
+      "split": "test",
+      "mode": "refit",
+      "fault": "wrong layer, 27 for 18",
+      "kind": "gross, either verdict",
+      "threshold": 0.45241647958755493,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.4228571428571429,
+        "fnr": 0.021883920076117985,
+        "reference_fpr": 0.009523809523809525,
+        "reference_fnr": 0.05994291151284491,
+        "delta_auroc": -0.03565949201583862
+      },
+      "expected": "SCORER DEGRADED",
+      "key": "test/refit/wrong layer, 27 for 18",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 2,
+        "SCORER DEGRADED": 998,
+        "INCONCLUSIVE": 0
+      },
+      "expected_rate": 0.998,
+      "expected_ci95": [
+        0.9927941610885425,
+        0.9997576988831227
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": true
+    },
+    {
+      "split": "test",
+      "mode": "frozen",
+      "fault": "wrong layer, 27 for 18",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.13142857142857142,
+        "fnr": 0.09419600380589914,
+        "reference_fpr": 0.0009523809523809524,
+        "reference_fnr": 0.26450999048525214,
+        "delta_auroc": -0.03565949201583862
+      },
+      "expected": "SCORER DEGRADED",
+      "key": "test/frozen/wrong layer, 27 for 18",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 2,
+        "SCORER DEGRADED": 998,
+        "INCONCLUSIVE": 0
+      },
+      "expected_rate": 0.998,
+      "expected_ci95": [
+        0.9927941610885425,
+        0.9997576988831227
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": null
+    },
+    {
+      "split": "test",
+      "mode": "refit",
+      "fault": "wrong position, -9 for -1",
+      "kind": "gross, either verdict",
+      "threshold": 0.45241647958755493,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 1.0,
+        "fnr": 0.0,
+        "reference_fpr": 0.009523809523809525,
+        "reference_fnr": 0.05994291151284491,
+        "delta_auroc": -0.024581611156463623
+      },
+      "expected": "SCORER DEGRADED",
+      "key": "test/refit/wrong position, -9 for -1",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 614,
+        "SCORER DEGRADED": 386,
+        "INCONCLUSIVE": 0
+      },
+      "expected_rate": 0.386,
+      "expected_ci95": [
+        0.35570000271715446,
+        0.4169733035854663
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": true
+    },
+    {
+      "split": "test",
+      "mode": "frozen",
+      "fault": "wrong position, -9 for -1",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.9580952380952381,
+        "fnr": 0.0009514747859181732,
+        "reference_fpr": 0.0009523809523809524,
+        "reference_fnr": 0.26450999048525214,
+        "delta_auroc": -0.024581611156463623
+      },
+      "expected": "SCORER DEGRADED",
+      "key": "test/frozen/wrong position, -9 for -1",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 614,
+        "SCORER DEGRADED": 386,
+        "INCONCLUSIVE": 0
+      },
+      "expected_rate": 0.386,
+      "expected_ci95": [
+        0.35570000271715446,
+        0.4169733035854663
+      ],
+      "non_pass_rate": 1.0,
+      "meets_bar": null
+    }
+  ],
+  "end_to_end": [
+    {
+      "key": "end_to_end/real rerun",
+      "case": "real rerun",
+      "expected_exit": 0,
+      "exit": 0,
+      "stderr_last_line": ""
+    },
+    {
+      "key": "end_to_end/shift +3",
+      "case": "shift +3",
+      "expected_exit": 10,
+      "exit": 10,
+      "stderr_last_line": ""
+    },
+    {
+      "key": "end_to_end/sign flip",
+      "case": "sign flip",
+      "expected_exit": 11,
+      "exit": 11,
+      "stderr_last_line": ""
+    },
+    {
+      "key": "end_to_end/shift +1",
+      "case": "shift +1",
+      "expected_exit": 12,
+      "exit": 12,
+      "stderr_last_line": ""
+    },
+    {
+      "key": "end_to_end/reordered prompts",
+      "case": "reordered prompts",
+      "expected_exit": 1,
+      "exit": 1,
+      "stderr_last_line": "hulder: pairing error: The candidate's labels differ from the reference's at 1030 of 2101 examples: the snapshots disagree about what the examples are."
+    },
+    {
+      "key": "end_to_end/wrong layer, recorded in metadata",
+      "case": "wrong layer, recorded in metadata",
+      "expected_exit": 1,
+      "exit": 1,
+      "stderr_last_line": "hulder: pairing error: The probe's layer is 18 but the candidate's is 27: the probe would score activations it wasn't trained on."
+    },
+    {
+      "key": "end_to_end/wrong position, recorded in metadata",
+      "case": "wrong position, recorded in metadata",
+      "expected_exit": 1,
+      "exit": 1,
+      "stderr_last_line": "hulder: pairing error: The probe's position is -1 but the candidate's is -9: the probe would score activations it wasn't trained on."
+    }
+  ]
+}

@@ -392,7 +392,7 @@ A rerun on the reference's path measures a zero floor, and a candidate that devi
 
 **Recalibration costs FNR and needs benign examples.** The recalibrated threshold is conservative on purpose, so it misses more attacks than a plug-in quantile, most at small calibration sets (§6). At a 1% target it needs at least 299 benign. At the quickstart's 180 benign and 180 attack, an unchanged rerun of a promoted candidate is INCONCLUSIVE 43% of the time. The FNR condition compares the candidate's upper bound with the reference's point value, and with 180 attacks at an FNR of several percent that interval alone is about as wide as the 0.05 tolerance (`docs/results/phase2/recalibration.md`). The report warns when this applies, which it did before 96% of those INCONCLUSIVE checks, and gives the attacks that would avoid it, a median of 224 there. A paired FNR condition on the same attacks is planned (§11).
 
-**Small FPR rises need large calibration sets.** With about 1,200 benign examples, a rise from 1% to 1.5% or 2% is usually INCONCLUSIVE (§2). The report says how many more examples would settle it.
+**Small FPR rises need large calibration sets.** With about 1,200 benign examples, a rise from 1% to 1.5% or 2% is usually INCONCLUSIVE (§2). The report says how many more examples would settle it. An unchanged scorer can hit the same limit. In the planted-fault control a null on about 1,050 benign examples came out INCONCLUSIVE 11.8% of the time, missing the 5% false-alarm bar, while calibration's 1,191 stayed under it (`docs/results/phase4/planted_faults.md`).
 
 **Swapped roles go undetected.** Passing the candidate as reference turns a degradation into PASS. Check the "Changes under test" lines, which show a swap as `quantization: 'awq' -> None`.
 
