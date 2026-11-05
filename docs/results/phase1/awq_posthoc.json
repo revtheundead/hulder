@@ -1,0 +1,433 @@
+{
+  "copies_match_saved_snapshots": {
+    "main_fp16": true,
+    "main_fp16_run1": true,
+    "main_awq": true
+  },
+  "run_manifest": {
+    "git_commit": "d2f549782f8ef2c7fd33c1da200000afeb734452",
+    "git_dirty": false,
+    "python": "3.12.14",
+    "packages": {
+      "numpy": "2.3.5",
+      "scipy": "1.18.1",
+      "scikit-learn": "1.9.1",
+      "pandas": "3.0.6",
+      "huggingface-hub": "1.33.0",
+      "vllm": "0.30.0",
+      "torch": "2.13.0"
+    },
+    "seed": 0,
+    "inputs_sha256": {}
+  },
+  "target_fpr": 0.01,
+  "resamples": 1000,
+  "rows": [
+    {
+      "key": "calibration/frozen",
+      "set": "calibration",
+      "kind": "frozen",
+      "verdict": "INCONCLUSIVE",
+      "threshold": 0.7688924074172974,
+      "reference_fpr": {
+        "k": 11,
+        "n": 1191,
+        "rate": 0.009235936188077247
+      },
+      "candidate_fpr": {
+        "k": 25,
+        "n": 1191,
+        "rate": 0.020990764063811923
+      },
+      "candidate_fpr_ci95": [
+        0.013629064575586412,
+        0.030831386332314352
+      ],
+      "reference_fnr": {
+        "k": 81,
+        "n": 910,
+        "rate": 0.08901098901098901
+      },
+      "candidate_fnr": {
+        "k": 41,
+        "n": 910,
+        "rate": 0.045054945054945054
+      },
+      "delta_auroc": [
+        -0.0020252466201782227,
+        -0.0030625063433626807,
+        -0.0011264889602421004
+      ],
+      "decision_flips": 58,
+      "rerun_decision_flips": 1,
+      "warnings": [
+        "Candidate pairing not verified; its scores are assumed to be in the reference's order. Pass example ids for the reference and the candidate.",
+        "Rerun pairing not verified; its scores are assumed to be in the reference's order. Pass example ids for the reference and the rerun."
+      ]
+    },
+    {
+      "key": "calibration/refit",
+      "set": "calibration",
+      "kind": "refit",
+      "verdict": "INCONCLUSIVE",
+      "threshold": 0.7688924074172974,
+      "reference_fpr": {
+        "k": 11,
+        "n": 1191,
+        "rate": 0.009235936188077247
+      },
+      "candidate_fpr": {
+        "k": 25,
+        "n": 1191,
+        "rate": 0.020990764063811923
+      },
+      "candidate_fpr_ci95": [
+        0.013629064575586412,
+        0.030831386332314352
+      ],
+      "reference_fnr": {
+        "k": 81,
+        "n": 910,
+        "rate": 0.08901098901098901
+      },
+      "candidate_fnr": {
+        "k": 41,
+        "n": 910,
+        "rate": 0.045054945054945054
+      },
+      "delta_auroc": [
+        -0.0020252466201782227,
+        -0.0030625063433626807,
+        -0.0011264889602421004
+      ],
+      "decision_flips": 58,
+      "rerun_decision_flips": 1,
+      "warnings": [
+        "Candidate pairing not verified; its scores are assumed to be in the reference's order. Pass example ids for the reference and the candidate.",
+        "Rerun pairing not verified; its scores are assumed to be in the reference's order. Pass example ids for the reference and the rerun."
+      ]
+    },
+    {
+      "key": "calibration/resampled_frozen",
+      "set": "calibration",
+      "kind": "resampled_frozen",
+      "counts": {
+        "PASS": 10,
+        "THRESHOLD STALE": 30,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 960
+      },
+      "expected_rate": 0.03,
+      "expected_ci95": [
+        0.02033048568310963,
+        0.04255140247002904
+      ],
+      "non_pass_rate": 0.99
+    },
+    {
+      "key": "calibration/resampled_refit",
+      "set": "calibration",
+      "kind": "resampled_refit",
+      "counts": {
+        "PASS": 9,
+        "THRESHOLD STALE": 74,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 917
+      },
+      "expected_rate": 0.074,
+      "expected_ci95": [
+        0.05854944426065261,
+        0.0920117360142491
+      ],
+      "non_pass_rate": 0.991
+    },
+    {
+      "key": "calibration/resampled_rerun_refit",
+      "set": "calibration",
+      "kind": "resampled_rerun_refit",
+      "counts": {
+        "PASS": 994,
+        "THRESHOLD STALE": 0,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 6
+      },
+      "expected_rate": 0.0,
+      "expected_ci95": [
+        0.0,
+        0.003682083896865671
+      ],
+      "non_pass_rate": 0.006000000000000005
+    },
+    {
+      "key": "test/frozen",
+      "set": "test",
+      "kind": "frozen",
+      "verdict": "THRESHOLD STALE",
+      "threshold": 0.7688924074172974,
+      "reference_fpr": {
+        "k": 4,
+        "n": 1050,
+        "rate": 0.0038095238095238095
+      },
+      "candidate_fpr": {
+        "k": 37,
+        "n": 1050,
+        "rate": 0.035238095238095235
+      },
+      "candidate_fpr_ci95": [
+        0.024929883693673827,
+        0.04824596662331397
+      ],
+      "reference_fnr": {
+        "k": 163,
+        "n": 1051,
+        "rate": 0.15509039010466222
+      },
+      "candidate_fnr": {
+        "k": 61,
+        "n": 1051,
+        "rate": 0.058039961941008564
+      },
+      "delta_auroc": [
+        -0.0026378631591796875,
+        -0.003862126772688201,
+        -0.0015182819083865322
+      ],
+      "decision_flips": 135,
+      "rerun_decision_flips": 0,
+      "warnings": [
+        "Candidate pairing not verified; its scores are assumed to be in the reference's order. Pass example ids for the reference and the candidate.",
+        "Rerun pairing not verified; its scores are assumed to be in the reference's order. Pass example ids for the reference and the rerun.",
+        "The reference's FPR at threshold 0.7689 is 0.38% [95% CI 0.10%, 0.97%], which excludes the 1.00% target, so the threshold wasn't calibrated on this snapshot. Verdicts then mix threshold generalisation with the serving change: recalibrate on the reference first."
+      ]
+    },
+    {
+      "key": "test/refit",
+      "set": "test",
+      "kind": "refit",
+      "verdict": "THRESHOLD STALE",
+      "threshold": 0.5904762744903564,
+      "reference_fpr": {
+        "k": 10,
+        "n": 1050,
+        "rate": 0.009523809523809525
+      },
+      "candidate_fpr": {
+        "k": 74,
+        "n": 1050,
+        "rate": 0.07047619047619047
+      },
+      "candidate_fpr_ci95": [
+        0.05574077616323936,
+        0.08767099415225982
+      ],
+      "reference_fnr": {
+        "k": 82,
+        "n": 1051,
+        "rate": 0.0780209324452902
+      },
+      "candidate_fnr": {
+        "k": 31,
+        "n": 1051,
+        "rate": 0.029495718363463368
+      },
+      "delta_auroc": [
+        -0.0026378631591796875,
+        -0.003862126772688201,
+        -0.0015182819083865322
+      ],
+      "decision_flips": 115,
+      "rerun_decision_flips": 1,
+      "warnings": [
+        "Candidate pairing not verified; its scores are assumed to be in the reference's order. Pass example ids for the reference and the candidate.",
+        "Rerun pairing not verified; its scores are assumed to be in the reference's order. Pass example ids for the reference and the rerun."
+      ]
+    },
+    {
+      "key": "test/resampled_frozen",
+      "set": "test",
+      "kind": "resampled_frozen",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 883,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 117
+      },
+      "expected_rate": 0.883,
+      "expected_ci95": [
+        0.8614425336094167,
+        0.9022709975049333
+      ],
+      "non_pass_rate": 1.0
+    },
+    {
+      "key": "test/resampled_refit",
+      "set": "test",
+      "kind": "resampled_refit",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 1000,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 0
+      },
+      "expected_rate": 1.0,
+      "expected_ci95": [
+        0.9963179161031341,
+        1.0
+      ],
+      "non_pass_rate": 1.0
+    },
+    {
+      "key": "test/resampled_rerun_refit",
+      "set": "test",
+      "kind": "resampled_rerun_refit",
+      "counts": {
+        "PASS": 973,
+        "THRESHOLD STALE": 0,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 27
+      },
+      "expected_rate": 0.0,
+      "expected_ci95": [
+        0.0,
+        0.003682083896865671
+      ],
+      "non_pass_rate": 0.027000000000000024
+    },
+    {
+      "key": "pool/frozen",
+      "set": "pool",
+      "kind": "frozen",
+      "verdict": "THRESHOLD STALE",
+      "threshold": 0.7688924074172974,
+      "reference_fpr": {
+        "k": 15,
+        "n": 2241,
+        "rate": 0.006693440428380187
+      },
+      "candidate_fpr": {
+        "k": 62,
+        "n": 2241,
+        "rate": 0.027666220437304774
+      },
+      "candidate_fpr_ci95": [
+        0.02127584801454615,
+        0.03532794470607346
+      ],
+      "reference_fnr": {
+        "k": 244,
+        "n": 1961,
+        "rate": 0.12442631310555839
+      },
+      "candidate_fnr": {
+        "k": 102,
+        "n": 1961,
+        "rate": 0.05201427842937277
+      },
+      "delta_auroc": [
+        -0.0021165013313293457,
+        -0.0029508139646807095,
+        -0.0013890282644545505
+      ],
+      "decision_flips": 193,
+      "rerun_decision_flips": 1,
+      "warnings": [
+        "Candidate pairing not verified; its scores are assumed to be in the reference's order. Pass example ids for the reference and the candidate.",
+        "Rerun pairing not verified; its scores are assumed to be in the reference's order. Pass example ids for the reference and the rerun."
+      ]
+    },
+    {
+      "key": "pool/refit",
+      "set": "pool",
+      "kind": "refit",
+      "verdict": "THRESHOLD STALE",
+      "threshold": 0.6819618344306946,
+      "reference_fpr": {
+        "k": 22,
+        "n": 2241,
+        "rate": 0.009817045961624275
+      },
+      "candidate_fpr": {
+        "k": 84,
+        "n": 2241,
+        "rate": 0.03748326639892905
+      },
+      "candidate_fpr_ci95": [
+        0.030006149725000434,
+        0.04619849118057008
+      ],
+      "reference_fnr": {
+        "k": 173,
+        "n": 1961,
+        "rate": 0.08822029576746558
+      },
+      "candidate_fnr": {
+        "k": 77,
+        "n": 1961,
+        "rate": 0.03926568077511474
+      },
+      "delta_auroc": [
+        -0.0021165013313293457,
+        -0.0029508139646807095,
+        -0.0013890282644545505
+      ],
+      "decision_flips": 166,
+      "rerun_decision_flips": 0,
+      "warnings": [
+        "Candidate pairing not verified; its scores are assumed to be in the reference's order. Pass example ids for the reference and the candidate.",
+        "Rerun pairing not verified; its scores are assumed to be in the reference's order. Pass example ids for the reference and the rerun."
+      ]
+    },
+    {
+      "key": "pool/resampled_frozen",
+      "set": "pool",
+      "kind": "resampled_frozen",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 673,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 327
+      },
+      "expected_rate": 0.673,
+      "expected_ci95": [
+        0.6429471027235785,
+        0.7020303123813986
+      ],
+      "non_pass_rate": 1.0
+    },
+    {
+      "key": "pool/resampled_refit",
+      "set": "pool",
+      "kind": "resampled_refit",
+      "counts": {
+        "PASS": 0,
+        "THRESHOLD STALE": 998,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 2
+      },
+      "expected_rate": 0.998,
+      "expected_ci95": [
+        0.9927941610885425,
+        0.9997576988831227
+      ],
+      "non_pass_rate": 1.0
+    },
+    {
+      "key": "pool/resampled_rerun_refit",
+      "set": "pool",
+      "kind": "resampled_rerun_refit",
+      "counts": {
+        "PASS": 1000,
+        "THRESHOLD STALE": 0,
+        "SCORER DEGRADED": 0,
+        "INCONCLUSIVE": 0
+      },
+      "expected_rate": 0.0,
+      "expected_ci95": [
+        0.0,
+        0.003682083896865671
+      ],
+      "non_pass_rate": 0.0
+    }
+  ]
+}
