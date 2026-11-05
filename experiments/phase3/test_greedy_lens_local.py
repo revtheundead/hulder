@@ -30,3 +30,19 @@ def test_the_local_servers_keep_the_run_flags_with_this_gpus_memory_fraction():
     assert cfg["serve"][cfg["serve"].index("--gpu-memory-utilization") + 1] == "0.9"
     assert cfg["serve"][-2:] == ["--logprobs-mode", "processed_logprobs"]
     assert "greedy_params" not in cfg
+
+
+def test_the_l4_plan_reruns_only_the_penalty_11_modes_at_the_runs_memory_fraction():
+    assert list(g.L4_PLAN.modes) == ["rp11_raw", "rp11_processed"]
+    assert g.L4_PLAN.utilization == 0.92
+
+
+def test_the_l4_plan_repeats_the_runs_lens_traffic_all_at_once_before_collecting():
+    assert g.L4_PLAN.lens == ((0.92, False), (0.92, True))
+    assert g.L4_PLAN.volume_concurrency >= g.VOLUME_PROMPTS
+
+
+def test_the_local_plan_is_what_ran_on_the_2070():
+    assert list(g.LOCAL_PLAN.modes) == ["rp11_raw", "rp10_raw", "rp11_processed"]
+    assert g.LOCAL_PLAN.lens == ((0.7, False), (0.87, False), (0.87, True))
+    assert g.LOCAL_PLAN.volume_concurrency == 32

@@ -1,4 +1,5 @@
-"""Two follow-ups to the Qwen2.5-1.5B overhead run (docs/results/phase3/overhead_l4.md), on the local GPU.
+"""Two follow-ups to the Qwen2.5-1.5B overhead run (docs/results/phase3/overhead_l4.md), on the local GPU
+or, through d1_modal.py --greedy-lens, on an L4.
 
 1. The greedy comparison. That run's scoring servers all diverged from its baseline at prompt 0, token
    39, with a raw margin of -2.6875, and repetition_penalty 1.1 is the likely reason. Each mode runs a
@@ -21,6 +22,9 @@ The GPU has to be otherwise idle throughout. --lens-only repeats part 2 into an 
 
 Writes <out>/greedy_lens_local.json. This is an RTX 2070 and the run was an L4, so a divergence that
 doesn't recur here says nothing about whether it was a near-tie there.
+
+L4_PLAN is the same check on an L4 at the run's memory fraction, 0.92: the two penalty-1.1 modes, and lens
+with and without the run's traffic, sent all at once as its saturation benches did.
 """
 
 import argparse
@@ -28,6 +32,7 @@ import json
 import math
 import sys
 from pathlib import Path
+from typing import NamedTuple
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
@@ -36,14 +41,28 @@ import d1_l4
 import d1_local
 
 N_PROMPTS, N_TOKENS = 16, 64
-UTILIZATIONS = (0.7, 0.87)
-VOLUME_UTILIZATION, VOLUME_PROMPTS, VOLUME_LENGTHS, VOLUME_CONCURRENCY = 0.87, 300, (128, 16), 32
+VOLUME_PROMPTS, VOLUME_LENGTHS = 300, (128, 16)
 STARTUP_S = 900
 MODES = {
     "rp11_raw": {"params": {}, "flags": []},
     "rp10_raw": {"params": {"repetition_penalty": 1.0}, "flags": []},
     "rp11_processed": {"params": {}, "flags": ["--logprobs-mode", "processed_logprobs"]},
 }
+
+
+class Plan(NamedTuple):
+    """Which greedy modes run at which memory fraction, and each lens server as (fraction, with traffic)."""
+
+    modes: dict
+    utilization: float
+    lens: tuple[tuple[float, bool], ...]
+    volume_concurrency: int
+
+
+LOCAL_PLAN = Plan(MODES, 0.7, ((0.7, False), (0.87, False), (0.87, True)), 32)
+L4_PLAN = Plan(
+    {k: MODES[k] for k in ("rp11_raw", "rp11_processed")}, 0.92, ((0.92, False), (0.92, True)), VOLUME_PROMPTS
+)
 # The L4 run's divergence, to read in every mode that reaches it with the same tokens before it.
 L4_PROMPT, L4_TOKEN = 0, 39
 
@@ -92,8 +111,8 @@ def greedy_arm(arm: str, cfg: dict, params: dict, texts: list[str], out: Path) -
         return d1_local.asyncio.run(d1_local.chat_all(url, texts, 1, **request))
 
 
-def greedy_mode(name: str, mode: dict, texts: list[str], out: Path) -> dict:
-    cfg = local_cfg(mode["flags"])
+def greedy_mode(name: str, mode: dict, texts: list[str], out: Path, utilization: float = 0.7) -> dict:
+    cfg = local_cfg(mode["flags"], utilization)
     print(f"greedy {name}", flush=True)
     replies = {
         label: greedy_arm(arm, cfg, mode["params"], texts, out / name / label)
@@ -114,7 +133,9 @@ def greedy_mode(name: str, mode: dict, texts: list[str], out: Path) -> dict:
     }
 
 
-def lens_collect(utilization: float, texts: list[str], out: Path, volume: list[str] | None = None) -> dict:
+def lens_collect(
+    utilization: float, texts: list[str], out: Path, volume: list[str] | None = None, concurrency: int = 32
+) -> dict:
     """The probe hook through a server at this memory fraction, and what /v1/hooks/collect answers."""
     import httpx
     import torch
@@ -132,9 +153,7 @@ def lens_collect(utilization: float, texts: list[str], out: Path, volume: list[s
             VLLMLensClient(url).register_hooks([d1_l4.make_probe_hook(weights, 0.0, cfg["layer"] - 1)])
             d1_local.asyncio.run(d1_local.chat_all(url, texts, 1, model=cfg["model"], max_tokens=N_TOKENS))
             for length in VOLUME_LENGTHS if volume else ():
-                d1_local.asyncio.run(
-                    d1_local.chat_all(url, volume, VOLUME_CONCURRENCY, model=cfg["model"], max_tokens=length)
-                )
+                d1_local.asyncio.run(d1_local.chat_all(url, volume, concurrency, model=cfg["model"], max_tokens=length))
             memory = d1_l4.free_gpu_memory()
             response = httpx.post(f"{url}/v1/hooks/collect", timeout=120)
             body = parsed_body(response.text)
@@ -154,6 +173,21 @@ def lens_collect(utilization: float, texts: list[str], out: Path, volume: list[s
     }
 
 
+def run_greedy(plan: Plan, texts: list[str], out: Path) -> dict:
+    return {
+        "prompts": N_PROMPTS,
+        "tokens": N_TOKENS,
+        "gpu": d1_l4.free_gpu_memory(),
+        "greedy": {name: greedy_mode(name, mode, texts, out, plan.utilization) for name, mode in plan.modes.items()},
+    }
+
+
+def run_lens(plan: Plan, texts: list[str], volume: list[str], out: Path) -> list[dict]:
+    return [
+        lens_collect(u, texts, out, volume if traffic else None, plan.volume_concurrency) for u, traffic in plan.lens
+    ]
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, required=True)
@@ -162,19 +196,8 @@ def main() -> int:
     args.out.mkdir(parents=True, exist_ok=True)
     texts = prompts_texts()
     path = args.out / "greedy_lens_local.json"
-    if args.lens_only:
-        results = json.loads(path.read_text())
-    else:
-        results = {
-            "prompts": N_PROMPTS,
-            "tokens": N_TOKENS,
-            "gpu": d1_l4.free_gpu_memory(),
-            "greedy": {name: greedy_mode(name, mode, texts, args.out) for name, mode in MODES.items()},
-        }
-    results["lens"] = [
-        *(lens_collect(u, texts, args.out) for u in UTILIZATIONS),
-        lens_collect(VOLUME_UTILIZATION, texts, args.out, prompts_texts(VOLUME_PROMPTS)),
-    ]
+    results = json.loads(path.read_text()) if args.lens_only else run_greedy(LOCAL_PLAN, texts, args.out)
+    results["lens"] = run_lens(LOCAL_PLAN, texts, prompts_texts(VOLUME_PROMPTS), args.out)
     path.write_text(json.dumps(results, indent=2) + "\n")
     return 0
 
