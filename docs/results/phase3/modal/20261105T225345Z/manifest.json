@@ -1,0 +1,49 @@
+{
+  "run_id": "20261105T225345Z",
+  "experiment": "greedy_lens_15b_l4",
+  "commit": "b5ceabcf1a2f1a83e07b45cc4ff9f5c5f218cb55",
+  "command": "uv run --with modal==1.6.1 modal run experiments/phase3/d1_modal.py --spent-usd 0.95 --greedy-lens",
+  "modal": "1.6.1",
+  "rates_usd_per_s": {
+    "L4": 0.000222,
+    "cpu_core": 1.31e-05,
+    "memory_gib": 2.22e-06
+  },
+  "spent_before_usd": 0.95,
+  "worst_case_usd": 1.0477,
+  "timeout_s": 2700,
+  "plan": {
+    "modes": {
+      "rp11_raw": {
+        "params": {},
+        "flags": []
+      },
+      "rp11_processed": {
+        "params": {},
+        "flags": [
+          "--logprobs-mode",
+          "processed_logprobs"
+        ]
+      }
+    },
+    "utilization": 0.92,
+    "lens": [
+      [
+        0.92,
+        false
+      ],
+      [
+        0.92,
+        true
+      ]
+    ],
+    "volume_concurrency": 300
+  },
+  "wall_seconds": 1334.4,
+  "estimated_usd": 0.4609,
+  "nvidia_smi": "NVIDIA L4, GPU-24fb2674-aec9-f87a-2305-24afb089b2d7, 610.57.04, 23034 MiB",
+  "environment": {
+    "returncode": 0,
+    "seconds": 13.1
+  }
+}
