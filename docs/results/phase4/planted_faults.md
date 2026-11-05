@@ -125,6 +125,8 @@ Counts of 1,000 resamples. Graded rows have no bar and show where detection fall
 
 A first run was lost at 67 rows when a disk failure stopped it, and its partial rows weren't used. This run started from nothing. It was killed with `kill -9` after 9 rows and resumed, and the resume reported 9 rows already written, left those lines unchanged, wrote no key twice and finished all 106 rows and 7 end-to-end cases.
 
+The only later change to the script is one phrase of a docstring, so the numbers still describe the current code, though the changed hash means a resume of those rows would be refused.
+
 ## Reproduce
 
 ```bash

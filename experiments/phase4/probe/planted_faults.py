@@ -357,7 +357,7 @@ def snapshot(ids, labels, metadata, **arrays) -> hulder.Snapshot:
 
 def end_to_end(store: RowStore) -> list[dict]:
     """A few faults through `hulder check` as files, at the frozen threshold on calibration. Each has
-    its exit code fixed here, from the exit codes and the rule. Each case is written as it finishes."""
+    its exit code fixed here, from the exit codes in `docs/design.md` and the rule. Each case is written as it finishes."""
     WORK.mkdir(parents=True, exist_ok=True)
     probe = hulder.Probe.load(PROBE)
     data = load_split("calibration", probe)
