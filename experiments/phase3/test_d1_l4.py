@@ -12,6 +12,12 @@ import numpy as np
 import pytest
 
 
+@pytest.fixture(autouse=True)
+def no_model_on_disk(monkeypatch):
+    """No test here reads a real model's generation_config.json from the HF cache."""
+    monkeypatch.setattr(r, "generation_config_of", lambda cfg: {})
+
+
 def test_schedule_rotates_the_arms_each_round_starting_with_the_baseline():
     assert r.schedule(("a", "b", "c"), rounds=3) == [
         (0, "a"), (0, "b"), (0, "c"),
@@ -130,6 +136,75 @@ def test_the_tie_bound_is_two_bf16_logit_steps():
 )
 def test_a_divergence_within_two_bf16_steps_up_to_float_rounding_is_within_bound(margin, expected):
     assert r.divergence_class(margin) == expected
+
+
+@pytest.mark.parametrize("margin", [-2.6875, -0.125, -1e-9, float("nan"), float("inf"), float("-inf")])
+def test_a_margin_a_top_two_gap_cannot_have_counts_as_a_change(margin):
+    # -2.6875 is the small model's L4 run: the sampled token listed first, below the raw favourite.
+    assert r.divergence_class(margin) == "change"
+
+
+def test_a_negative_margin_fires_the_generation_stop_rule():
+    assert r.generation_fails(diverged(-2.6875), plain_vs_plain=[diverged()]) is True
+
+
+QWEN25_15B_GENERATION_CONFIG = {"repetition_penalty": 1.1, "temperature": 0.7, "top_k": 20, "top_p": 0.8}
+QWEN3_4B_GENERATION_CONFIG = {"temperature": 0.6, "top_k": 20, "top_p": 0.95}
+
+
+def test_margins_are_refused_on_raw_logprobs_with_a_repetition_penalty():
+    refusal = r.margin_refusal(QWEN25_15B_GENERATION_CONFIG, params={}, serve_flags=[])
+    assert "repetition_penalty" in refusal
+
+
+def test_margins_are_read_when_nothing_changes_the_logits_before_the_greedy_choice():
+    assert r.margin_refusal(QWEN3_4B_GENERATION_CONFIG, params={}, serve_flags=[]) is None
+    assert r.margin_refusal(QWEN25_15B_GENERATION_CONFIG, {"repetition_penalty": 1.0}, serve_flags=[]) is None
+
+
+@pytest.mark.parametrize(
+    "params",
+    [
+        {"frequency_penalty": 0.5},
+        {"presence_penalty": 0.5},
+        {"logit_bias": {"5": 1.0}},
+        {"min_tokens": 4},
+        {"allowed_token_ids": [1, 2]},
+        {"bad_words": ["x"]},
+        {"repetition_penalty": 1.2},
+    ],
+)
+def test_a_request_can_bring_its_own_logit_processor(params):
+    assert next(iter(params)) in r.margin_refusal({}, params, serve_flags=[])
+
+
+@pytest.mark.parametrize("mode", ["processed_logprobs", "processed_logits"])
+def test_margins_after_the_processors_are_read(mode):
+    assert r.margin_refusal(QWEN25_15B_GENERATION_CONFIG, {}, ["--seed", "0", "--logprobs-mode", mode]) is None
+
+
+@pytest.mark.parametrize("flags", [["--logprobs-mode", "raw_logits"], ["--logprobs-mode", "raw_logprobs"]])
+def test_raw_margins_are_still_refused_when_named_explicitly(flags):
+    assert r.margin_refusal(QWEN25_15B_GENERATION_CONFIG, {}, flags) is not None
+
+
+def test_a_container_refuses_unreadable_margins_before_any_arm_runs(monkeypatch, tmp_path):
+    monkeypatch.setattr(r, "generation_config_of", lambda cfg: QWEN25_15B_GENERATION_CONFIG)
+    monkeypatch.setattr(r, "record_environment", lambda *a: pytest.fail("got past the refusal"))
+    with pytest.raises(RuntimeError, match="repetition_penalty"):
+        r.in_container({"serve": []}, {}, tmp_path, r.OVERHEAD_15B, r.OVERHEAD_15B_TIMEOUTS, tmp_path, lambda: None)
+
+
+def test_the_small_models_greedy_check_turns_its_repetition_penalty_off():
+    cfg = r.OVERHEAD_15B_CFG
+    params = r.greedy_request_params(cfg, {"gen_tokens": 64})
+    assert params["repetition_penalty"] == 1.0
+    assert params["top_logprobs"] == 2
+    assert r.margin_refusal(QWEN25_15B_GENERATION_CONFIG, params, cfg["serve"]) is None
+
+
+def test_a_config_without_greedy_params_asks_for_nothing_extra():
+    assert "repetition_penalty" not in r.greedy_request_params({"model": "m"}, {"gen_tokens": 64})
 
 
 def test_generation_is_undecided_before_any_plain_against_plain_comparison():

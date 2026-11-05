@@ -312,12 +312,64 @@ def stock_against_zero_draft(runs: list[dict]) -> list[dict]:
 
 
 def divergence_class(reference_margin: float | None) -> str:
-    """A first divergence by the reference's top-two margin there. None means a reply ended early."""
-    if reference_margin == 0:
-        return "exact tie"
-    if reference_margin is not None and reference_margin <= TIE_BOUND + TIE_TOLERANCE:
-        return "within bound"
-    return "change"
+    """A first divergence by the reference's top-two margin there. None means a reply ended early.
+    Only a finite margin of at least 0 says how close the decision was. Anything else, such as a
+    negative margin from logprobs read before a repetition penalty, says nothing, so it's a change."""
+    if reference_margin is None or not 0 <= reference_margin <= TIE_BOUND + TIE_TOLERANCE:
+        return "change"
+    return "exact tie" if reference_margin == 0 else "within bound"
+
+
+# What changes logits before a greedy choice, each with the value that leaves them alone (nothing,
+# otherwise). vLLM's model runners read raw logprobs before all of them (v1/worker/gpu/sample/sampler.py).
+LOGIT_PROCESSORS = {
+    "repetition_penalty": 1.0, "frequency_penalty": 0.0, "presence_penalty": 0.0,
+    "logit_bias": None, "min_tokens": 0, "allowed_token_ids": None, "bad_words": None,
+}  # fmt: skip
+
+
+def margin_refusal(generation_config: dict, params: dict, serve_flags: list[str]) -> str | None:
+    """Why a greedy check's margins can't say how close a decision was, or None if they can. A
+    request's params override the model's generation_config. Margins taken before a logit processor
+    aren't the values the token was chosen from, so divergence_class can't read them."""
+    if "--logprobs-mode" in serve_flags and serve_flags[serve_flags.index("--logprobs-mode") + 1].startswith(
+        "processed"
+    ):
+        return None
+    settings = {**generation_config, **params}
+    active = [k for k, neutral in LOGIT_PROCESSORS.items() if settings.get(k, neutral) not in (neutral, [], {})]
+    if not active:
+        return None
+    return (
+        f"the greedy check can't classify margins read before {', '.join(active)}: "
+        'set it neutral in cfg["greedy_params"] or serve with --logprobs-mode processed_logprobs'
+    )
+
+
+def greedy_request_params(cfg: dict, workload: dict) -> dict:
+    """A greedy check's request settings, with whatever the config needs to keep its margins readable."""
+    params = {"model": cfg["model"], "max_tokens": workload["gen_tokens"], "logprobs": True, "top_logprobs": 2}
+    return {**params, **cfg.get("greedy_params", {})}
+
+
+def generation_config_of(cfg: dict) -> dict:
+    """The served model's generation_config.json at its pinned revision, or nothing if it has none."""
+    from huggingface_hub import hf_hub_download
+    from huggingface_hub.errors import EntryNotFoundError
+
+    flags = cfg["serve"]
+    try:
+        path = hf_hub_download(cfg["model"], "generation_config.json", revision=flags[flags.index("--revision") + 1])
+    except EntryNotFoundError:
+        return {}
+    return json.loads(Path(path).read_text())
+
+
+def refuse_unreadable_margins(cfg: dict) -> None:
+    """Raises RuntimeError if this config's greedy check couldn't classify its divergences."""
+    params = cfg.get("greedy_params", {})
+    if refusal := margin_refusal(generation_config_of(cfg), params, cfg.get("serve", [])):
+        raise RuntimeError(refusal)
 
 
 def non_tie_divergences(comparison: dict) -> int:
@@ -821,7 +873,7 @@ def run_arm(arm: str, rnd: int, cfg: dict, workload: dict, out: Path, rate: floa
                 weights = torch.randn(cfg["hidden_size"], generator=generator) / math.sqrt(cfg["hidden_size"])
                 # vllm-lens's layer index is one below hulder's layer id (d1_local.md, check 5).
                 VLLMLensClient(url).register_hooks([make_probe_hook(weights, 0.0, cfg["layer"] - 1)])
-            params = {"model": cfg["model"], "max_tokens": workload["gen_tokens"], "logprobs": True, "top_logprobs": 2}
+            params = greedy_request_params(cfg, workload)
             replies = d1_local.chat_all(url, workload["gen_prompts"], 1, **params)
             result["generate"] = d1_local.asyncio.run(d1_local.asyncio.wait_for(replies, deadline - time.time()))
             dataset = run_dir / "bench.jsonl"
@@ -1051,6 +1103,7 @@ def in_container(cfg: dict, workload: dict, out: Path, experiment: Experiment, t
                  commit, command: list[str] | None = None) -> dict:  # fmt: skip
     """What one container does: the environment record first, the image's packages, every arm-run,
     then the results and every file to return."""
+    refuse_unreadable_margins(cfg)
     out.mkdir(parents=True, exist_ok=True)
     environment = record_environment(out, persist, commit, command)
     (out / "packages.txt").write_text(installed_packages())
@@ -1065,6 +1118,7 @@ SMOKE = {
     "tokenizer": "Qwen/Qwen2.5-1.5B-Instruct",
     "hidden_size": 1536,
     "layer": 20,
+    "greedy_params": {"repetition_penalty": 1.0},  # as OVERHEAD_15B_CFG
     "serve": [
         "--revision",
         "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
@@ -1095,6 +1149,8 @@ OVERHEAD_15B_CFG = {
     "hidden_size": 1536,
     "layer": 20,
     "probe_path": bundled_probe_path(),
+    # Its generation_config.json sets repetition_penalty to 1.1, and logprobs are raw (margin_refusal).
+    "greedy_params": {"repetition_penalty": 1.0},
     # fp16 to match the probe and its reference, captured in fp16 on the 2070.
     "serve": [
         "--revision", d1_local.REVISION, "--dtype", "float16", "--max-model-len", "2048",
@@ -1229,6 +1285,7 @@ def main(argv: list[str] | None = None) -> int:
         return smoke_overhead(workload, args.out, timeouts, lens=args.overhead_lens)
     args.out.mkdir(parents=True, exist_ok=True)
     experiment = ZERO_DRAFT._replace(rounds=2) if args.zero_draft else COST._replace(rounds=1)
+    refuse_unreadable_margins(SMOKE)
     results = run_all(SMOKE, workload, args.out, experiment, timeouts=timeouts)
     (args.out / "d1_l4.json").write_text(json.dumps(results, indent=2, default=str) + "\n")
     print(json.dumps({k: results[k] for k in ("stopped", "verdicts", "divergences")}, indent=2))

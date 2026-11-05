@@ -1,0 +1,600 @@
+{
+  "prompts": 16,
+  "tokens": 64,
+  "gpu": {
+    "used_mib": 0,
+    "free_mib": 8006
+  },
+  "greedy": {
+    "rp11_raw": {
+      "comparisons": {
+        "fresh_baseline": {
+          "identical": 16,
+          "of": 16,
+          "diverged": []
+        },
+        "scoring": {
+          "identical": 16,
+          "of": 16,
+          "diverged": []
+        }
+      },
+      "classes": {
+        "fresh_baseline": [],
+        "scoring": []
+      },
+      "l4_position": {
+        "baseline": {
+          "token": " your",
+          "top": [
+            {
+              "token": " your",
+              "logprob": -0.3244040906429291
+            },
+            {
+              "token": " the",
+              "logprob": -1.6837791204452515
+            }
+          ]
+        },
+        "fresh_baseline": {
+          "token": " your",
+          "top": [
+            {
+              "token": " your",
+              "logprob": -0.3244040906429291
+            },
+            {
+              "token": " the",
+              "logprob": -1.6837791204452515
+            }
+          ]
+        },
+        "scoring": {
+          "token": " your",
+          "top": [
+            {
+              "token": " your",
+              "logprob": -0.3244040906429291
+            },
+            {
+              "token": " the",
+              "logprob": -1.6837791204452515
+            }
+          ]
+        }
+      },
+      "tokens_before_l4_position": {
+        "baseline": [
+          "Yes",
+          ",",
+          " I",
+          " can",
+          " help",
+          " you",
+          " with",
+          " that",
+          "!",
+          " Here",
+          "'s",
+          " an",
+          " overview",
+          " of",
+          " the",
+          " steps",
+          " involved",
+          " in",
+          " designing",
+          " a",
+          " multi",
+          "-",
+          "tenant",
+          " database",
+          " architecture",
+          ":\n\n",
+          "1",
+          ".",
+          " Define",
+          " your",
+          " tenants",
+          ":",
+          " The",
+          " first",
+          " step",
+          " is",
+          " to",
+          " define",
+          " who"
+        ],
+        "fresh_baseline": [
+          "Yes",
+          ",",
+          " I",
+          " can",
+          " help",
+          " you",
+          " with",
+          " that",
+          "!",
+          " Here",
+          "'s",
+          " an",
+          " overview",
+          " of",
+          " the",
+          " steps",
+          " involved",
+          " in",
+          " designing",
+          " a",
+          " multi",
+          "-",
+          "tenant",
+          " database",
+          " architecture",
+          ":\n\n",
+          "1",
+          ".",
+          " Define",
+          " your",
+          " tenants",
+          ":",
+          " The",
+          " first",
+          " step",
+          " is",
+          " to",
+          " define",
+          " who"
+        ],
+        "scoring": [
+          "Yes",
+          ",",
+          " I",
+          " can",
+          " help",
+          " you",
+          " with",
+          " that",
+          "!",
+          " Here",
+          "'s",
+          " an",
+          " overview",
+          " of",
+          " the",
+          " steps",
+          " involved",
+          " in",
+          " designing",
+          " a",
+          " multi",
+          "-",
+          "tenant",
+          " database",
+          " architecture",
+          ":\n\n",
+          "1",
+          ".",
+          " Define",
+          " your",
+          " tenants",
+          ":",
+          " The",
+          " first",
+          " step",
+          " is",
+          " to",
+          " define",
+          " who"
+        ]
+      }
+    },
+    "rp10_raw": {
+      "comparisons": {
+        "fresh_baseline": {
+          "identical": 16,
+          "of": 16,
+          "diverged": []
+        },
+        "scoring": {
+          "identical": 16,
+          "of": 16,
+          "diverged": []
+        }
+      },
+      "classes": {
+        "fresh_baseline": [],
+        "scoring": []
+      },
+      "l4_position": {
+        "baseline": {
+          "token": " define",
+          "top": [
+            {
+              "token": " define",
+              "logprob": -0.6639121174812317
+            },
+            {
+              "token": " understand",
+              "logprob": -1.054537057876587
+            }
+          ]
+        },
+        "fresh_baseline": {
+          "token": " define",
+          "top": [
+            {
+              "token": " define",
+              "logprob": -0.6639121174812317
+            },
+            {
+              "token": " understand",
+              "logprob": -1.054537057876587
+            }
+          ]
+        },
+        "scoring": {
+          "token": " define",
+          "top": [
+            {
+              "token": " define",
+              "logprob": -0.6639121174812317
+            },
+            {
+              "token": " understand",
+              "logprob": -1.054537057876587
+            }
+          ]
+        }
+      },
+      "tokens_before_l4_position": {
+        "baseline": [
+          "Yes",
+          ",",
+          " I",
+          " can",
+          " help",
+          " you",
+          " design",
+          " a",
+          " multi",
+          "-",
+          "tenant",
+          " database",
+          " architecture",
+          ".",
+          " Here",
+          " are",
+          " some",
+          " general",
+          " steps",
+          " you",
+          " can",
+          " follow",
+          ":\n\n",
+          "1",
+          ".",
+          " Define",
+          " the",
+          " tenant",
+          " requirements",
+          ":",
+          " Before",
+          " designing",
+          " the",
+          " database",
+          " architecture",
+          ",",
+          " you",
+          " need",
+          " to"
+        ],
+        "fresh_baseline": [
+          "Yes",
+          ",",
+          " I",
+          " can",
+          " help",
+          " you",
+          " design",
+          " a",
+          " multi",
+          "-",
+          "tenant",
+          " database",
+          " architecture",
+          ".",
+          " Here",
+          " are",
+          " some",
+          " general",
+          " steps",
+          " you",
+          " can",
+          " follow",
+          ":\n\n",
+          "1",
+          ".",
+          " Define",
+          " the",
+          " tenant",
+          " requirements",
+          ":",
+          " Before",
+          " designing",
+          " the",
+          " database",
+          " architecture",
+          ",",
+          " you",
+          " need",
+          " to"
+        ],
+        "scoring": [
+          "Yes",
+          ",",
+          " I",
+          " can",
+          " help",
+          " you",
+          " design",
+          " a",
+          " multi",
+          "-",
+          "tenant",
+          " database",
+          " architecture",
+          ".",
+          " Here",
+          " are",
+          " some",
+          " general",
+          " steps",
+          " you",
+          " can",
+          " follow",
+          ":\n\n",
+          "1",
+          ".",
+          " Define",
+          " the",
+          " tenant",
+          " requirements",
+          ":",
+          " Before",
+          " designing",
+          " the",
+          " database",
+          " architecture",
+          ",",
+          " you",
+          " need",
+          " to"
+        ]
+      }
+    },
+    "rp11_processed": {
+      "comparisons": {
+        "fresh_baseline": {
+          "identical": 16,
+          "of": 16,
+          "diverged": []
+        },
+        "scoring": {
+          "identical": 16,
+          "of": 16,
+          "diverged": []
+        }
+      },
+      "classes": {
+        "fresh_baseline": [],
+        "scoring": []
+      },
+      "l4_position": {
+        "baseline": {
+          "token": " your",
+          "top": [
+            {
+              "token": " your",
+              "logprob": -1.0724879503250122
+            },
+            {
+              "token": " will",
+              "logprob": -1.0767489671707153
+            }
+          ]
+        },
+        "fresh_baseline": {
+          "token": " your",
+          "top": [
+            {
+              "token": " your",
+              "logprob": -1.0724879503250122
+            },
+            {
+              "token": " will",
+              "logprob": -1.0767489671707153
+            }
+          ]
+        },
+        "scoring": {
+          "token": " your",
+          "top": [
+            {
+              "token": " your",
+              "logprob": -1.0724879503250122
+            },
+            {
+              "token": " will",
+              "logprob": -1.0767489671707153
+            }
+          ]
+        }
+      },
+      "tokens_before_l4_position": {
+        "baseline": [
+          "Yes",
+          ",",
+          " I",
+          " can",
+          " help",
+          " you",
+          " with",
+          " that",
+          "!",
+          " Here",
+          "'s",
+          " an",
+          " overview",
+          " of",
+          " the",
+          " steps",
+          " involved",
+          " in",
+          " designing",
+          " a",
+          " multi",
+          "-",
+          "tenant",
+          " database",
+          " architecture",
+          ":\n\n",
+          "1",
+          ".",
+          " Define",
+          " your",
+          " tenants",
+          ":",
+          " The",
+          " first",
+          " step",
+          " is",
+          " to",
+          " define",
+          " who"
+        ],
+        "fresh_baseline": [
+          "Yes",
+          ",",
+          " I",
+          " can",
+          " help",
+          " you",
+          " with",
+          " that",
+          "!",
+          " Here",
+          "'s",
+          " an",
+          " overview",
+          " of",
+          " the",
+          " steps",
+          " involved",
+          " in",
+          " designing",
+          " a",
+          " multi",
+          "-",
+          "tenant",
+          " database",
+          " architecture",
+          ":\n\n",
+          "1",
+          ".",
+          " Define",
+          " your",
+          " tenants",
+          ":",
+          " The",
+          " first",
+          " step",
+          " is",
+          " to",
+          " define",
+          " who"
+        ],
+        "scoring": [
+          "Yes",
+          ",",
+          " I",
+          " can",
+          " help",
+          " you",
+          " with",
+          " that",
+          "!",
+          " Here",
+          "'s",
+          " an",
+          " overview",
+          " of",
+          " the",
+          " steps",
+          " involved",
+          " in",
+          " designing",
+          " a",
+          " multi",
+          "-",
+          "tenant",
+          " database",
+          " architecture",
+          ":\n\n",
+          "1",
+          ".",
+          " Define",
+          " your",
+          " tenants",
+          ":",
+          " The",
+          " first",
+          " step",
+          " is",
+          " to",
+          " define",
+          " who"
+        ]
+      }
+    }
+  },
+  "lens": [
+    {
+      "utilization": 0.7,
+      "requests": 16,
+      "free_mib_before_collect": 2174,
+      "status": 200,
+      "direct_results": 16,
+      "body_keys": [
+        "results"
+      ],
+      "client_results": 16,
+      "out_of_memory_in_log": false
+    },
+    {
+      "utilization": 0.87,
+      "requests": 16,
+      "free_mib_before_collect": 782,
+      "status": 200,
+      "direct_results": 16,
+      "body_keys": [
+        "results"
+      ],
+      "client_results": 16,
+      "out_of_memory_in_log": false
+    },
+    {
+      "utilization": 0.87,
+      "requests": 616,
+      "free_mib_before_collect": 778,
+      "status": 200,
+      "direct_results": 616,
+      "body_keys": [
+        "results"
+      ],
+      "client_results": 616,
+      "out_of_memory_in_log": false
+    }
+  ]
+}
