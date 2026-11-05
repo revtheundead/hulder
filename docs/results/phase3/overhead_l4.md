@@ -1,6 +1,6 @@
 # Phase 3 overhead table on the L4
 
-**On Qwen3-4B on an L4, the scoring connector on zero-draft B passes the cost rule on all three metrics, with no drafts and no stop rule fired, and turning prefix caching on holds at the frozen threshold.** **On Qwen2.5-1.5B it passes only p99 TPOT.** Throughput and p99 TTFT are inconclusive because one baseline server was disturbed, cause unknown, though every overhead is under its threshold, and caching on holds there too. The small model's greedy check has a flaw in how it was judged, described in its section. The setup, the rules and the cost were fixed on this page before the runs.
+**On Qwen3-4B on an L4, the scoring connector on zero-draft B passes the cost rule on all three metrics, with no drafts and no stop rule fired, and turning prefix caching on holds at the frozen threshold.** **On Qwen2.5-1.5B it passes only p99 TPOT.** Throughput and p99 TTFT are inconclusive because one baseline server was disturbed, cause unknown, though every overhead is under its threshold, and caching on holds there too. The small model's greedy check was judged by a flawed classifier, now fixed, and under the fixed one that run's stop rule would fire, as its section describes. The setup, the rules and the cost were fixed on this page before the runs.
 
 | Model | Run | Saturation loss | p99 TTFT | p99 TPOT | `scoring` | Short replies, `scoring` | Caching on |
 |---|---|---|---|---|---|---|---|
@@ -79,11 +79,21 @@ The reason is one baseline server, in round 1, and what disturbed it is unknown.
 
 ### The greedy check
 
-**A stop rule may have been excused here by a flaw in the check, so read this model's "no stop" with that in mind.** `scoring` and `scoring_caching` diverged from the baseline on one prompt of 16 on all 6 servers, at the same token, prompt 0's token 39, `" will"` against `" your"`. Fresh baselines diverged on 0. Lens diverged on one prompt at an exact tie.
+**Under the check as it now stands, this run's stop rule would fire.** The run isn't reclassified, and its records stay as they came out. `scoring` and `scoring_caching` diverged from the baseline on one prompt of 16 on all 6 servers, at the same token, prompt 0's token 39, `" will"` against `" your"`. Fresh baselines diverged on 0. Lens diverged on one prompt at an exact tie.
 
-The run filed that divergence as "within bound", at a margin of −2.6875 against a tie bound of 0.25. That margin is the wrong sign. vLLM lists the sampled token first, so the baseline's chosen token sits 2.69 below its alternative, which a greedy step shouldn't do on the values it chose from. The check only tests that the margin is at most the bound, so a negative one passes. Had it been filed as a change, the stop rule would have fired, since it's 1 against the fresh baselines' 0.
+The run filed that divergence as "within bound", at a margin of −2.6875 against a tie bound of 0.25. That margin is the wrong sign. vLLM lists the sampled token first, so the baseline's chosen token sits 2.69 below its alternative, which a greedy step shouldn't do on the values it chose from. The check only tested that the margin was at most the bound, so a negative one passed. A negative or non-finite margin now counts as a change, which makes it 1 against the fresh baselines' 0.
 
-The likely cause is repetition penalty. This model's `generation_config.json` sets `repetition_penalty` to 1.1, the check doesn't override it, and vLLM's logprobs are raw by default (`logprobs_mode`), so they don't show the penalised values that chose the token. If so, on this model the margins can't say how close a decision was, in either direction, and the bound was fixed for a model with no such penalty in the way (Qwen3-4B's margins here were all 0 to 0.25). This is read from the config and vLLM's defaults, not tested. It leaves this divergence unclassified, neither a tie nor a change. The check wasn't changed after the run.
+Repetition penalty explains the sign. This model's `generation_config.json` sets `repetition_penalty` to 1.1, the check didn't override it, and vLLM's logprobs are raw by default (`logprobs_mode`), so they don't show the penalised values that chose the token. The check now refuses to classify margins on a config with a logit processor unless the server reports them after it, and this model's greedy check asks for `repetition_penalty` 1.0. Neither has run on an L4.
+
+**The divergence looks like a near-tie, on a 2070 and not on the L4.** A local rerun on the same 16 prompts and 64 tokens, with the GPU otherwise idle, gave:
+
+| Setting | Token at prompt 0's position 39 | Top two logprobs | Margin | Fresh baseline and `scoring` identical to baseline |
+|---|---|---|---|---|
+| Penalty 1.1, raw, as the run | `" your"` | `" your"` −0.3244, `" the"` −1.6838 | 1.3594 | 16 of 16, both |
+| Penalty 1.1, after the penalty | `" your"` | `" your"` −1.0725, `" will"` −1.0767 | 0.0043 | 16 of 16, both |
+| Penalty 1.0, raw | `" define"` | `" define"` −0.6639, `" understand"` −1.0545 | 0.3906 | 16 of 16, both |
+
+The first row's margin is the one the L4's `scoring` servers recorded at that token, 1.3593750298 in both, so the 2070 appears to be at the same decision. After the penalty, `" your"` and `" will"` are the same two tokens the L4 split on, 0.0043 apart, against a bound of 0.25. That's the evidence for a near-tie. It has three limits. The divergence itself didn't recur here, so what tipped the L4 is unobserved. The margin was read on a 2070, not on the L4's baseline. And at penalty 1.0 the reply has already taken another path by token 39, so that row isn't the same decision, and 16 of 16 there says nothing about whether the L4 would diverge at penalty 1.0.
 
 It doesn't touch the cost figures or the scores. A score is read at the end of prefill, before any generated token.
 
@@ -114,15 +124,32 @@ The short bench's prompts come to about 40 tokens each, against 19 on Qwen3-4B a
 
 **Lens lost 84% of saturation throughput,** at 6.57 to 6.72 req/s against the baseline's 40.6 to 42.4, 84.2, 83.8 and 83.7% by round. It failed the cost rule and didn't sustain the fixed rate, completing 285 and 296 of 1,729 requests in time, so it has no latency figures. The report's throughput verdict reads only round 0, since the two later rounds timed out at the fixed-rate bench, and the other two rounds' figures here come from their saturation benches.
 
-**Lens's hook isn't confirmed to have run on the L4.** `collect_hook_results` returned 0 in round 0, the only round that reached that call, where the local smoke returned 20 and 58. If it didn't run, this is eager mode's cost alone, and lens with a working hook could only cost more. As on Qwen3-4B, the loss can't be split between eager mode and the hook.
+**The 0 from lens's hook was a failed collect, so the hook very probably did run, and the 84% very probably includes it.** `collect_hook_results` returned 0 in round 0, the only round that reached that call. The server's log shows why: `/v1/hooks/collect` answered 500, with a CUDA out-of-memory error in the API process while it unpickled the results, and the client reads a failed answer as no results. Results to unpickle means the hook had produced some, which is an inference from vllm-lens's source and that traceback, since the run has no count of them. This page earlier said the loss might be eager mode's alone and could only grow with a working hook, and that no longer holds. As on Qwen3-4B, the loss can't be split between the two.
+
+**Why it ran out of memory is unexplained.** vllm-lens keeps the hook's GPU tensors as GPU tensors through the pickle, so the API process has to allocate on the GPU, and that much is in the traceback. The failure didn't reproduce locally. On an otherwise idle 2070, `/v1/hooks/collect` answered 200 at every setting:
+
+| `--gpu-memory-utilization` | Requests | Free before collect | Results |
+|---|---|---|---|
+| 0.7 | 16 | 2,174 MiB | 16 |
+| 0.87 | 16 | 782 MiB | 16 |
+| 0.87 | 616, the L4 server's count | 778 MiB | 616 |
+
+0.87 is as high as this GPU starts, since vLLM sees 6.98 of its 8 GiB free, and the L4 ran at 0.92, which by vLLM's figures left it about 1.6 GiB, twice the 2070's room here. So low free memory at startup doesn't explain it on its own, and 616 scores cost almost none. The L4's free memory at the collect itself wasn't recorded. Differences left untested are the L4's concurrency, its driver and what its engine had allocated by then. The failure doesn't change the throughput figures, since the collect comes after the benches.
 
 ### Where this falls short
 
 - **Two of three cost metrics are inconclusive,** on two measured rounds, one of them with a disturbed baseline.
-- **The greedy check can't read this model's margins** (above).
+- **The greedy check's stop rule would now fire on this run,** and the fix hasn't run on an L4 (above).
+- **Lens's out-of-memory failure at collect is unexplained** and has no local reproduction (above).
 - **The reference is from another GPU,** so the score shift doesn't separate the connector from the 2070-to-L4 change.
 - Numerical paths weren't observable, as on Qwen3-4B.
 - Caching on is tested only with unique, short prompts.
+
+The local checks' records are in [`greedy_lens_local.json`](greedy_lens_local.json):
+
+```bash
+source scripts/dev-env.sh && uv run --with vllm-lens==1.3.0 python experiments/phase3/greedy_lens_local.py --out .cache/greedy-lens-local
+```
 
 ## Setup
 
