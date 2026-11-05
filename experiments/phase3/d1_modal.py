@@ -32,6 +32,9 @@ saturation bench of 300 16-token replies after the 128-token one, reported besid
 Each container's first act is `python -m vllm.collect_env`, saved as collect_env.txt with the run's
 files and committed to the Volume under the run id, so a call that fails still leaves it (d1_l4.py).
 `--environment-only` runs just that, on one L4 container, with no model, pre-flight or arm-run.
+`--greedy-lens` reruns the Qwen2.5-1.5B greedy and lens follow-ups on one L4 container
+(greedy_lens_local.py's L4_PLAN), with no pre-flight, the weights already on the Volume, and its own
+guard on one call of at most 45 minutes.
 `--uv-check-only` runs `uv pip list` as collect_env does on one CPU container, with and without a cache
 directory off the Volume, and prints the error collect_env discards.
 
@@ -142,6 +145,8 @@ DOWNLOAD_TIMEOUT_S = 10 * 60
 # collect_env's own timeout and a minute either side for nvidia-smi and the Volume commit.
 ENVIRONMENT_TIMEOUT_S = d1_l4.COLLECT_ENV_TIMEOUT_S + 2 * 60
 UV_CHECK_TIMEOUT_S = 2 * 60
+# Eight servers at about 80 s warm or 320 s cold each, 16 short replies or the run's traffic each.
+GREEDY_LENS_TIMEOUT_S = 45 * 60
 UV_ATTEMPTS = {
     "as_recorded": {"UV_NO_CACHE": None},
     "cache_in_tmp": {"UV_NO_CACHE": None, "UV_CACHE_DIR": "/tmp/uv-cache"},
@@ -187,6 +192,7 @@ image = (
     .add_local_file(str(HERE / "scoring_connector.py"), f"{PHASE3}/scoring_connector.py")
     .add_local_file(str(HERE / "d3_scoring.py"), f"{PHASE3}/d3_scoring.py")
     .add_local_file(str(HERE / "d3_spike.py"), f"{PHASE3}/d3_spike.py")
+    .add_local_file(str(HERE / "greedy_lens_local.py"), f"{PHASE3}/greedy_lens_local.py")
     .add_local_file(str(QWEN3_PROBE), f"{PHASE3}/18_-1.npz")
 )
 app = modal.App("hulder-d1", image=image)
@@ -298,6 +304,89 @@ def uv_check() -> dict:
         "xdg_cache_home": os.environ["XDG_CACHE_HOME"],
         "attempts": d1_l4.uv_check(UV_ATTEMPTS),
     }
+
+
+@app.function(
+    gpu="L4",
+    cpu=lib.GPU_CPU,
+    memory=lib.GPU_MEMORY_GIB * 1024,
+    volumes={CACHE: hf},
+    timeout=GREEDY_LENS_TIMEOUT_S,
+    retries=0,
+    scaledown_window=2,
+)
+def greedy_lens(texts: list[str], volume: list[str], run_id: str) -> dict:
+    """greedy_lens_local.py's L4 plan, then its results and every log. A failed greedy part still
+    leaves the lens part and the logs."""
+    os.environ.update({**CACHE_ENV, **ENGINE_ENV})
+    import greedy_lens_local as g
+
+    out = Path("/tmp/greedy-lens")
+    out.mkdir(parents=True, exist_ok=True)
+    persist = (Path(CACHE) / d1_l4.environment_path(run_id)).parent
+    environment_record = d1_l4.record_environment(out, persist, hf.commit)
+    try:
+        results = g.run_greedy(g.L4_PLAN, texts, out)
+    except Exception as error:  # noqa: BLE001 - lens and the logs must still come back
+        results = {"greedy_error": f"{type(error).__name__}: {error}"}
+    results["lens"] = g.run_lens(g.L4_PLAN, texts, volume, out)
+    files = {
+        str(path.relative_to(out)): path.read_bytes()
+        for path in sorted(out.rglob("*"))
+        if path.is_file() and path.suffix in (".log", ".json", ".txt") and "hidden_states" not in path.parts
+    }
+    return {"results": results, "files": files, "environment": environment_record, "nvidia_smi": nvidia_smi()}
+
+
+def run_greedy_lens(spent_usd: float, out: str) -> None:
+    """One L4 container's greedy and lens rerun, with its own guard and manifest."""
+    import greedy_lens_local as g
+
+    worst = lib.estimate_cost(
+        GREEDY_LENS_TIMEOUT_S + lib.CONTAINER_STARTUP_S, gpu=True, cpu=lib.GPU_CPU, memory_gib=lib.GPU_MEMORY_GIB
+    )
+    if spent_usd + worst > lib.BUDGET_USD:
+        raise SystemExit(f"today's ${spent_usd} plus the worst case ${worst:.2f} would pass ${lib.BUDGET_USD}")
+    run_id = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    run_dir = ROOT / out / run_id
+    run_dir.mkdir(parents=True)
+    manifest = {
+        "run_id": run_id,
+        "experiment": "greedy_lens_15b_l4",
+        "commit": git("rev-parse", "HEAD"),
+        "command": "uv run --with modal==1.6.1 modal run experiments/phase3/d1_modal.py "
+        f"--spent-usd {spent_usd} --greedy-lens",
+        "modal": modal.__version__,
+        "rates_usd_per_s": {"L4": lib.L4_PER_S, "cpu_core": lib.CPU_CORE_PER_S, "memory_gib": lib.MEMORY_GIB_PER_S},
+        "spent_before_usd": spent_usd,
+        "worst_case_usd": round(worst, 4),
+        "timeout_s": GREEDY_LENS_TIMEOUT_S,
+        "plan": g.L4_PLAN._asdict(),
+    }
+
+    def record() -> None:
+        (run_dir / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+
+    record()
+    start = time.time()
+    try:
+        returned = greedy_lens.remote(g.prompts_texts(), g.prompts_texts(g.VOLUME_PROMPTS), run_id)
+    finally:
+        wall = time.time() - start
+        manifest["wall_seconds"] = round(wall, 1)
+        manifest["estimated_usd"] = round(
+            lib.estimate_cost(wall, gpu=True, cpu=lib.GPU_CPU, memory_gib=lib.GPU_MEMORY_GIB), 4
+        )
+        record()
+    for name, data in returned["files"].items():
+        (run_dir / name).parent.mkdir(parents=True, exist_ok=True)
+        (run_dir / name).write_bytes(data)
+    (run_dir / "greedy_lens_l4.json").write_text(json.dumps(returned["results"], indent=2) + "\n")
+    manifest |= {"nvidia_smi": returned["nvidia_smi"], "environment": returned["environment"]}
+    record()
+    print(
+        f"Run {run_id} in {run_dir}, estimated ${manifest['estimated_usd']}. Check the actual charge on Modal's usage page."
+    )
 
 
 def git(*args: str) -> str:
@@ -442,6 +531,7 @@ def main(
     preflight_only: bool = False,
     environment_only: bool = False,
     uv_check_only: bool = False,
+    greedy_lens: bool = False,
 ) -> None:
     if experiment not in EXPERIMENTS:
         raise SystemExit(f"--experiment is one of {', '.join(EXPERIMENTS)}, not {experiment}")
@@ -449,6 +539,9 @@ def main(
         raise SystemExit("the tracked tree has changes; commit them so the manifest's commit is what ran")
     if uv_check_only:
         run_uv_check(spent_usd, out)
+        return
+    if greedy_lens:
+        run_greedy_lens(spent_usd, out)
         return
     if environment_only:
         run_environment(spent_usd, out)
