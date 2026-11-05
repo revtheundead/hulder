@@ -6,12 +6,14 @@ Two stages, with the expected verdicts committed between them:
     source scripts/dev-env.sh
     uv run python experiments/phase4/probe/planted_faults.py expected
     git add docs/results/phase4/planted_faults_expected.json && git commit
-    uv run python experiments/phase4/probe/planted_faults.py run
+    CUDA_VISIBLE_DEVICES="" OMP_NUM_THREADS=1 uv run python experiments/phase4/probe/planted_faults.py run
 
 `expected` plants each fault on every row of a split and reads the verdict rule on the resulting
 population values, without calling `check`. `run` refuses unless that file is committed and matches
 what it recomputes, then draws 1,000 pair-preserving resamples of each row through `hulder.check`,
-and runs a few cases through the CLI as a user would. CPU only and free.
+and runs a few cases through the CLI as a user would. CPU only and free. Each finished row goes to
+.cache/planted-faults/rows.jsonl at once, and a rerun resumes from there unless the expected
+verdicts or the code changed, which it refuses.
 
 Calibration is the primary verdict and test its pre-declared replication. The bar applies to rows
 whose threshold is refit per resample, the gate's own assumption. Rows at the frozen threshold are
@@ -19,14 +21,14 @@ reported and don't count.
 """
 
 import argparse
+import hashlib
 import json
-import multiprocessing
-import os
 import subprocess
 import sys
 from pathlib import Path
 
 import numpy as np
+from resumable_rows import RowStore, run_rows
 from scipy.special import expit
 from scipy.stats import binomtest, rankdata
 
@@ -41,6 +43,12 @@ KEPT = ROOT / ".cache/modal-runs/20261022T125644Z/kept"
 RERUN = ROOT / ".cache/modal-runs/20261026T114520Z/shuffled"
 PROBE = ROOT / ".cache/probe/qwen3/18_-1.npz"
 WORK = ROOT / ".cache/planted-faults"
+CODE = (
+    Path(__file__).resolve(),
+    Path(__file__).resolve().parent / "resumable_rows.py",
+    ROOT / "src/hulder/gate/check.py",
+    ROOT / "src/hulder/gate/stats.py",
+)
 
 TARGET_FPR = 0.01
 FROZEN_THRESHOLD = 0.8025219440460205  # the primary's, docs/results/phase4/probe_qwen3_selection.json
@@ -319,9 +327,26 @@ def run_row(row: dict) -> dict:
         threshold = row["threshold"] if row["mode"] == "frozen" else refit_threshold(ref[y == 0], TARGET_FPR)
         verdicts.append(hulder.check(ref, cand, y, threshold, TARGET_FPR, seed=SEED + i).verdict.value)
     out = {**row, **tally(verdicts, row["expected"])}
-    out["meets_bar"] = meets_bar(row["kind"], out)
+    out["key"], out["meets_bar"] = row_key(row), meets_bar(row["kind"], out)
     print(row["split"], row["mode"], row["fault"], row["expected"], out["counts"], flush=True)
     return out
+
+
+def row_key(row: dict) -> str:
+    return f"{row['split']}/{row['mode']}/{row['fault']}"
+
+
+def identity_of(expected: Path, code: tuple[Path, ...], resamples: int, seed: int) -> dict:
+    """What a resume must share with the rows already written."""
+    digest = hashlib.sha256()
+    for path in code:
+        digest.update(path.read_bytes())
+    return {
+        "expected_sha256": hashlib.sha256(expected.read_bytes()).hexdigest(),
+        "code_sha256": digest.hexdigest(),
+        "resamples": resamples,
+        "seed": seed,
+    }
 
 
 def snapshot(ids, labels, metadata, **arrays) -> hulder.Snapshot:
@@ -330,9 +355,9 @@ def snapshot(ids, labels, metadata, **arrays) -> hulder.Snapshot:
     )
 
 
-def end_to_end() -> list[dict]:
+def end_to_end(store: RowStore) -> list[dict]:
     """A few faults through `hulder check` as files, at the frozen threshold on calibration. Each has
-    its exit code fixed here, from the exit codes and the rule."""
+    its exit code fixed here, from the exit codes and the rule. Each case is written as it finishes."""
     WORK.mkdir(parents=True, exist_ok=True)
     probe = hulder.Probe.load(PROBE)
     data = load_split("calibration", probe)
@@ -389,9 +414,21 @@ def end_to_end() -> list[dict]:
     ]
     out = []
     for name, args, expected in cases:
+        if f"end_to_end/{name}" in store.done:
+            out.append(store.done[f"end_to_end/{name}"])
+            continue
         run = subprocess.run([str(exe), "check", *map(str, args)], capture_output=True, text=True, check=False)
         last = (run.stderr.strip().splitlines() or [""])[-1]
-        out.append({"case": name, "expected_exit": expected, "exit": run.returncode, "stderr_last_line": last[:300]})
+        out.append(
+            {
+                "key": f"end_to_end/{name}",
+                "case": name,
+                "expected_exit": expected,
+                "exit": run.returncode,
+                "stderr_last_line": last[:300],
+            }
+        )
+        store.add(out[-1])
         print(out[-1], flush=True)
     return out
 
@@ -406,29 +443,24 @@ def stage_run(workers: int) -> int:
         print(f"{EXPECTED.name} differs from what the code recomputes.", file=sys.stderr)
         return 1
     _ARRAYS.update(arrays)
-    with multiprocessing.get_context("fork").Pool(workers) as pool:
-        results = pool.map(run_row, rows, chunksize=1)
     sys.path.insert(0, str(ROOT / "experiments/phase1/probe"))
     from common import run_manifest
 
-    report = {
-        "expected_file_commit": subprocess.run(
-            ["git", "log", "-1", "--format=%H", "--", EXPECTED.name],
-            cwd=EXPECTED.parent,
-            capture_output=True,
-            text=True,
-            check=True,
-        ).stdout.strip(),
-        "rows": results,
-        "end_to_end": end_to_end(),
-        "run_manifest": run_manifest(seed=SEED),
-    }
+    git_log = ["git", "log", "-1", "--format=%H", "--", EXPECTED.name]
+    expected_commit = subprocess.run(git_log, cwd=EXPECTED.parent, capture_output=True, text=True, check=True)
+    store = RowStore(
+        WORK / "rows.jsonl",
+        identity_of(EXPECTED, CODE, RESAMPLES, SEED),
+        extra={"expected_file_commit": expected_commit.stdout.strip(), "run_manifest": run_manifest(seed=SEED)},
+    )
+    print(f"{len(store.done)} rows already written", flush=True)
+    results = run_rows([{**row, "key": row_key(row)} for row in rows], run_row, store, workers)
+    report = {**store.extra, "rows": results, "end_to_end": end_to_end(store)}
     RESULTS.write_text(json.dumps(report, indent=2) + "\n")
     return 0
 
 
 def main() -> int:
-    os.environ.setdefault("OMP_NUM_THREADS", "1")
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("stage", choices=("expected", "run"))
     parser.add_argument("--workers", type=int, default=5)

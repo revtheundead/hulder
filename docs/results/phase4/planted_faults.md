@@ -30,10 +30,10 @@ The rates are compared with the bar as point estimates, with exact 95% intervals
 ## Reproduce
 
 ```bash
-source scripts/dev-env.sh && uv run python experiments/phase4/probe/planted_faults.py run
+source scripts/dev-env.sh && CUDA_VISIBLE_DEVICES="" OMP_NUM_THREADS=1 uv run python experiments/phase4/probe/planted_faults.py run
 ```
 
-`run` refuses unless the expected verdicts are committed and match what the code recomputes. It's CPU only and needs `kept/` and the shuffled rerun.
+`run` refuses unless the expected verdicts are committed and match what the code recomputes. It's CPU only and needs `kept/` and the shuffled rerun. Each row is written as soon as it finishes, and a rerun resumes from those rows unless the expected verdicts or the code changed.
 
 ## What this can't show
 

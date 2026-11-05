@@ -141,6 +141,19 @@ def test_a_verdict_tally_counts_all_four_with_exact_intervals():
     assert out["expected_ci95"][0] < 0.9 < out["expected_ci95"][1]
 
 
+def test_a_change_to_the_expected_verdicts_or_the_code_changes_the_identity(tmp_path):
+    expected, code = tmp_path / "expected.json", tmp_path / "code.py"
+    expected.write_text("{}")
+    code.write_text("a")
+    first = p.identity_of(expected, (code,), 1000, 0)
+    assert p.identity_of(expected, (code,), 1000, 0) == first
+    code.write_text("b")
+    changed_code = p.identity_of(expected, (code,), 1000, 0)
+    assert changed_code["code_sha256"] != first["code_sha256"]
+    expected.write_text('{"a": 1}')
+    assert p.identity_of(expected, (code,), 1000, 0)["expected_sha256"] != first["expected_sha256"]
+
+
 def test_the_run_refuses_expected_verdicts_that_arent_committed(tmp_path):
     def git(*args):
         subprocess.run(["git", *args], cwd=tmp_path, check=True, capture_output=True)
