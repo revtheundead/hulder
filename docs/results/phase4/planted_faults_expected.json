@@ -1,0 +1,1821 @@
+{
+  "bar": {
+    "gross": "the expected verdict in at least 95% of resamples",
+    "gross, either verdict": "non-PASS in at least 95% of resamples",
+    "null": "non-PASS in at most 5% of resamples",
+    "applies_to": "rows with mode refit, on each split separately"
+  },
+  "gross_means": {
+    "delta_auroc_at_most": -0.05,
+    "or_clear_of_auroc_line_above": -0.015,
+    "with_fpr_at_least": 0.05,
+    "or_fnr_rise_at_least": 0.15
+  },
+  "resamples": 1000,
+  "seed": 0,
+  "target_fpr": 0.01,
+  "rows": [
+    {
+      "split": "calibration",
+      "mode": "refit",
+      "fault": "rerun residuals",
+      "kind": "null",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.009235936188077247,
+        "fnr": 0.16263736263736264,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": 1.3827404149791e-05
+      },
+      "expected": "PASS"
+    },
+    {
+      "split": "calibration",
+      "mode": "frozen",
+      "fault": "rerun residuals",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.009235936188077247,
+        "fnr": 0.16263736263736264,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": 1.3827404149791e-05
+      },
+      "expected": "PASS"
+    },
+    {
+      "split": "calibration",
+      "mode": "refit",
+      "fault": "real rerun",
+      "kind": "null",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.010075566750629723,
+        "fnr": 0.16043956043956045,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": 3.319978713989258e-05
+      },
+      "expected": "PASS"
+    },
+    {
+      "split": "calibration",
+      "mode": "frozen",
+      "fault": "real rerun",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.010075566750629723,
+        "fnr": 0.16043956043956045,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": 3.319978713989258e-05
+      },
+      "expected": "PASS"
+    },
+    {
+      "split": "calibration",
+      "mode": "refit",
+      "fault": "shift -3",
+      "kind": "gross",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.0,
+        "fnr": 0.7252747252747253,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE"
+    },
+    {
+      "split": "calibration",
+      "mode": "frozen",
+      "fault": "shift -3",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.0,
+        "fnr": 0.7252747252747253,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE"
+    },
+    {
+      "split": "calibration",
+      "mode": "refit",
+      "fault": "shift -2",
+      "kind": "gross",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.0,
+        "fnr": 0.5153846153846153,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE"
+    },
+    {
+      "split": "calibration",
+      "mode": "frozen",
+      "fault": "shift -2",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.0,
+        "fnr": 0.5153846153846153,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE"
+    },
+    {
+      "split": "calibration",
+      "mode": "refit",
+      "fault": "shift -1",
+      "kind": "graded",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.0008396305625524769,
+        "fnr": 0.3076923076923077,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE"
+    },
+    {
+      "split": "calibration",
+      "mode": "frozen",
+      "fault": "shift -1",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.0008396305625524769,
+        "fnr": 0.3076923076923077,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE"
+    },
+    {
+      "split": "calibration",
+      "mode": "refit",
+      "fault": "shift -0.75",
+      "kind": "graded",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.0016792611251049538,
+        "fnr": 0.26043956043956046,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE"
+    },
+    {
+      "split": "calibration",
+      "mode": "frozen",
+      "fault": "shift -0.75",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.0016792611251049538,
+        "fnr": 0.26043956043956046,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE"
+    },
+    {
+      "split": "calibration",
+      "mode": "refit",
+      "fault": "shift -0.5",
+      "kind": "graded",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.0025188916876574307,
+        "fnr": 0.22967032967032966,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE"
+    },
+    {
+      "split": "calibration",
+      "mode": "frozen",
+      "fault": "shift -0.5",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.0025188916876574307,
+        "fnr": 0.22967032967032966,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE"
+    },
+    {
+      "split": "calibration",
+      "mode": "refit",
+      "fault": "shift -0.3",
+      "kind": "graded",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.0033585222502099076,
+        "fnr": 0.2010989010989011,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE"
+    },
+    {
+      "split": "calibration",
+      "mode": "frozen",
+      "fault": "shift -0.3",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.0033585222502099076,
+        "fnr": 0.2010989010989011,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE"
+    },
+    {
+      "split": "calibration",
+      "mode": "refit",
+      "fault": "shift -0.1",
+      "kind": "graded",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.006717044500419815,
+        "fnr": 0.17252747252747253,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": 0.0
+      },
+      "expected": "PASS"
+    },
+    {
+      "split": "calibration",
+      "mode": "frozen",
+      "fault": "shift -0.1",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.006717044500419815,
+        "fnr": 0.17252747252747253,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": 0.0
+      },
+      "expected": "PASS"
+    },
+    {
+      "split": "calibration",
+      "mode": "refit",
+      "fault": "shift +0.1",
+      "kind": "graded",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.0109151973131822,
+        "fnr": 0.15054945054945054,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": 0.0
+      },
+      "expected": "PASS"
+    },
+    {
+      "split": "calibration",
+      "mode": "frozen",
+      "fault": "shift +0.1",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.0109151973131822,
+        "fnr": 0.15054945054945054,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": 0.0
+      },
+      "expected": "PASS"
+    },
+    {
+      "split": "calibration",
+      "mode": "refit",
+      "fault": "shift +0.5",
+      "kind": "graded",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.012594458438287154,
+        "fnr": 0.0967032967032967,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": 0.0
+      },
+      "expected": "PASS"
+    },
+    {
+      "split": "calibration",
+      "mode": "frozen",
+      "fault": "shift +0.5",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.012594458438287154,
+        "fnr": 0.0967032967032967,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": 0.0
+      },
+      "expected": "PASS"
+    },
+    {
+      "split": "calibration",
+      "mode": "refit",
+      "fault": "shift +1",
+      "kind": "graded",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.01595298068849706,
+        "fnr": 0.06263736263736264,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": 0.0
+      },
+      "expected": "PASS"
+    },
+    {
+      "split": "calibration",
+      "mode": "frozen",
+      "fault": "shift +1",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.01595298068849706,
+        "fnr": 0.06263736263736264,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": 0.0
+      },
+      "expected": "PASS"
+    },
+    {
+      "split": "calibration",
+      "mode": "refit",
+      "fault": "shift +1.5",
+      "kind": "graded",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.02518891687657431,
+        "fnr": 0.03956043956043956,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE"
+    },
+    {
+      "split": "calibration",
+      "mode": "frozen",
+      "fault": "shift +1.5",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.02518891687657431,
+        "fnr": 0.03956043956043956,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE"
+    },
+    {
+      "split": "calibration",
+      "mode": "refit",
+      "fault": "shift +2",
+      "kind": "graded",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.041981528127623846,
+        "fnr": 0.024175824175824177,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE"
+    },
+    {
+      "split": "calibration",
+      "mode": "frozen",
+      "fault": "shift +2",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.041981528127623846,
+        "fnr": 0.024175824175824177,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE"
+    },
+    {
+      "split": "calibration",
+      "mode": "refit",
+      "fault": "shift +3",
+      "kind": "gross",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.0982367758186398,
+        "fnr": 0.005494505494505495,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE"
+    },
+    {
+      "split": "calibration",
+      "mode": "frozen",
+      "fault": "shift +3",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.0982367758186398,
+        "fnr": 0.005494505494505495,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE"
+    },
+    {
+      "split": "calibration",
+      "mode": "refit",
+      "fault": "attack-only shift -1",
+      "kind": "graded",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.009235936188077247,
+        "fnr": 0.3076923076923077,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": -0.007285416126251221
+      },
+      "expected": "THRESHOLD STALE"
+    },
+    {
+      "split": "calibration",
+      "mode": "frozen",
+      "fault": "attack-only shift -1",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.009235936188077247,
+        "fnr": 0.3076923076923077,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": -0.007285416126251221
+      },
+      "expected": "THRESHOLD STALE"
+    },
+    {
+      "split": "calibration",
+      "mode": "refit",
+      "fault": "attack-only shift -3",
+      "kind": "gross",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.009235936188077247,
+        "fnr": 0.7252747252747253,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": -0.055379629135131836
+      },
+      "expected": "SCORER DEGRADED"
+    },
+    {
+      "split": "calibration",
+      "mode": "frozen",
+      "fault": "attack-only shift -3",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.009235936188077247,
+        "fnr": 0.7252747252747253,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": -0.055379629135131836
+      },
+      "expected": "SCORER DEGRADED"
+    },
+    {
+      "split": "calibration",
+      "mode": "refit",
+      "fault": "scramble to \u0394AUROC -0.02",
+      "kind": "graded",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.02686817800167926,
+        "fnr": 0.18461538461538463,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": -0.020006299018859863
+      },
+      "expected": "SCORER DEGRADED"
+    },
+    {
+      "split": "calibration",
+      "mode": "frozen",
+      "fault": "scramble to \u0394AUROC -0.02",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.02686817800167926,
+        "fnr": 0.18461538461538463,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": -0.020006299018859863
+      },
+      "expected": "SCORER DEGRADED"
+    },
+    {
+      "split": "calibration",
+      "mode": "refit",
+      "fault": "scramble to \u0394AUROC -0.025",
+      "kind": "graded",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.02938706968933669,
+        "fnr": 0.1879120879120879,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": -0.024914920330047607
+      },
+      "expected": "SCORER DEGRADED"
+    },
+    {
+      "split": "calibration",
+      "mode": "frozen",
+      "fault": "scramble to \u0394AUROC -0.025",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.02938706968933669,
+        "fnr": 0.1879120879120879,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": -0.024914920330047607
+      },
+      "expected": "SCORER DEGRADED"
+    },
+    {
+      "split": "calibration",
+      "mode": "refit",
+      "fault": "scramble to \u0394AUROC -0.03",
+      "kind": "graded",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.030226700251889168,
+        "fnr": 0.189010989010989,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": -0.029763519763946533
+      },
+      "expected": "SCORER DEGRADED"
+    },
+    {
+      "split": "calibration",
+      "mode": "frozen",
+      "fault": "scramble to \u0394AUROC -0.03",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.030226700251889168,
+        "fnr": 0.189010989010989,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": -0.029763519763946533
+      },
+      "expected": "SCORER DEGRADED"
+    },
+    {
+      "split": "calibration",
+      "mode": "refit",
+      "fault": "scramble to \u0394AUROC -0.05",
+      "kind": "gross",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.04785894206549118,
+        "fnr": 0.21208791208791208,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": -0.050077974796295166
+      },
+      "expected": "SCORER DEGRADED"
+    },
+    {
+      "split": "calibration",
+      "mode": "frozen",
+      "fault": "scramble to \u0394AUROC -0.05",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.04785894206549118,
+        "fnr": 0.21208791208791208,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": -0.050077974796295166
+      },
+      "expected": "SCORER DEGRADED"
+    },
+    {
+      "split": "calibration",
+      "mode": "refit",
+      "fault": "scramble to \u0394AUROC -0.1",
+      "kind": "gross",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.08060453400503778,
+        "fnr": 0.2549450549450549,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": -0.09990590810775757
+      },
+      "expected": "SCORER DEGRADED"
+    },
+    {
+      "split": "calibration",
+      "mode": "frozen",
+      "fault": "scramble to \u0394AUROC -0.1",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.08060453400503778,
+        "fnr": 0.2549450549450549,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": -0.09990590810775757
+      },
+      "expected": "SCORER DEGRADED"
+    },
+    {
+      "split": "calibration",
+      "mode": "refit",
+      "fault": "noise, FP8's size",
+      "kind": "graded",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.007556675062972292,
+        "fnr": 0.15934065934065933,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": -1.2660068104963784e-08
+      },
+      "expected": "PASS"
+    },
+    {
+      "split": "calibration",
+      "mode": "frozen",
+      "fault": "noise, FP8's size",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.007556675062972292,
+        "fnr": 0.15934065934065933,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": -1.2660068104963784e-08
+      },
+      "expected": "PASS"
+    },
+    {
+      "split": "calibration",
+      "mode": "refit",
+      "fault": "noise, Phase 1 AWQ's size",
+      "kind": "graded",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.007556675062972292,
+        "fnr": 0.2021978021978022,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": -0.006436565192338595
+      },
+      "expected": "PASS"
+    },
+    {
+      "split": "calibration",
+      "mode": "frozen",
+      "fault": "noise, Phase 1 AWQ's size",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.007556675062972292,
+        "fnr": 0.2021978021978022,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": -0.006436565192338595
+      },
+      "expected": "PASS"
+    },
+    {
+      "split": "calibration",
+      "mode": "refit",
+      "fault": "sign flip",
+      "kind": "gross",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.9185558354324097,
+        "fnr": 0.9923076923076923,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": -0.9908157461322844
+      },
+      "expected": "SCORER DEGRADED"
+    },
+    {
+      "split": "calibration",
+      "mode": "frozen",
+      "fault": "sign flip",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.9185558354324097,
+        "fnr": 0.9923076923076923,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": -0.9908157461322844
+      },
+      "expected": "SCORER DEGRADED"
+    },
+    {
+      "split": "calibration",
+      "mode": "refit",
+      "fault": "wrong layer, 27 for 18",
+      "kind": "gross, either verdict",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.11922753988245172,
+        "fnr": 0.06043956043956044,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": -0.025538623332977295
+      },
+      "expected": "SCORER DEGRADED"
+    },
+    {
+      "split": "calibration",
+      "mode": "frozen",
+      "fault": "wrong layer, 27 for 18",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.11922753988245172,
+        "fnr": 0.06043956043956044,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": -0.025538623332977295
+      },
+      "expected": "SCORER DEGRADED"
+    },
+    {
+      "split": "calibration",
+      "mode": "refit",
+      "fault": "wrong position, -9 for -1",
+      "kind": "gross",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.927791771620487,
+        "fnr": 0.0,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": -0.006239116191864014
+      },
+      "expected": "THRESHOLD STALE"
+    },
+    {
+      "split": "calibration",
+      "mode": "frozen",
+      "fault": "wrong position, -9 for -1",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1191,
+      "n_attack": 910,
+      "population": {
+        "fpr": 0.927791771620487,
+        "fnr": 0.0,
+        "reference_fpr": 0.009235936188077247,
+        "reference_fnr": 0.16153846153846155,
+        "delta_auroc": -0.006239116191864014
+      },
+      "expected": "THRESHOLD STALE"
+    },
+    {
+      "split": "test",
+      "mode": "refit",
+      "fault": "rerun residuals",
+      "kind": "null",
+      "threshold": 0.45241647958755493,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.010476190476190476,
+        "fnr": 0.058991436726926735,
+        "reference_fpr": 0.009523809523809525,
+        "reference_fnr": 0.05994291151284491,
+        "delta_auroc": 9.96492293698914e-05
+      },
+      "expected": "PASS"
+    },
+    {
+      "split": "test",
+      "mode": "frozen",
+      "fault": "rerun residuals",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.0009523809523809524,
+        "fnr": 0.26450999048525214,
+        "reference_fpr": 0.0009523809523809524,
+        "reference_fnr": 0.26450999048525214,
+        "delta_auroc": 9.96492293698914e-05
+      },
+      "expected": "THRESHOLD STALE"
+    },
+    {
+      "split": "test",
+      "mode": "refit",
+      "fault": "shift -3",
+      "kind": "gross",
+      "threshold": 0.45241647958755493,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.0009523809523809524,
+        "fnr": 0.5394862036156042,
+        "reference_fpr": 0.009523809523809525,
+        "reference_fnr": 0.05994291151284491,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE"
+    },
+    {
+      "split": "test",
+      "mode": "frozen",
+      "fault": "shift -3",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.0,
+        "fnr": 0.8201712654614652,
+        "reference_fpr": 0.0009523809523809524,
+        "reference_fnr": 0.26450999048525214,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE"
+    },
+    {
+      "split": "test",
+      "mode": "refit",
+      "fault": "shift -2",
+      "kind": "gross",
+      "threshold": 0.45241647958755493,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.0009523809523809524,
+        "fnr": 0.3434823977164605,
+        "reference_fpr": 0.009523809523809525,
+        "reference_fnr": 0.05994291151284491,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE"
+    },
+    {
+      "split": "test",
+      "mode": "frozen",
+      "fault": "shift -2",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.0009523809523809524,
+        "fnr": 0.6431969552806851,
+        "reference_fpr": 0.0009523809523809524,
+        "reference_fnr": 0.26450999048525214,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE"
+    },
+    {
+      "split": "test",
+      "mode": "refit",
+      "fault": "shift -1",
+      "kind": "graded",
+      "threshold": 0.45241647958755493,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.0019047619047619048,
+        "fnr": 0.16079923882017128,
+        "reference_fpr": 0.009523809523809525,
+        "reference_fnr": 0.05994291151284491,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE"
+    },
+    {
+      "split": "test",
+      "mode": "frozen",
+      "fault": "shift -1",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.0009523809523809524,
+        "fnr": 0.4605137963843958,
+        "reference_fpr": 0.0009523809523809524,
+        "reference_fnr": 0.26450999048525214,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE"
+    },
+    {
+      "split": "test",
+      "mode": "refit",
+      "fault": "shift -0.75",
+      "kind": "graded",
+      "threshold": 0.45241647958755493,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.0038095238095238095,
+        "fnr": 0.12940057088487156,
+        "reference_fpr": 0.009523809523809525,
+        "reference_fnr": 0.05994291151284491,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE"
+    },
+    {
+      "split": "test",
+      "mode": "frozen",
+      "fault": "shift -0.75",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.0009523809523809524,
+        "fnr": 0.40247383444338725,
+        "reference_fpr": 0.0009523809523809524,
+        "reference_fnr": 0.26450999048525214,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE"
+    },
+    {
+      "split": "test",
+      "mode": "refit",
+      "fault": "shift -0.5",
+      "kind": "graded",
+      "threshold": 0.45241647958755493,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.004761904761904762,
+        "fnr": 0.09705042816365367,
+        "reference_fpr": 0.009523809523809525,
+        "reference_fnr": 0.05994291151284491,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE"
+    },
+    {
+      "split": "test",
+      "mode": "frozen",
+      "fault": "shift -0.5",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.0009523809523809524,
+        "fnr": 0.3615604186489058,
+        "reference_fpr": 0.0009523809523809524,
+        "reference_fnr": 0.26450999048525214,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE"
+    },
+    {
+      "split": "test",
+      "mode": "refit",
+      "fault": "shift -0.3",
+      "kind": "graded",
+      "threshold": 0.45241647958755493,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.006666666666666667,
+        "fnr": 0.0818268315889629,
+        "reference_fpr": 0.009523809523809525,
+        "reference_fnr": 0.05994291151284491,
+        "delta_auroc": 0.0
+      },
+      "expected": "PASS"
+    },
+    {
+      "split": "test",
+      "mode": "frozen",
+      "fault": "shift -0.3",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.0009523809523809524,
+        "fnr": 0.3225499524262607,
+        "reference_fpr": 0.0009523809523809524,
+        "reference_fnr": 0.26450999048525214,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE"
+    },
+    {
+      "split": "test",
+      "mode": "refit",
+      "fault": "shift -0.1",
+      "kind": "graded",
+      "threshold": 0.45241647958755493,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.009523809523809525,
+        "fnr": 0.07040913415794481,
+        "reference_fpr": 0.009523809523809525,
+        "reference_fnr": 0.05994291151284491,
+        "delta_auroc": 0.0
+      },
+      "expected": "PASS"
+    },
+    {
+      "split": "test",
+      "mode": "frozen",
+      "fault": "shift -0.1",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.0009523809523809524,
+        "fnr": 0.28068506184586106,
+        "reference_fpr": 0.0009523809523809524,
+        "reference_fnr": 0.26450999048525214,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE"
+    },
+    {
+      "split": "test",
+      "mode": "refit",
+      "fault": "shift +0.1",
+      "kind": "graded",
+      "threshold": 0.45241647958755493,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.012380952380952381,
+        "fnr": 0.05233111322549953,
+        "reference_fpr": 0.009523809523809525,
+        "reference_fnr": 0.05994291151284491,
+        "delta_auroc": 0.0
+      },
+      "expected": "PASS"
+    },
+    {
+      "split": "test",
+      "mode": "frozen",
+      "fault": "shift +0.1",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.0009523809523809524,
+        "fnr": 0.2483349191246432,
+        "reference_fpr": 0.0009523809523809524,
+        "reference_fnr": 0.26450999048525214,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE"
+    },
+    {
+      "split": "test",
+      "mode": "refit",
+      "fault": "shift +0.5",
+      "kind": "graded",
+      "threshold": 0.45241647958755493,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.022857142857142857,
+        "fnr": 0.038058991436726926,
+        "reference_fpr": 0.009523809523809525,
+        "reference_fnr": 0.05994291151284491,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE"
+    },
+    {
+      "split": "test",
+      "mode": "frozen",
+      "fault": "shift +0.5",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.0019047619047619048,
+        "fnr": 0.18363463368220742,
+        "reference_fpr": 0.0009523809523809524,
+        "reference_fnr": 0.26450999048525214,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE"
+    },
+    {
+      "split": "test",
+      "mode": "refit",
+      "fault": "shift +1",
+      "kind": "graded",
+      "threshold": 0.45241647958755493,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.04380952380952381,
+        "fnr": 0.030447193149381543,
+        "reference_fpr": 0.009523809523809525,
+        "reference_fnr": 0.05994291151284491,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE"
+    },
+    {
+      "split": "test",
+      "mode": "frozen",
+      "fault": "shift +1",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.004761904761904762,
+        "fnr": 0.1065651760228354,
+        "reference_fpr": 0.0009523809523809524,
+        "reference_fnr": 0.26450999048525214,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE"
+    },
+    {
+      "split": "test",
+      "mode": "refit",
+      "fault": "shift +1.5",
+      "kind": "gross",
+      "threshold": 0.45241647958755493,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.09428571428571429,
+        "fnr": 0.015223596574690771,
+        "reference_fpr": 0.009523809523809525,
+        "reference_fnr": 0.05994291151284491,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE"
+    },
+    {
+      "split": "test",
+      "mode": "frozen",
+      "fault": "shift +1.5",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.009523809523809525,
+        "fnr": 0.07040913415794481,
+        "reference_fpr": 0.0009523809523809524,
+        "reference_fnr": 0.26450999048525214,
+        "delta_auroc": 0.0
+      },
+      "expected": "PASS"
+    },
+    {
+      "split": "test",
+      "mode": "refit",
+      "fault": "shift +2",
+      "kind": "gross",
+      "threshold": 0.45241647958755493,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.17047619047619048,
+        "fnr": 0.008563273073263558,
+        "reference_fpr": 0.009523809523809525,
+        "reference_fnr": 0.05994291151284491,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE"
+    },
+    {
+      "split": "test",
+      "mode": "frozen",
+      "fault": "shift +2",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.01904761904761905,
+        "fnr": 0.04186489058039962,
+        "reference_fpr": 0.0009523809523809524,
+        "reference_fnr": 0.26450999048525214,
+        "delta_auroc": 0.0
+      },
+      "expected": "PASS"
+    },
+    {
+      "split": "test",
+      "mode": "refit",
+      "fault": "shift +3",
+      "kind": "gross",
+      "threshold": 0.45241647958755493,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.40285714285714286,
+        "fnr": 0.0019029495718363464,
+        "reference_fpr": 0.009523809523809525,
+        "reference_fnr": 0.05994291151284491,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE"
+    },
+    {
+      "split": "test",
+      "mode": "frozen",
+      "fault": "shift +3",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.08857142857142856,
+        "fnr": 0.017126546146527116,
+        "reference_fpr": 0.0009523809523809524,
+        "reference_fnr": 0.26450999048525214,
+        "delta_auroc": 0.0
+      },
+      "expected": "THRESHOLD STALE"
+    },
+    {
+      "split": "test",
+      "mode": "refit",
+      "fault": "attack-only shift -1",
+      "kind": "graded",
+      "threshold": 0.45241647958755493,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.009523809523809525,
+        "fnr": 0.16079923882017128,
+        "reference_fpr": 0.009523809523809525,
+        "reference_fnr": 0.05994291151284491,
+        "delta_auroc": -0.01022881269454956
+      },
+      "expected": "THRESHOLD STALE"
+    },
+    {
+      "split": "test",
+      "mode": "frozen",
+      "fault": "attack-only shift -1",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.0009523809523809524,
+        "fnr": 0.4605137963843958,
+        "reference_fpr": 0.0009523809523809524,
+        "reference_fnr": 0.26450999048525214,
+        "delta_auroc": -0.01022881269454956
+      },
+      "expected": "THRESHOLD STALE"
+    },
+    {
+      "split": "test",
+      "mode": "refit",
+      "fault": "attack-only shift -3",
+      "kind": "gross",
+      "threshold": 0.45241647958755493,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.009523809523809525,
+        "fnr": 0.5394862036156042,
+        "reference_fpr": 0.009523809523809525,
+        "reference_fnr": 0.05994291151284491,
+        "delta_auroc": -0.08328217267990112
+      },
+      "expected": "SCORER DEGRADED"
+    },
+    {
+      "split": "test",
+      "mode": "frozen",
+      "fault": "attack-only shift -3",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.0009523809523809524,
+        "fnr": 0.8201712654614652,
+        "reference_fpr": 0.0009523809523809524,
+        "reference_fnr": 0.26450999048525214,
+        "delta_auroc": -0.08328217267990112
+      },
+      "expected": "SCORER DEGRADED"
+    },
+    {
+      "split": "test",
+      "mode": "refit",
+      "fault": "scramble to \u0394AUROC -0.02",
+      "kind": "graded",
+      "threshold": 0.45241647958755493,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.02857142857142857,
+        "fnr": 0.07897240723120837,
+        "reference_fpr": 0.009523809523809525,
+        "reference_fnr": 0.05994291151284491,
+        "delta_auroc": -0.020160436630249023
+      },
+      "expected": "SCORER DEGRADED"
+    },
+    {
+      "split": "test",
+      "mode": "frozen",
+      "fault": "scramble to \u0394AUROC -0.02",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.014285714285714285,
+        "fnr": 0.27783063748810655,
+        "reference_fpr": 0.0009523809523809524,
+        "reference_fnr": 0.26450999048525214,
+        "delta_auroc": -0.020160436630249023
+      },
+      "expected": "SCORER DEGRADED"
+    },
+    {
+      "split": "test",
+      "mode": "refit",
+      "fault": "scramble to \u0394AUROC -0.025",
+      "kind": "graded",
+      "threshold": 0.45241647958755493,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.03333333333333333,
+        "fnr": 0.08372978116079924,
+        "reference_fpr": 0.009523809523809525,
+        "reference_fnr": 0.05994291151284491,
+        "delta_auroc": -0.025021076202392578
+      },
+      "expected": "SCORER DEGRADED"
+    },
+    {
+      "split": "test",
+      "mode": "frozen",
+      "fault": "scramble to \u0394AUROC -0.025",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.02095238095238095,
+        "fnr": 0.2844909609895338,
+        "reference_fpr": 0.0009523809523809524,
+        "reference_fnr": 0.26450999048525214,
+        "delta_auroc": -0.025021076202392578
+      },
+      "expected": "SCORER DEGRADED"
+    },
+    {
+      "split": "test",
+      "mode": "refit",
+      "fault": "scramble to \u0394AUROC -0.03",
+      "kind": "graded",
+      "threshold": 0.45241647958755493,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.0380952380952381,
+        "fnr": 0.08848715509039011,
+        "reference_fpr": 0.009523809523809525,
+        "reference_fnr": 0.05994291151284491,
+        "delta_auroc": -0.02997058629989624
+      },
+      "expected": "SCORER DEGRADED"
+    },
+    {
+      "split": "test",
+      "mode": "frozen",
+      "fault": "scramble to \u0394AUROC -0.03",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.022857142857142857,
+        "fnr": 0.28639391056137015,
+        "reference_fpr": 0.0009523809523809524,
+        "reference_fnr": 0.26450999048525214,
+        "delta_auroc": -0.02997058629989624
+      },
+      "expected": "SCORER DEGRADED"
+    },
+    {
+      "split": "test",
+      "mode": "refit",
+      "fault": "scramble to \u0394AUROC -0.05",
+      "kind": "gross",
+      "threshold": 0.45241647958755493,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.05523809523809524,
+        "fnr": 0.10561370123691723,
+        "reference_fpr": 0.009523809523809525,
+        "reference_fnr": 0.05994291151284491,
+        "delta_auroc": -0.05006211996078491
+      },
+      "expected": "SCORER DEGRADED"
+    },
+    {
+      "split": "test",
+      "mode": "frozen",
+      "fault": "scramble to \u0394AUROC -0.05",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.0380952380952381,
+        "fnr": 0.3016175071360609,
+        "reference_fpr": 0.0009523809523809524,
+        "reference_fnr": 0.26450999048525214,
+        "delta_auroc": -0.05006211996078491
+      },
+      "expected": "SCORER DEGRADED"
+    },
+    {
+      "split": "test",
+      "mode": "refit",
+      "fault": "scramble to \u0394AUROC -0.1",
+      "kind": "gross",
+      "threshold": 0.45241647958755493,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.10285714285714286,
+        "fnr": 0.15318744053282587,
+        "reference_fpr": 0.009523809523809525,
+        "reference_fnr": 0.05994291151284491,
+        "delta_auroc": -0.1000661849975586
+      },
+      "expected": "SCORER DEGRADED"
+    },
+    {
+      "split": "test",
+      "mode": "frozen",
+      "fault": "scramble to \u0394AUROC -0.1",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.0761904761904762,
+        "fnr": 0.3396764985727878,
+        "reference_fpr": 0.0009523809523809524,
+        "reference_fnr": 0.26450999048525214,
+        "delta_auroc": -0.1000661849975586
+      },
+      "expected": "SCORER DEGRADED"
+    },
+    {
+      "split": "test",
+      "mode": "refit",
+      "fault": "noise, FP8's size",
+      "kind": "graded",
+      "threshold": 0.45241647958755493,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.011428571428571429,
+        "fnr": 0.05708848715509039,
+        "reference_fpr": 0.009523809523809525,
+        "reference_fnr": 0.05994291151284491,
+        "delta_auroc": -0.000562758454921708
+      },
+      "expected": "PASS"
+    },
+    {
+      "split": "test",
+      "mode": "frozen",
+      "fault": "noise, FP8's size",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.0009523809523809524,
+        "fnr": 0.26736441484300666,
+        "reference_fpr": 0.0009523809523809524,
+        "reference_fnr": 0.26450999048525214,
+        "delta_auroc": -0.000562758454921708
+      },
+      "expected": "THRESHOLD STALE"
+    },
+    {
+      "split": "test",
+      "mode": "refit",
+      "fault": "noise, Phase 1 AWQ's size",
+      "kind": "graded",
+      "threshold": 0.45241647958755493,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.040952380952380955,
+        "fnr": 0.10085632730732635,
+        "reference_fpr": 0.009523809523809525,
+        "reference_fnr": 0.05994291151284491,
+        "delta_auroc": -0.012908370343825748
+      },
+      "expected": "THRESHOLD STALE"
+    },
+    {
+      "split": "test",
+      "mode": "frozen",
+      "fault": "noise, Phase 1 AWQ's size",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.005714285714285714,
+        "fnr": 0.2987630827783064,
+        "reference_fpr": 0.0009523809523809524,
+        "reference_fnr": 0.26450999048525214,
+        "delta_auroc": -0.012908370343825748
+      },
+      "expected": "PASS"
+    },
+    {
+      "split": "test",
+      "mode": "refit",
+      "fault": "sign flip",
+      "kind": "gross",
+      "threshold": 0.45241647958755493,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.9933333333333333,
+        "fnr": 0.9115128449096099,
+        "reference_fpr": 0.009523809523809525,
+        "reference_fnr": 0.05994291151284491,
+        "delta_auroc": -0.9880295703187585
+      },
+      "expected": "SCORER DEGRADED"
+    },
+    {
+      "split": "test",
+      "mode": "frozen",
+      "fault": "sign flip",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.9380952380952381,
+        "fnr": 0.9800190294957184,
+        "reference_fpr": 0.0009523809523809524,
+        "reference_fnr": 0.26450999048525214,
+        "delta_auroc": -0.9880295703187585
+      },
+      "expected": "SCORER DEGRADED"
+    },
+    {
+      "split": "test",
+      "mode": "refit",
+      "fault": "wrong layer, 27 for 18",
+      "kind": "gross, either verdict",
+      "threshold": 0.45241647958755493,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.4228571428571429,
+        "fnr": 0.021883920076117985,
+        "reference_fpr": 0.009523809523809525,
+        "reference_fnr": 0.05994291151284491,
+        "delta_auroc": -0.03565949201583862
+      },
+      "expected": "SCORER DEGRADED"
+    },
+    {
+      "split": "test",
+      "mode": "frozen",
+      "fault": "wrong layer, 27 for 18",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.13142857142857142,
+        "fnr": 0.09419600380589914,
+        "reference_fpr": 0.0009523809523809524,
+        "reference_fnr": 0.26450999048525214,
+        "delta_auroc": -0.03565949201583862
+      },
+      "expected": "SCORER DEGRADED"
+    },
+    {
+      "split": "test",
+      "mode": "refit",
+      "fault": "wrong position, -9 for -1",
+      "kind": "gross, either verdict",
+      "threshold": 0.45241647958755493,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 1.0,
+        "fnr": 0.0,
+        "reference_fpr": 0.009523809523809525,
+        "reference_fnr": 0.05994291151284491,
+        "delta_auroc": -0.024581611156463623
+      },
+      "expected": "SCORER DEGRADED"
+    },
+    {
+      "split": "test",
+      "mode": "frozen",
+      "fault": "wrong position, -9 for -1",
+      "kind": "frozen",
+      "threshold": 0.8025219440460205,
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "population": {
+        "fpr": 0.9580952380952381,
+        "fnr": 0.0009514747859181732,
+        "reference_fpr": 0.0009523809523809524,
+        "reference_fnr": 0.26450999048525214,
+        "delta_auroc": -0.024581611156463623
+      },
+      "expected": "SCORER DEGRADED"
+    }
+  ]
+}
