@@ -4,7 +4,8 @@ including the vLLM engine-core process's, lands in one file. Imports vLLM.
     python worker.py SPEC.json OUT_DIR
 
 SPEC holds the CaptureConfig fields, the canary, the prompts, an optional base_model override,
-metadata to add to every snapshot and whether to save snapshots. Writes one Snapshot per captured
+metadata to add to every snapshot, whether to save snapshots, and any keyword arguments to add to
+vLLM's LLM beyond CaptureConfig's (engine_kwargs). Writes one Snapshot per captured
 layer (<layer>.npz), or per layer and position (<layer>_<position>.npz) when the config captures
 more than one position, and worker.json to OUT_DIR.
 
@@ -14,6 +15,7 @@ snapshot's metadata as canary_sha256, and the snapshots hold exactly the request
 writing anything.
 """
 
+import functools
 import json
 import os
 import platform
@@ -35,6 +37,13 @@ def main(spec_path: str, out_dir: str) -> None:
 
     spec = json.loads(Path(spec_path).read_text())
     out = Path(out_dir)
+    engine_kwargs = spec.get("engine_kwargs", {})
+    if engine_kwargs:
+        # Settings CaptureConfig has no field for, such as an FP8 KV cache (smoke_lib.ENGINE_KWARGS),
+        # added to the LLM that capture constructs, so the extraction path is otherwise unchanged.
+        from hulder.capture import hidden_states
+
+        hidden_states.LLM = functools.partial(hidden_states.LLM, **engine_kwargs)
     fields = {k: tuple(v) if k in ("layers", "positions") else v for k, v in spec["config"].items()}
     cfg = CaptureConfig(**fields)
     rows, canary = spec["prompts"], spec["canary"]
@@ -86,6 +95,7 @@ def main(spec_path: str, out_dir: str) -> None:
     requested_tokens = captured.position_tokens[first:]
     worker = {
         "capture_config": asdict(cfg),
+        "engine_kwargs": engine_kwargs,
         "base_model": base_model,
         "n_prompts": len(rows),
         "prompt_ids_sha256": hulder.prompt_ids_sha256(ids),

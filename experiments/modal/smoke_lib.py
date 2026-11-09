@@ -109,6 +109,45 @@ CONFIGS |= {
     # The candidate: vLLM's online FP8 (W8A8 on the L4) of the same weights.
     "qwen3_4b_fp8_online_exp2": ({**CONFIGS["qwen3_4b_bf16_full"][0], "quantization": "fp8"}, EXP2_SLICE),
 }
+# The Qwen3-4B sweep (docs/results/phase4/sweep.md). AWQ is the official checkpoint, run with
+# quantization="awq" as in Phase 1. vLLM 0.30.0 routes it to auto_awq, which lists float16 and
+# bfloat16 activations as supported (model_executor/layers/quantization/auto_awq.py:226).
+QWEN3_4B_AWQ = {
+    "model": "Qwen/Qwen3-4B-AWQ",
+    "revision": "74d4bd2bd4bff9cafc9345221320bffb08b406a3",
+    "quantization": "awq",
+}
+CONFIGS |= {
+    # Step A: whether AWQ runs in bf16 under the full capture's config, on the smoke prompts.
+    "qwen3_4b_awq_smoke": ({**CONFIGS["qwen3_4b_bf16_full"][0], **QWEN3_4B_AWQ}, ("smoke", 64)),
+    # Step A: whether the extraction path starts with an FP8 KV cache. CaptureConfig has no KV dtype,
+    # so the worker passes it to the engine (ENGINE_KWARGS), and one prompt behind the canary saves
+    # no snapshot whose metadata would leave the KV dtype out.
+    "qwen3_4b_bf16_fp8kv_smoke": (CONFIGS["qwen3_4b_bf16_full"][0], ("smoke", 64, 63)),
+}
+# Step B: the full capture's batches that hold the test split (rows 13,039 to 15,139 of the full
+# request), whose first batch also holds 7 calibration rows and last 4 boundary-pairs rows.
+SWEEP_TEST_ROWS = ((13032, 15144),)
+CONFIGS |= {
+    # The test rerun: the null for test and its noise floor, in Experiment 2's seeded order.
+    "qwen3_4b_bf16_sweep_b": (
+        CONFIGS["qwen3_4b_bf16_full"][0],
+        ("canary_first", ("shuffled", ("rows", FULL_REQUEST, SWEEP_TEST_ROWS), 1)),
+    ),
+}
+# Step C: the full capture's batches from calibration's first through boundary-pairs' last, one range,
+# in full-capture order, so every batch keeps its composition and its rows compare with kept/'s.
+SWEEP_C_ROWS = ((10936, 16332),)
+CONFIGS |= {
+    # AWQ int4 in bf16, as step A ran it.
+    "qwen3_4b_awq_sweep_c": (
+        CONFIGS["qwen3_4b_awq_smoke"][0],
+        ("canary_first", ("rows", FULL_REQUEST, SWEEP_C_ROWS)),
+    ),
+}
+# config name -> keyword arguments the worker adds to vLLM's LLM, beyond what CaptureConfig sets.
+ENGINE_KWARGS: dict[str, dict] = {"qwen3_4b_bf16_fp8kv_smoke": {"kv_cache_dtype": "fp8"}}
+
 # config name -> base model, passed to base_model_for as override=. Only for a checkpoint whose
 # base model it can't find; the worker stops with a warning naming the entry to add.
 BASE_MODEL_OVERRIDES: dict[str, str] = {}
@@ -217,7 +256,22 @@ EXPERIMENTS = {
         True,
         8 * 60,
     ),
+    # Sweep step A (docs/results/phase4/sweep.md): AWQ in bf16, then a bf16 engine with an
+    # FP8 KV cache, in one container. The second runs even if the first fails.
+    "sweep_a": (
+        [[("awq_bf16", "qwen3_4b_awq_smoke"), ("bf16_fp8kv", "qwen3_4b_bf16_fp8kv_smoke")]],
+        False,
+        8 * 60,
+    ),
+    # Sweep step B: the bf16 test rerun, in one container.
+    "sweep_b": ([[("test_rerun", "qwen3_4b_bf16_sweep_b")]], False, 8 * 60),
+    # Sweep step C: three AWQ replicas, each in its own fresh container, kept by batch majority. 12 minutes
+    # per config is about 3 times step A's cold AWQ engine plus 675 batches at the full capture's pace.
+    "sweep_c": ([[(f"awq_r{i}", "qwen3_4b_awq_sweep_c")] for i in (1, 2, 3)], True, 12 * 60),
 }
+# Experiments whose containers run every config even after one fails, because each config answers
+# its own question. Elsewhere a failed config stops its container.
+CONTINUE_AFTER_FAILURE = {"sweep_a"}
 
 
 def downloads(experiment: str) -> list[tuple[str, str]]:
@@ -547,7 +601,18 @@ def worker_spec(entry: tuple, timeout_s: int) -> dict:
         # Added to every snapshot's metadata. A shuffled rerun records its seed, so check warns
         # that its batches differ from the reference's rather than hiding it.
         "extra_metadata": {} if (seed := batch_order_seed(source)) is None else {"batch_order_seed": seed},
+        "engine_kwargs": ENGINE_KWARGS.get(entry[1], {}),
     }
+
+
+def experiment_specs(experiment: str) -> list[list[tuple[str, dict]]]:
+    """Each container's (label, worker spec) pairs, in order, each spec saying whether its
+    container carries on after a failed config."""
+    containers, _, timeout_s = EXPERIMENTS[experiment]
+    carry_on = experiment in CONTINUE_AFTER_FAILURE
+    return [
+        [(e[0], {**worker_spec(e, timeout_s), "continue_on_failure": carry_on}) for e in group] for group in containers
+    ]
 
 
 def log_facts(log: str) -> dict[str, list[str]]:
@@ -692,6 +757,79 @@ def settle_volume_files(
     _write_synced(backup_dir / "SHA256SUMS", [f"{expected[n]}  {n}\n".encode() for n in sorted(expected)])
     status["backed_up"] = True
     return status
+
+
+# Each config's snapshot hashes, written on the Volume beside its snapshots before its manifest, so
+# a run whose local process died can be rebuilt from the Volume (recover_config).
+VOLUME_FILES = "volume_files.json"
+# A config's small files, fetched by name. Snapshots are fetched and checked by settle_volume_files.
+RECOVERED_FILES = ("manifest.json", "capture.log", "cublas_fingerprint.txt")
+
+
+def record_volume_files(out: Path) -> dict[str, str]:
+    """The sha256 of each snapshot (*.npz) in out, also written, fsynced, to out/VOLUME_FILES."""
+    hashes = {p.name: sha256_file(p) for p in sorted(out.glob("*.npz"))}
+    _write_synced(out / VOLUME_FILES, [(json.dumps(hashes, indent=2) + "\n").encode()])
+    return hashes
+
+
+def recover_config(read: Callable[[str], bytes], local_dir: Path, backup_dir: Path | None) -> dict | None:
+    """Rebuild one config's local folder from its folder on the Volume, read by name (read raises
+    FileNotFoundError for a missing file). None if its manifest was never written, meaning its
+    engine didn't finish. Snapshots are checked against the hashes the container recorded, and
+    backed up with a SHA256SUMS as settle_volume_files does."""
+    try:
+        manifest = read("manifest.json")
+    except FileNotFoundError:
+        return None
+    local_dir.mkdir(parents=True, exist_ok=True)
+    for name in RECOVERED_FILES:
+        try:
+            _write_synced(local_dir / name, [manifest if name == "manifest.json" else read(name)])
+        except FileNotFoundError:
+            continue
+    try:
+        expected = json.loads(read(VOLUME_FILES))
+    except FileNotFoundError:
+        expected = {}
+    volume = settle_volume_files(expected, lambda name: [read(name)], local_dir, backup_dir)
+    return {"returncode": json.loads(manifest)["returncode"], "volume": volume, "recovered": True}
+
+
+def merge_recovered(manifest: dict, recovered: dict) -> dict:
+    """The run manifest with each config recover_config rebuilt added under "configs", named by the
+    run's experiment. Configs already collected stay as they were. Containers' costs weren't
+    recorded, so the manifest says where to read them."""
+    names = {e[0]: e[1] for group in EXPERIMENTS[manifest["experiment"]][0] for e in group}
+    configs = dict(manifest.get("configs", {}))
+    done = sorted(label for label, entry in recovered.items() if isinstance(entry, dict))
+    for label in done:
+        configs.setdefault(label, {"container": None, "config": names[label], **recovered[label]})
+    return {
+        **manifest,
+        "configs": configs,
+        "recovered": {
+            "configs": done,
+            "not_finished": sorted(k for k, v in recovered.items() if isinstance(v, str) and "didn't finish" in v),
+        },
+        "cost_note": "the local process died before recording container costs; read them from Modal's usage page",
+    }
+
+
+def in_finish_order(n: int, poll: Callable[[int], tuple[bool, object]], wait: Callable[[], object]):
+    """Yield (i, result) for calls 0 to n - 1 as each finishes. poll(i) returns (True, result) once
+    call i has finished, else (False, None). wait() runs between rounds that found nothing new."""
+    pending = list(range(n))
+    while pending:
+        found = False
+        for i in list(pending):
+            done, result = poll(i)
+            if done:
+                pending.remove(i)
+                found = True
+                yield i, result
+        if pending and not found:
+            wait()
 
 
 def boot_id() -> str | None:

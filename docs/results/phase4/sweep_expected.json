@@ -1,0 +1,246 @@
+{
+  "written": "2026-11-09, before any sweep run",
+  "rule": "No rule or prediction here changes after a run. Every config that runs is reported.",
+  "target_fpr": 0.01,
+  "inputs": {
+    "splits_parquet_sha256": "13122a029b5442592da011ace5d59e43009fb599793d93ab20a9593c5e0c04b4",
+    "kept": {
+      "run": "20261022T125644Z",
+      "files_sha256": {
+        "18_-1.npz": "1e105f9e9610fc5af28a2946fab0c9aa6210cf5c377f35fb64dcab9237e41811",
+        "18_-10.npz": "194116cc5e2f15e356afc95a05e32179698bcf97bec166384367f809a086886c",
+        "18_-9.npz": "07c5fe694a7422dbc5a7be14d72371c347065faba1ffc5044e6512c6bd451d04",
+        "27_-1.npz": "52b6af5556b34dccc212e37817eeabee682e3e97e48dcd06fdc4ac00c9d0abcb",
+        "27_-10.npz": "ed1c1d31eeec5f546896a49af809232927ab032d2f1932935cad92b010e82552",
+        "27_-9.npz": "2307ea7f21b7edfb3f171b63ecee3c2f92ebe90e8233b3a636da397d67ba2be4",
+        "token_ids.npz": "e46e5d1d3d194002bd29b802e4e2c6bc40f588f73682aec4caaf5d499446c17d"
+      }
+    },
+    "kept_check": "kept/ equals Experiment 2's control (hashes in docs/results/phase4/modal/20261026T114520Z/manifest.json) bit for bit on the calibration and boundary-pairs batches, checked again before use",
+    "exp2_shuffled_rerun": {
+      "run": "20261026T114520Z",
+      "label": "shuffled"
+    },
+    "probes": {
+      "primary": {
+        "cell": "18_-1",
+        "sha256": "f1eddcbd403e1b22b023ea59cd6856d398908e925e526a4b7d148071df4b4d94",
+        "role": "verdict"
+      },
+      "secondary": {
+        "cell": "27_-1",
+        "sha256": "7b37b8789c30af7f52a6d2318b94629349159ac6e8655ceacef73994ffcfe51e",
+        "role": "reported beside, chosen after the fact"
+      }
+    }
+  },
+  "rows_in_full_request": {
+    "calibration": [
+      10938,
+      13039
+    ],
+    "test": [
+      13039,
+      15140
+    ],
+    "test_batches": [
+      13032,
+      15144
+    ],
+    "c_slice": [
+      10936,
+      16332
+    ],
+    "note": "half-open; batches of 8 behind the canary, so batch b holds rows 8(b-1) to 8b-1"
+  },
+  "comparisons": {
+    "primary": {
+      "split": "calibration",
+      "threshold": 0.8025219440460205,
+      "noise_floor": "exp2_shuffled_rerun",
+      "n_benign": 1191,
+      "n_attack": 910
+    },
+    "replication": {
+      "split": "test",
+      "threshold": 0.45241647958755493,
+      "threshold_source": "refit on kept/ test benign, as planted_faults.md declared",
+      "noise_floor": "B",
+      "n_benign": 1050,
+      "n_attack": 1051,
+      "can_change_primary": false
+    },
+    "boundary_pairs": {
+      "counted": false
+    }
+  },
+  "steps": {
+    "A": {
+      "experiment": "sweep_a",
+      "containers": 1,
+      "timeout_s": 480,
+      "cost_usd": {
+        "expected": 0.06,
+        "worst": 0.4467
+      },
+      "arms": {
+        "awq_bf16_smoke": {
+          "model": "Qwen/Qwen3-4B-AWQ",
+          "revision": "74d4bd2bd4bff9cafc9345221320bffb08b406a3",
+          "dtype": "bfloat16",
+          "quantization": "awq",
+          "prompts": "smoke 64",
+          "prediction": "runs; vLLM 0.30.0 routes AWQ to auto_awq, which supports float16 and bfloat16 activations (auto_awq.py:226)",
+          "if_fails": "A2, then C in fp16 with the fp16 arm"
+        },
+        "bf16_fp8kv_smoke": {
+          "config": "the full capture's bf16 config",
+          "engine_kwargs": {
+            "kv_cache_dtype": "fp8"
+          },
+          "prompts": "1 behind the canary, no snapshot",
+          "prediction": "engine fails to start on CacheOnlyAttentionLayer's assertion (extract_hidden_states.py:253)",
+          "if_fails_as_predicted": "record the limit in docs/design.md section 10 for capture and live scoring; D is a non-KV config",
+          "if_starts": "no such limit; FP8 KV becomes a candidate for D"
+        }
+      },
+      "runs_every_arm_even_if_one_fails": true
+    },
+    "A2": {
+      "only_if": "awq_bf16_smoke fails",
+      "experiment": "sweep_a2",
+      "containers": 1,
+      "timeout_s": 480,
+      "cost_usd": {
+        "expected": 0.06,
+        "worst": 0.4467
+      },
+      "arms": [
+        "AWQ in float16 on smoke 64",
+        "unquantized Qwen3-4B in float16 on smoke 64"
+      ],
+      "prediction": "both run without overflow",
+      "if_fails": "C doesn't run; the plan comes back for a decision"
+    },
+    "B": {
+      "experiment": "sweep_b",
+      "containers": 1,
+      "timeout_s": 480,
+      "cost_usd": {
+        "expected": 0.08,
+        "worst": 0.2808
+      },
+      "config": "the full capture's bf16 config on test_batches, canary first, default_rng(1) order",
+      "null": {
+        "reference": "kept/ test rows",
+        "candidate": "B",
+        "threshold": 0.45241647958755493,
+        "expected": "PASS",
+        "note": "a single INCONCLUSIVE is within the planted-fault control's 11.8% test miss and isn't the null failing; STALE or DEGRADED is"
+      },
+      "stop_rules": {
+        "B0": "the container failed or its files didn't verify",
+        "B1": "B's test rows weren't fed kept/'s prompts and tokens",
+        "B2": "B's canary isn't cluster 2.0, the bf16 majority path; B is reported as a deviation, isn't used as a floor, and a repeat needs a new go-ahead"
+      }
+    },
+    "C": {
+      "experiment": "sweep_c",
+      "containers": 3,
+      "single_use": true,
+      "timeout_s": 720,
+      "cost_usd": {
+        "expected": 0.45,
+        "worst": 1.0912
+      },
+      "config": "AWQ (model, revision and quantization as A) in bfloat16, or float16 if A2 applies, on c_slice, three replicas kept by batch majority",
+      "changes_under_test": [
+        "model",
+        "revision",
+        "quantization",
+        "dtype only if A2 applies"
+      ],
+      "prediction": {
+        "primary": [
+          "INCONCLUSIVE",
+          "THRESHOLD STALE"
+        ],
+        "replication": "THRESHOLD STALE more likely than not",
+        "basis": "Phase 1 AWQ on Qwen2.5: INCONCLUSIVE on calibration, STALE on test post hoc (docs/results/phase1/awq_posthoc.md)",
+        "kind": "a prediction, not a bar"
+      },
+      "stop_rules": {
+        "C0": "a replica failed or its files didn't verify",
+        "C1": "the replicas weren't fed the same prompts, tokens and metadata, or their tokens differ from kept/'s for the same rows",
+        "C2": "more than 1% of batches have no majority"
+      },
+      "canary": "AWQ has no recorded path; each replica's canary hash is recorded, not checked"
+    },
+    "C_fp16_arm": {
+      "only_if": "A shows AWQ can't run in bf16",
+      "experiment": "sweep_c_fp16",
+      "containers": 4,
+      "single_use": true,
+      "timeout_s": 720,
+      "cost_usd": {
+        "expected": 0.6,
+        "worst": 1.455
+      },
+      "runs": "unquantized Qwen3-4B in float16 on c_slice as three replicas kept by batch majority, and one shuffled fp16 rerun, default_rng(1)",
+      "comparisons": {
+        "shipped_change": {
+          "reference": "bf16 kept/",
+          "candidate": "AWQ fp16",
+          "role": "primary and replication as above"
+        },
+        "dtype_alone": {
+          "reference": "bf16 kept/",
+          "candidate": "fp16",
+          "role": "reported, no verdict claim"
+        },
+        "awq_alone": {
+          "reference": "fp16 majority",
+          "candidate": "AWQ fp16",
+          "noise_floor": "shuffled fp16 rerun",
+          "role": "reported, no verdict claim; check warns if fp16's FPR interval excludes the target, since the thresholds weren't set on fp16"
+        }
+      },
+      "day": "can't share a day with C under the $3 guard; runs on a later day"
+    },
+    "D": {
+      "decided": "after C is read and after A's FP8 KV answer",
+      "options": [
+        "bitsandbytes NF4 at load (needs bitsandbytes in uv.lock)",
+        "community GPTQ checkpoint (unofficial)",
+        "AWQ alone"
+      ],
+      "rules": "committed before it runs"
+    }
+  },
+  "outcomes": {
+    "A": {
+      "run": "20261109T112130Z",
+      "awq_bf16_smoke": "as predicted: ran in bfloat16 through auto_awq with MarlinLinearKernel, activations finite",
+      "bf16_fp8kv_smoke": "prediction wrong, unsettled: no assertion, died on missing nvcc under FlashInfer",
+      "consequence": "A2 and C_fp16_arm don't apply; FP8 KV is revisited only if D runs",
+      "added": "2026-11-09, after the run; no rule or prediction above changed"
+    },
+    "B": {
+      "run": "20261109T115553Z",
+      "stop_rules": "B0, B1 and B2 pass; canary is cluster 2.0",
+      "null": "PASS, exit 0, as predicted",
+      "added": "2026-11-09, after the run; no rule or prediction above changed"
+    },
+    "C": {
+      "run": "20261109T130049Z",
+      "stop_rules": "C0, C1 and C2 pass; 655 of 676 batches unanimous, 21 split, none without a majority",
+      "primary": "INCONCLUSIVE, exit 12, within the prediction",
+      "replication": "THRESHOLD STALE, exit 10, as predicted more likely",
+      "added": "2026-11-09, after the run; no rule or prediction above changed"
+    },
+    "D": {
+      "skipped": "C answered the question; FP8 KV stays unsettled",
+      "added": "2026-11-09, after C; no rule or prediction above changed"
+    }
+  }
+}

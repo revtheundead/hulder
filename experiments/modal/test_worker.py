@@ -175,3 +175,32 @@ def test_the_worker_saves_the_requested_prompts_token_ids_beside_the_snapshots(w
     assert ids == [r["id"] for r in PILOT]
     assert token_ids == [[k, k + 1000] for k in range(8, 8 + len(PILOT))]
     assert lib.token_ids_sha256(token_ids) == record["prompt_token_ids_sha256"]
+
+
+def test_engine_kwargs_reach_vllms_llm_and_the_worker_record(worker, tmp_path, monkeypatch):
+    from hulder.capture import hidden_states
+
+    def llm(**kwargs):
+        return kwargs
+
+    monkeypatch.setattr(hidden_states, "LLM", llm)  # restored after the test
+    main, _, _ = worker
+    spec = {**lib.worker_spec(("bf16", "qwen3_4b_bf16"), 300), "prompts": PILOT, "extra_metadata": GPU}
+    spec["engine_kwargs"] = {"kv_cache_dtype": "fp8"}
+    (tmp_path / "spec.json").write_text(json.dumps(spec))
+    main(str(tmp_path / "spec.json"), str(tmp_path))
+    assert hidden_states.LLM(model="m") == {"model": "m", "kv_cache_dtype": "fp8"}
+    assert json.loads((tmp_path / "worker.json").read_text())["engine_kwargs"] == {"kv_cache_dtype": "fp8"}
+
+
+def test_without_engine_kwargs_the_worker_leaves_vllms_llm_alone(worker, tmp_path, monkeypatch):
+    from hulder.capture import hidden_states
+
+    def llm(**kwargs):
+        return kwargs
+
+    monkeypatch.setattr(hidden_states, "LLM", llm)
+    main, _, _ = worker
+    run(main, tmp_path, PILOT)
+    assert hidden_states.LLM is llm
+    assert json.loads((tmp_path / "worker.json").read_text())["engine_kwargs"] == {}

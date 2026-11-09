@@ -1,0 +1,52 @@
+{
+  "run_id": "20261109T115553Z",
+  "experiment": "sweep_b",
+  "single_use": false,
+  "commit": "f42f23293df46faa16bdf7333b27e47dc0f0bada",
+  "command": "uv run --with modal==1.6.1 modal run experiments/modal/capture.py --experiment sweep_b --spent-usd 0.1 --backup-dir /mnt/e/hulder-backup/verified-2026-11-09/.cache/modal-runs",
+  "modal": "1.6.1",
+  "rates_usd_per_s": {
+    "L4": 0.000222,
+    "cpu_core": 1.31e-05,
+    "memory_gib": 2.22e-06
+  },
+  "spent_before_usd": 0.1,
+  "boot_id": "1d627ba5-8d51-4fa5-b20e-ee38a7d2aa90",
+  "containers": [
+    {
+      "index": 0,
+      "labels": [
+        "test_rerun"
+      ],
+      "wall_seconds": 661.9,
+      "estimated_usd": 0.2286
+    }
+  ],
+  "configs": {
+    "test_rerun": {
+      "container": 0,
+      "config": "qwen3_4b_bf16_sweep_b",
+      "returncode": 0,
+      "volume": {
+        "files": {
+          "18_-1.npz": "74579e52cf935c88b211542151505d6652b47c78aaee17297b36cff6dcc3185a",
+          "18_-10.npz": "90b7f845777da070d57011f1aec0af7dc5806409e8ca653a6924155e2c4ff9da",
+          "18_-9.npz": "a9bbd6def1e12f4435b8acf11dc3159b5444b564811f18214c738071c1cf2e41",
+          "27_-1.npz": "aebff9d0d2e295fd7855ee985a67cffae730c0c319e0c9c4211515a1dcbd83d8",
+          "27_-10.npz": "34892dac808f10e2b4bdc2d29c190bbd345dba8dabc4d1f3a3e479bd7b60e47a",
+          "27_-9.npz": "3ab1d7d46c3f11ca1421be6dbafc470d05033c95b4050ee1d7cb282c92987cd9",
+          "token_ids.npz": "741166f8692a8c7dc0c3e95c81e2c5e2805d71a83d04fbbbc01153f2bee739df"
+        },
+        "fetched": true,
+        "backed_up": true,
+        "problem": null
+      }
+    }
+  },
+  "download": {
+    "seconds": 0.0,
+    "wall_seconds": 3.6,
+    "estimated_usd": 0.0001
+  },
+  "estimated_usd": 0.2287
+}
