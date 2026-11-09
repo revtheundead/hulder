@@ -135,6 +135,16 @@ CONFIGS |= {
         ("canary_first", ("shuffled", ("rows", FULL_REQUEST, SWEEP_TEST_ROWS), 1)),
     ),
 }
+# Step C: the full capture's batches from calibration's first through boundary-pairs' last, one range,
+# in full-capture order, so every batch keeps its composition and its rows compare with kept/'s.
+SWEEP_C_ROWS = ((10936, 16332),)
+CONFIGS |= {
+    # AWQ int4 in bf16, as step A ran it.
+    "qwen3_4b_awq_sweep_c": (
+        CONFIGS["qwen3_4b_awq_smoke"][0],
+        ("canary_first", ("rows", FULL_REQUEST, SWEEP_C_ROWS)),
+    ),
+}
 # config name -> keyword arguments the worker adds to vLLM's LLM, beyond what CaptureConfig sets.
 ENGINE_KWARGS: dict[str, dict] = {"qwen3_4b_bf16_fp8kv_smoke": {"kv_cache_dtype": "fp8"}}
 
@@ -255,6 +265,9 @@ EXPERIMENTS = {
     ),
     # Sweep step B: the bf16 test rerun, in one container.
     "sweep_b": ([[("test_rerun", "qwen3_4b_bf16_sweep_b")]], False, 8 * 60),
+    # Sweep step C: three AWQ replicas, each in its own fresh container, kept by batch majority. 12 minutes
+    # per config is about 3 times step A's cold AWQ engine plus 675 batches at the full capture's pace.
+    "sweep_c": ([[(f"awq_r{i}", "qwen3_4b_awq_sweep_c")] for i in (1, 2, 3)], True, 12 * 60),
 }
 # Experiments whose containers run every config even after one fails, because each config answers
 # its own question. Elsewhere a failed config stops its container.

@@ -175,3 +175,34 @@ def test_step_b_holds_every_test_prompt_in_whole_full_capture_batches_behind_the
     assert len(test) == 2101 and test <= set(ids)
     # The batch edges: 7 calibration rows at the front, 4 boundary-pairs rows at the back.
     assert split[sorted(set(ids[8:]) - test)].value_counts().to_dict() == {"calibration": 7, "bpairs_train": 4}
+
+
+def test_step_c_is_the_awq_smoke_config_on_calibration_through_boundary_pairs_in_full_capture_order():
+    awq, _ = lib.CONFIGS["qwen3_4b_awq_smoke"]
+    fields, source = lib.CONFIGS["qwen3_4b_awq_sweep_c"]
+    assert fields == awq and fields["dtype"] == "bfloat16"
+    assert lib.SWEEP_C_ROWS == ((10936, 16332),)
+    assert source == ("canary_first", ("rows", lib.FULL_REQUEST, lib.SWEEP_C_ROWS))
+
+
+def test_step_c_is_three_fresh_containers_within_its_declared_worst_case():
+    containers, single_use, timeout_s = lib.EXPERIMENTS["sweep_c"]
+    assert containers == [[(f"awq_r{i}", "qwen3_4b_awq_sweep_c")] for i in (1, 2, 3)]
+    assert single_use and timeout_s == 12 * 60
+    expected = json.loads((lib.ROOT / "docs/results/phase4/sweep_expected.json").read_text())["steps"]["C"]
+    assert lib.run_worst_case(containers, timeout_s) == pytest.approx(expected["cost_usd"]["worst"], abs=1e-4)
+    assert "sweep_c" not in lib.CONTINUE_AFTER_FAILURE
+
+
+def test_step_c_holds_whole_full_capture_batches_with_every_calibration_test_and_boundary_pairs_prompt():
+    if not lib.SLABS_SPLITS.exists():
+        pytest.skip("needs .cache/probe/splits.parquet")
+    pd = pytest.importorskip("pandas")
+    full = [r["id"] for r in lib.prompts_for(lib.FULL_REQUEST)]
+    ids = [r["id"] for r in lib.worker_spec(("x", "qwen3_4b_awq_sweep_c"), 720)["prompts"]]
+    assert ids == full[:8] + full[10936:16332]
+    assert len(ids[8:]) == 5396 == 674 * 8 + 4  # 675 batches behind the canary, the last one 4 prompts
+    split = pd.read_parquet(lib.SLABS_SPLITS, columns=["id", "split"]).set_index("id")["split"]
+    wanted = set(split[split.isin(["calibration", "test"]) | split.str.startswith("bpairs_")].index)
+    assert wanted <= set(ids)
+    assert split[sorted(set(ids) - wanted)].value_counts().to_dict() == {"validation": 2}

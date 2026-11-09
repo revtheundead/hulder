@@ -44,7 +44,9 @@ The check warns about the rerun's `batch_order_seed` and its GPU, both expected.
 | Mean \|Δlogit\| | 0.0082 | 0.0060 |
 | Largest \|Δlogit\| | 0.149 | 0.135 |
 
-**Not explained.** Experiment 2's shuffled rerun left only 355 of 2,101 calibration rows bit-identical, against 1,630 of 2,101 test rows here. Both used the same seed on their own slices. Why far more rows here are unmoved isn't known, and it wasn't a question the plan asked. It makes this floor smaller than calibration's, which makes C's shift on test easier to call real, not harder.
+**The test floor is smaller than calibration's, so the test replication is the stricter check.** Experiment 2's shuffled rerun left only 355 of 2,101 calibration rows bit-identical, against 1,630 of 2,101 test rows here. Its mean |Δlogit| on calibration was 0.031, against 0.0082 here. Both used `default_rng(1)` on their own slices. With a smaller floor, a smaller shift on test counts as exceeding it, so C's replication can call a shift real where the primary wouldn't. The floor is a diagnostic and doesn't enter the verdict (`docs/design.md` §6), so this affects the shift line of the report, not the verdict rule.
+
+**Best guess at why, unverified.** B shuffled only test prompts among themselves, all from one S-Labs split. Experiment 2's shuffle mixed calibration prompts with boundary-pairs prompts, which differ more in length. So B's shuffled batches probably changed their total token counts less, and with them the matrix shapes and kernel choices that move a row's activations. No run has tested this.
 
 ## Cost
 
