@@ -28,7 +28,7 @@ back, and single-use containers are collected in the order they finish. Start lo
 `modal run --detach`, so the containers finish if the local process dies, and then rebuild what
 finished from the Volume:
 
-    uv run --with modal==1.6.1 modal run experiments/modal/capture.py::recover --run-id <run id> --backup-dir <dir>
+    uv run --with modal==1.6.1 modal run experiments/modal/recover_run.py --run-id <run id> --backup-dir <dir>
 
 Writes, per run, the snapshots (one per layer), the full log and a manifest to
 --out/<run id>/<label>/, and the run's manifest to --out/<run id>/manifest.json. The tracked tree
@@ -354,39 +354,3 @@ def main(experiment: str, spent_usd: float, out: str = ".cache/modal-runs", back
     record()
     print(json.dumps({k: manifest.get(k) for k in ("configs", "estimated_usd", "stopped")}, indent=2))
     print(f"Run {run_id} in {run_dir}. Check the actual charge on Modal's usage page.")
-
-
-@app.local_entrypoint()
-def recover(run_id: str, out: str = ".cache/modal-runs", backup_dir: str = "") -> None:
-    """Rebuild a run's config folders from the Volume after its local process died. Each config
-    whose manifest reached the Volume is fetched and checked against the hashes its container
-    recorded, and backed up with --backup-dir. A config folder that already exists locally is left
-    alone. Writes <run>/recovered.json; costs and the run manifest stay as the local process left them."""
-    from pathlib import PurePosixPath
-
-    run_dir = ROOT / out / run_id
-    run_dir.mkdir(parents=True, exist_ok=True)
-    labels = sorted({PurePosixPath(e.path).name for e in runs.listdir(run_id)})
-
-    def reader(label: str):
-        def read(name: str) -> bytes:
-            try:
-                return b"".join(runs.read_file(f"{run_id}/{label}/{name}"))
-            except (modal.exception.NotFoundError, FileNotFoundError) as e:
-                raise FileNotFoundError(name) from e
-
-        return read
-
-    recovered = {}
-    for label in labels:
-        if (run_dir / label).exists():
-            recovered[label] = "already local, left alone"
-            continue
-        entry = lib.recover_config(
-            reader(label), run_dir / label, Path(backup_dir) / run_id / label if backup_dir else None
-        )
-        recovered[label] = entry if entry is not None else "no manifest on the Volume: its engine didn't finish"
-    (run_dir / "recovered.json").write_text(
-        json.dumps({"boot_id": lib.boot_id(), "configs": recovered}, indent=2) + "\n"
-    )
-    print(json.dumps(recovered, indent=2))

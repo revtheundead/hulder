@@ -80,7 +80,7 @@ The machine that launches runs has lost files and in-memory results before (`doc
 
 - **On Modal,** each config writes its snapshots, log, manifest and file hashes to the `hulder-runs` Volume and commits it as soon as its engine finishes, before the next config starts.
 - **Locally,** each config's folder and the run manifest are written as soon as that config's results arrive, and single-use containers are collected in the order they finish. A multi-config container streams each config back as it finishes, instead of returning them all at the end.
-- **If the local process dies,** `capture.py::recover` rebuilds the run's folders from the Volume, checking each file against the hash the container recorded. Runs start with `modal run --detach`, so the containers finish without the local process.
+- **If the local process dies,** `experiments/modal/recover_run.py` rebuilds the run's folders from the Volume, checking each file against the hash the container recorded. Runs start with `modal run --detach`, so the containers finish without the local process.
 - **CPU reports** that take more than a few minutes write each row as it finishes, through `experiments/phase4/probe/resumable_rows.py`.
 - **After each run,** the folder is scanned with `export/scan_cache.py`, backed up to a new dated folder with `SHA256SUMS`, and the copy is verified and scanned.
 
