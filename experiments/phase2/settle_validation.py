@@ -1,19 +1,21 @@
-"""Validation of the extra-prompts estimate for INCONCLUSIVE reports, on synthetic scores.
+"""Calibration of the INCONCLUSIVE settle estimate, on fresh synthetic data.
 
-For each undecided condition of an INCONCLUSIVE report, `check` will say roughly how many more
-prompts per class would decide it with an 80% chance, if the observed rates held. This checks that
-promise where a larger sample is genuinely new data: each seed's data is extended by that many
-fresh examples from the same generator, at the same threshold, and the condition is read again.
+For each undecided condition, `check` states an extension of the data and its chance to settle the
+condition, averaged over the true values the data allows (hulder.gate.settle). This draws that
+extension as fresh examples from the same generator, at the same threshold, and reads the condition
+again. Across seeds, stated chances should match how often it settles.
 
-The bar is committed before any run:
+The first estimator, which plugged in the observed value, missed its bar at commit ab8daaae61b7
+(docs/results/phase2/settle.md). This is the second, on seeds that run never used. The bar is
+committed before any run:
 
     source scripts/dev-env.sh
     uv run python experiments/phase2/settle_validation.py expected
-    git add docs/results/phase2/settle_expected.json && git commit
-    uv run python experiments/phase2/settle_validation.py run
+    git add docs/results/phase2/settle_v2_expected.json && git commit
+    OMP_NUM_THREADS=1 uv run python experiments/phase2/settle_validation.py run
 
 `run` refuses unless the bar is committed and matches what the code recomputes. Each case and size
-is written to .cache/settle-validation/rows.jsonl as it finishes, and a rerun resumes from there.
+is written to .cache/settle-validation-v2/rows.jsonl as it finishes, and a rerun resumes from there.
 """
 
 import argparse
@@ -21,23 +23,24 @@ import hashlib
 import json
 import subprocess
 import sys
+from itertools import pairwise
 from pathlib import Path
 
 import numpy as np
-from scipy.stats import binomtest, norm
+from scipy.stats import norm
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path[:0] = [str(ROOT / "tests"), str(ROOT / "experiments/phase4/probe"), str(ROOT / "experiments/phase1/probe")]
 
 from resumable_rows import RowStore, run_rows
-from synthetic import N_ATTACK, N_BENIGN, unchanged_scorer
+from synthetic import N_ATTACK, N_BENIGN, missed_attack_shift_for, unchanged_scorer
 
 import hulder
 from hulder.gate.check import AUROC_TOLERANCE, FNR_TOLERANCE, FPR_BAND_HIGH, _fnr, _fpr
 
-EXPECTED = ROOT / "docs/results/phase2/settle_expected.json"
-RESULTS = ROOT / "docs/results/phase2/settle.json"
-WORK = ROOT / ".cache/settle-validation"
+EXPECTED = ROOT / "docs/results/phase2/settle_v2_expected.json"
+RESULTS = ROOT / "docs/results/phase2/settle_v2.json"
+WORK = ROOT / ".cache/settle-validation-v2"
 CODE = (
     Path(__file__).resolve(),
     ROOT / "tests/synthetic.py",
@@ -45,198 +48,227 @@ CODE = (
     ROOT / "src/hulder/gate/check.py",
     ROOT / "src/hulder/gate/stats.py",
 )
-# A full check's ΔAUROC bootstrap holds 1,000 resample weights per example, so past this many examples
-# an extension isn't checked for ΔAUROC and is counted apart. FPR and FNR need only their bounds,
-# computed by the gate's own functions, so they have no cap.
-AUROC_EXTENSION_CAP = 40_000
-# The report's condition names, as the bar names them.
-BAR_NAME = {"fpr": "fpr_high", "fnr": "fnr", "delta_auroc": "delta_auroc"}
 
-TARGET_FPR = 0.01
 SEPARATION = 3.5  # synthetic.unchanged_scorer's default
-CHANCE = 0.80  # what the estimate promises
-BAND = (0.70, 0.90)  # the realised settle rate must fall in it
-MIN_SEEDS = 50  # undecided seeds with a finite estimate, for a bar to apply
-SEEDS = range(1000)
-EXTENSION_SEED_OFFSET = 1_000_000
-SIZES = {"calibration-sized": (N_BENIGN, N_ATTACK), "quickstart-sized": (180, 180)}
-# The conditions that can leave a report undecided. The low side of the FPR band can only give
-# THRESHOLD STALE: PASS doesn't read it, so it is never undecided.
-CONDITIONS = ("fpr_high", "fnr", "delta_auroc")
+SEEDS = range(2000, 3000)  # the first run used 0 to 999
+EXTENSION_SEED_OFFSET = 3_000_000
+# (benign, attack, target FPR). 180 per class runs at the quickstart's 5%, where PASS is reachable.
+SIZES = {"calibration-sized": (N_BENIGN, N_ATTACK, 0.01), "small": (180, 180, 0.05)}
+BINS = (0.0, 0.2, 0.4, 0.6, 0.8, 1.0)
+MIN_SEEDS = 50
+CALIBRATION_TOLERANCE = 0.10
+WRONG_WAY_MAX = 0.01
 
 
-def fnr_rise_shift(rise: float, target_fpr: float = TARGET_FPR, separation: float = SEPARATION) -> float:
+def fnr_rise_shift(rise: float, target_fpr: float, separation: float = SEPARATION) -> float:
     """The attack-only logit shift that raises the population FNR by `rise` at the population threshold.
     Attacks are N(0, 1) and the threshold's logit is Φ⁻¹(1 − target) − separation."""
     t = norm.ppf(1 - target_fpr) - separation
     return float(t - norm.ppf(norm.cdf(t) + rise))
 
 
-def cases() -> dict[str, dict]:
-    """Each case's unchanged_scorer arguments, chosen to sit near a line so INCONCLUSIVE is common."""
-    from synthetic import missed_attack_shift_for
-
+def cases(target: float) -> dict[str, dict]:
+    """Each case's unchanged_scorer arguments at a target FPR, with the condition and side its
+    population sits on: "pass" inside the tolerance, "fail" past it, None on the line."""
     return {
-        "null": {},
-        "FPR at 1.5x the target": {"candidate_fpr": 0.015},
-        "FPR at 2x the target, on the line": {"candidate_fpr": 0.02},
-        "FPR at 2.5x the target": {"candidate_fpr": 0.025},
-        "FNR rise of 0.04": {"attack_shift": fnr_rise_shift(0.04)},
-        "FNR rise of 0.06": {"attack_shift": fnr_rise_shift(0.06)},
+        "null": {"kwargs": {}, "side": {}},
+        "FPR at 1.5x the target": {"kwargs": {"candidate_fpr": 1.5 * target}, "side": {"fpr": "pass"}},
+        "FPR at 2x the target, on the line": {"kwargs": {"candidate_fpr": 2 * target}, "side": {"fpr": None}},
+        "FPR at 2.5x the target": {"kwargs": {"candidate_fpr": 2.5 * target}, "side": {"fpr": "fail"}},
+        "FNR rise of 0.04": {"kwargs": {"attack_shift": fnr_rise_shift(0.04, target)}, "side": {"fnr": "pass"}},
+        "FNR rise of 0.05, on the line": {
+            "kwargs": {"attack_shift": fnr_rise_shift(0.05, target)},
+            "side": {"fnr": None},
+        },
+        "FNR rise of 0.06": {"kwargs": {"attack_shift": fnr_rise_shift(0.06, target)}, "side": {"fnr": "fail"}},
+        "missed attacks to ΔAUROC -0.01": {
+            "kwargs": {"missed_attack_shift": missed_attack_shift_for(-0.01, SEPARATION, target)},
+            "side": {"delta_auroc": "pass"},
+        },
         "missed attacks to ΔAUROC -0.02, on the line": {
-            "missed_attack_shift": missed_attack_shift_for(-0.02, SEPARATION, TARGET_FPR)
+            "kwargs": {"missed_attack_shift": missed_attack_shift_for(-0.02, SEPARATION, target)},
+            "side": {"delta_auroc": None},
+        },
+        "missed attacks to ΔAUROC -0.025": {
+            "kwargs": {"missed_attack_shift": missed_attack_shift_for(-0.025, SEPARATION, target)},
+            "side": {"delta_auroc": "fail"},
         },
     }
 
 
+def population_side(case: dict, condition: str) -> str | None:
+    """A condition the case doesn't move sits inside its tolerance."""
+    return case["side"].get(condition, "pass")
+
+
 def expected_document() -> dict:
     return {
-        "promise": f"the extra prompts per class reported for an undecided condition decide it with chance {CHANCE:.0%},"
-        " if the observed rates held",
-        "bar": f"for each case, size and condition with at least {MIN_SEEDS} INCONCLUSIVE seeds where the condition"
-        f" was undecided and had a finite estimate, the share of them decided after the extension lies in"
-        f" [{BAND[0]:.0%}, {BAND[1]:.0%}]",
-        "decided_means": "the condition's 95% bound has cleared its line on one side, read from the extended"
-        " report: FPR above 2x the target, FNR above the reference's + 0.05,"
-        " ΔAUROC below -0.02",
-        "extension": "the seed's own data plus fresh examples from the same generator and arguments, drawn with"
-        f" seed + {EXTENSION_SEED_OFFSET:,}, scored against the original threshold, so the reference's FNR line"
-        " is re-read on the extended data",
+        "estimate": "for each undecided condition, the smallest extension up to ten times the data with at least"
+        " an 80% chance to settle it, or ten times the data and its chance, averaged over the true values the"
+        " data allows (hulder.gate.settle). ΔAUROC stops at 40,000 examples in all",
+        "bars": {
+            "calibration": f"per size, pooling every case and condition, the stated chances binned at {list(BINS)}:"
+            f" in every bin with at least {MIN_SEEDS} seeds, the share settled after the extension is within"
+            f" ±{CALIBRATION_TOLERANCE * 100:.0f} points of the bin's mean stated chance",
+            "wrong way": f"per case, size and condition whose population sits on one side, with at least"
+            f" {MIN_SEEDS} settled seeds: at most {WRONG_WAY_MAX:.0%} of them settle on the other side",
+        },
+        "not_claimed": "calibration for a truth exactly on a line. A chance averaged over plausible truths can"
+        " hold on average and still miss for a truth on the line, where no amount of data settles it. The"
+        " on-the-line cases are pooled into the bins like any other, and their own rates are reported",
         "reported_without_bar": [
-            "conditions settled the wrong way against the case's population side",
-            "undecided seeds whose estimate was beyond the limit",
-            (
-                "the planted-fault rows (docs/results/phase4/planted_faults_expected.json), extended by drawing with"
-                " replacement from the full split, which flatters the estimate because rows repeat"
-            ),
-            "sweep step C's calibration report",
+            "each case's own calibration, by bin",
+            "ΔAUROC extensions stopped by the 40,000-example cap",
+            "the planted-fault rows, extended by drawing with replacement from the full split",
         ],
-        "chance": CHANCE,
-        "band": list(BAND),
-        "min_seeds": MIN_SEEDS,
+        "settled_means": "the condition's 95% bound has cleared its line on one side, computed as `check` does:"
+        " the FPR and FNR bounds with the gate's own functions, ΔAUROC by a full check",
+        "extension": f"fresh examples from the same generator and arguments, seed + {EXTENSION_SEED_OFFSET:,},"
+        " at the original threshold. The FNR line is re-read on the extended data",
         "seeds": [SEEDS.start, SEEDS.stop],
-        "extension_seed_offset": EXTENSION_SEED_OFFSET,
-        "target_fpr": TARGET_FPR,
-        "sizes": {name: {"n_benign": b, "n_attack": a} for name, (b, a) in SIZES.items()},
-        "conditions": list(CONDITIONS),
-        "cases": cases(),
+        "bins": list(BINS),
+        "min_seeds": MIN_SEEDS,
+        "calibration_tolerance": CALIBRATION_TOLERANCE,
+        "wrong_way_max": WRONG_WAY_MAX,
+        "sizes": {name: {"n_benign": b, "n_attack": a, "target_fpr": t} for name, (b, a, t) in SIZES.items()},
+        "cases": {name: {size: cases(t)[name] for size, (_, _, t) in SIZES.items()} for name in cases(0.01)},
     }
 
 
-# Which side each case's population sits on, per condition, for the wrong-way count. "pass" means
-# the bound should settle inside the tolerance, "fail" past it, None on the line. Reported, no bar.
-LINE_CASES = {"FPR at 2x the target, on the line": "fpr", "missed attacks to ΔAUROC -0.02, on the line": "delta_auroc"}
-FAIL_CASES = {"FPR at 2.5x the target": "fpr", "FNR rise of 0.06": "fnr"}
-
-
-def population_side(case: str, condition: str) -> str | None:
-    if LINE_CASES.get(case) == condition:
-        return None
-    return "fail" if FAIL_CASES.get(case) == condition else "pass"
-
-
-def side(report: hulder.Report, condition: str) -> str | None:
-    """How a report decides a condition: "pass" inside the tolerance, "fail" past it, None if undecided."""
-    if condition == "fpr":
-        e, line = report.candidate_fpr, FPR_BAND_HIGH * report.target_fpr
-        return "pass" if e.high <= line else "fail" if e.low > line else None
-    if condition == "fnr":
-        e, line = report.candidate_fnr, report.reference_fnr.value + FNR_TOLERANCE
-        return "pass" if e.high <= line else "fail" if e.low > line else None
-    e, line = report.delta_auroc, -AUROC_TOLERANCE
-    return "pass" if e.low >= line else "fail" if e.high < line else None
-
-
-def extended_side(d, condition: str) -> str | None:
-    """The condition's side on extended data, exactly as `check` would compute it. FPR and FNR read
-    only their Clopper-Pearson bounds, so they skip the full check and its bootstrap."""
+def side(d, condition: str, target: float) -> str | None:
+    """How the data settles a condition, exactly as `check` computes it: "pass", "fail" or None.
+    FPR and FNR read only their Clopper-Pearson bounds, so they skip the full check and its bootstrap."""
     benign = d.labels == 0
     if condition == "fpr":
-        e, line = _fpr(d.candidate[benign], d.threshold), FPR_BAND_HIGH * TARGET_FPR
+        e, line = _fpr(d.candidate[benign], d.threshold), FPR_BAND_HIGH * target
     elif condition == "fnr":
         e = _fnr(d.candidate[~benign], d.threshold)
         line = _fnr(d.reference[~benign], d.threshold).value + FNR_TOLERANCE
     else:
-        return side(_check(d), condition)
+        e = _check(d, target).delta_auroc
+        line = -AUROC_TOLERANCE
+        return "pass" if e.low >= line else "fail" if e.high < line else None
     return "pass" if e.high <= line else "fail" if e.low > line else None
 
 
-def _check(d) -> hulder.Report:
-    return hulder.check(d.reference, d.candidate, d.labels, threshold=d.threshold, target_fpr=TARGET_FPR)
+def _check(d, target: float) -> hulder.Report:
+    return hulder.check(d.reference, d.candidate, d.labels, threshold=d.threshold, target_fpr=target)
 
 
 def run_row(row: dict) -> dict:
-    """Every seed of one case and size: the report, and each undecided condition read again after extension."""
-    kwargs, (n_benign, n_attack) = cases()[row["case"]], SIZES[row["size"]]
+    n_benign, n_attack, target = SIZES[row["size"]]
+    kwargs = cases(target)[row["case"]]["kwargs"]
     seeds = []
     for seed in SEEDS:
-        d = unchanged_scorer(seed, n_benign=n_benign, n_attack=n_attack, **kwargs)
-        report = _check(d)
-        out = {"verdict": report.verdict.value, "undecided": []}
+        d = unchanged_scorer(seed, n_benign=n_benign, n_attack=n_attack, target_fpr=target, **kwargs)
+        report = _check(d, target)
+        entries = []
         for u in report.undecided:
-            entry = {"condition": u.condition, "more_benign": u.more_benign, "more_attack": u.more_attack}
-            if (
-                u.more_benign is not None
-                and u.condition == "delta_auroc"
-                and (len(d.labels) + u.more_benign + u.more_attack > AUROC_EXTENSION_CAP)
-            ):
-                entry["too_large"] = True
-            elif u.more_benign is not None:
-                e = unchanged_scorer(
-                    seed + EXTENSION_SEED_OFFSET,
-                    n_benign=u.more_benign,
-                    n_attack=u.more_attack,
-                    threshold=d.threshold,
-                    **kwargs,
-                )
-                both = type(d)(
-                    np.r_[d.reference, e.reference],
-                    np.r_[d.candidate, e.candidate],
-                    np.r_[d.labels, e.labels],
-                    d.threshold,
-                )
-                entry["settled"] = extended_side(both, u.condition)
-            out["undecided"].append(entry)
-        seeds.append(out)
+            s = u.settle
+            e = unchanged_scorer(
+                seed + EXTENSION_SEED_OFFSET,
+                n_benign=s.more_benign,
+                n_attack=s.more_attack,
+                target_fpr=target,
+                threshold=d.threshold,
+                **kwargs,
+            )
+            both = type(d)(
+                np.r_[d.reference, e.reference], np.r_[d.candidate, e.candidate], np.r_[d.labels, e.labels], d.threshold
+            )
+            entries.append(
+                {
+                    "condition": u.condition,
+                    "more_benign": s.more_benign,
+                    "more_attack": s.more_attack,
+                    "chance": s.chance,
+                    "reached": s.reached,
+                    "capped": s.capped,
+                    "settled": side(both, u.condition, target),
+                }
+            )
+        seeds.append(
+            {
+                "seed": seed,
+                "verdict": report.verdict.value,
+                "out_of_reach": [r.condition for r in report.out_of_reach],
+                "undecided": entries,
+            }
+        )
     print(row["key"], sum(s["verdict"] == "INCONCLUSIVE" for s in seeds), "INCONCLUSIVE", flush=True)
     return {"key": row["key"], "seeds": seeds}
 
 
-def summarise(row: dict, raw: dict) -> list[dict]:
-    """Per condition: how many undecided seeds had an estimate, how many settled, and the bar."""
+def bins_of(entries: list[dict]) -> list[dict]:
     out = []
-    for condition, bar_name in BAR_NAME.items():
-        entries = [u for s in raw["seeds"] for u in s["undecided"] if u["condition"] == condition]
-        if not entries:
+    for lo, hi in pairwise(BINS):
+        inside = [u for u in entries if lo <= u["chance"] < hi or (hi == 1.0 and u["chance"] == 1.0)]
+        if not inside:
             continue
-        too_large = [u for u in entries if u.get("too_large")]
-        finite = [u for u in entries if u["more_benign"] is not None and not u.get("too_large")]
-        settled = [u for u in finite if u["settled"] is not None]
-        expected = population_side(row["case"], condition)
-        wrong = [u for u in settled if expected is not None and u["settled"] != expected]
-        rate = len(settled) / len(finite) if finite else None
-        ci = binomtest(len(settled), len(finite)).proportion_ci(method="exact") if finite else None
-        extra = [u["more_benign"] + u["more_attack"] for u in finite]
+        stated = float(np.mean([u["chance"] for u in inside]))
+        realised = float(np.mean([u["settled"] is not None for u in inside]))
+        applies = len(inside) >= MIN_SEEDS
+        out.append(
+            {
+                "bin": [lo, hi],
+                "seeds": len(inside),
+                "mean_stated": stated,
+                "realised": realised,
+                "bar_applies": applies,
+                "meets_bar": abs(realised - stated) <= CALIBRATION_TOLERANCE if applies else None,
+            }
+        )
+    return out
+
+
+def wrong_way(row: dict, entries: list[dict]) -> list[dict]:
+    target = SIZES[row["size"]][2]
+    case = cases(target)[row["case"]]
+    out = []
+    for condition in ("fpr", "fnr", "delta_auroc"):
+        expected = population_side(case, condition)
+        settled = [u for u in entries if u["condition"] == condition and u["settled"] is not None]
+        if expected is None or not settled:
+            continue
+        wrong = sum(u["settled"] != expected for u in settled)
+        applies = len(settled) >= MIN_SEEDS
         out.append(
             {
                 "case": row["case"],
                 "size": row["size"],
-                "condition": bar_name,
-                "undecided_seeds": len(entries),
-                "beyond_limit": len(entries) - len(finite) - len(too_large),
-                "too_large_to_check": len(too_large),
-                "with_estimate": len(finite),
-                "settled": len(settled),
-                "settle_rate": rate,
-                "settle_rate_ci95": None if ci is None else [ci.low, ci.high],
-                "wrong_way": len(wrong),
+                "condition": condition,
                 "population_side": expected,
-                "median_extra_prompts": float(np.median(extra)) if extra else None,
-                "bar_applies": len(finite) >= MIN_SEEDS,
-                "meets_bar": (BAND[0] <= rate <= BAND[1]) if len(finite) >= MIN_SEEDS else None,
+                "settled": len(settled),
+                "wrong_way": wrong,
+                "share": wrong / len(settled),
+                "bar_applies": applies,
+                "meets_bar": wrong / len(settled) <= WRONG_WAY_MAX if applies else None,
             }
         )
     return out
+
+
+def summarise(rows: list[dict], raw: dict[str, dict]) -> dict:
+    entries = {row["key"]: [u for s in raw[row["key"]]["seeds"] for u in s["undecided"]] for row in rows}
+    calibration = {
+        size: bins_of([u for row in rows if row["size"] == size for u in entries[row["key"]]]) for size in SIZES
+    }
+    per_case = [{"case": row["case"], "size": row["size"], "bins": bins_of(entries[row["key"]])} for row in rows]
+    wrong = [w for row in rows for w in wrong_way(row, entries[row["key"]])]
+    capped = [u for e in entries.values() for u in e if u["capped"]]
+    barred = [b for bins in calibration.values() for b in bins if b["bar_applies"]] + [
+        w for w in wrong if w["bar_applies"]
+    ]
+    return {
+        "meets_bar": bool(barred) and all(b["meets_bar"] for b in barred),
+        "calibration": calibration,
+        "wrong_way": wrong,
+        "per_case": per_case,
+        "capped": {"seeds": len(capped), "settled": sum(u["settled"] is not None for u in capped)},
+        "out_of_reach_seeds": {
+            row["key"]: sum(bool(s["out_of_reach"]) for s in raw[row["key"]]["seeds"]) for row in rows
+        },
+    }
 
 
 def _uncommitted(path: Path) -> bool:
@@ -251,6 +283,12 @@ def _identity() -> dict:
     for path in CODE:
         digest.update(path.read_bytes())
     return {"expected_sha256": hashlib.sha256(EXPECTED.read_bytes()).hexdigest(), "code_sha256": digest.hexdigest()}
+
+
+def stage_expected() -> int:
+    EXPECTED.write_text(json.dumps(expected_document(), indent=2, ensure_ascii=False) + "\n")
+    print(f"wrote {EXPECTED}; review it and commit it before the run")
+    return 0
 
 
 def stage_run(workers: int) -> int:
@@ -269,25 +307,11 @@ def stage_run(workers: int) -> int:
         WORK / "rows.jsonl", _identity(), extra={"expected_file_commit": commit, "run_manifest": run_manifest(seed=0)}
     )
     print(f"{len(store.done)} rows already written", flush=True)
-    rows = [{"key": f"{case}/{size}", "case": case, "size": size} for case in cases() for size in SIZES]
+    rows = [{"key": f"{case}/{size}", "case": case, "size": size} for case in cases(0.01) for size in SIZES]
     run_rows(rows, run_row, store, workers)
-    summary = [s for row in rows for s in summarise(row, store.done[row["key"]])]
-    applies = [s for s in summary if s["bar_applies"]]
-    report = {
-        **store.extra,
-        "meets_bar": bool(applies) and all(s["meets_bar"] for s in applies),
-        "summary": summary,
-    }
+    report = {**store.extra, **summarise(rows, store.done)}
     RESULTS.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n")
-    for s in summary:
-        print(s["case"], s["size"], s["condition"], s["with_estimate"], s["settle_rate"], s["meets_bar"])
-    print("meets bar:", report["meets_bar"])
-    return 0
-
-
-def stage_expected() -> int:
-    EXPECTED.write_text(json.dumps(expected_document(), indent=2, ensure_ascii=False) + "\n")
-    print(f"wrote {EXPECTED}; review it and commit it before the run")
+    print(json.dumps({k: report[k] for k in ("meets_bar", "calibration", "capped")}, indent=1))
     return 0
 
 
