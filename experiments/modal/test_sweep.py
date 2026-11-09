@@ -206,3 +206,21 @@ def test_step_c_holds_whole_full_capture_batches_with_every_calibration_test_and
     wanted = set(split[split.isin(["calibration", "test"]) | split.str.startswith("bpairs_")].index)
     assert wanted <= set(ids)
     assert split[sorted(set(ids) - wanted)].value_counts().to_dict() == {"validation": 2}
+
+
+def test_recovered_configs_fill_the_run_manifest_with_their_config_names_and_no_cost():
+    manifest = {"experiment": "sweep_c", "configs": {}, "containers": [], "estimated_usd": 0.0002}
+    entry = {"returncode": 0, "volume": {"problem": None}, "recovered": True}
+    recovered = {"awq_r1": entry, "awq_r2": "no manifest on the Volume: its engine didn't finish"}
+    merged = lib.merge_recovered(manifest, recovered)
+    assert merged["configs"] == {"awq_r1": {"container": None, "config": "qwen3_4b_awq_sweep_c", **entry}}
+    assert merged["recovered"] == {"configs": ["awq_r1"], "not_finished": ["awq_r2"]}
+    assert "Modal's usage page" in merged["cost_note"]
+    assert manifest["configs"] == {}  # the input is left as it was
+
+
+def test_a_config_already_in_the_run_manifest_is_kept_as_collected():
+    collected = {"container": 0, "config": "qwen3_4b_awq_sweep_c", "returncode": 0, "volume": {}}
+    manifest = {"experiment": "sweep_c", "configs": {"awq_r1": collected}}
+    merged = lib.merge_recovered(manifest, {"awq_r1": "already local, left alone"})
+    assert merged["configs"]["awq_r1"] == collected

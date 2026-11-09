@@ -7,8 +7,8 @@ command. Starts no container: it only reads the Volume.
 
 Each config whose manifest reached the Volume is fetched and checked against the snapshot hashes
 its container recorded (smoke_lib.recover_config), and backed up with --backup-dir. A config folder
-that already exists locally is left alone. Writes <run>/recovered.json. Costs and the run manifest
-stay as the local process left them.
+that already exists locally is left alone. Writes <run>/recovered.json and adds the recovered
+configs to <run>/manifest.json. Containers' costs aren't recovered: read them from Modal's usage page.
 """
 
 import json
@@ -47,4 +47,9 @@ def main(run_id: str, out: str = ".cache/modal-runs", backup_dir: str = "") -> N
         recovered[label] = entry if entry is not None else "no manifest on the Volume: its engine didn't finish"
     record = {"boot_id": lib.boot_id(), "configs": recovered}
     (run_dir / "recovered.json").write_text(json.dumps(record, indent=2) + "\n")
+    # The run manifest gains the recovered configs, so reports read the run as if collected.
+    path = run_dir / "manifest.json"
+    if path.exists():
+        merged = lib.merge_recovered(json.loads(path.read_text()), recovered)
+        path.write_text(json.dumps(merged, indent=2) + "\n")
     print(json.dumps(recovered, indent=2))

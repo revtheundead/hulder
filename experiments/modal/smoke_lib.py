@@ -796,6 +796,26 @@ def recover_config(read: Callable[[str], bytes], local_dir: Path, backup_dir: Pa
     return {"returncode": json.loads(manifest)["returncode"], "volume": volume, "recovered": True}
 
 
+def merge_recovered(manifest: dict, recovered: dict) -> dict:
+    """The run manifest with each config recover_config rebuilt added under "configs", named by the
+    run's experiment. Configs already collected stay as they were. Containers' costs weren't
+    recorded, so the manifest says where to read them."""
+    names = {e[0]: e[1] for group in EXPERIMENTS[manifest["experiment"]][0] for e in group}
+    configs = dict(manifest.get("configs", {}))
+    done = sorted(label for label, entry in recovered.items() if isinstance(entry, dict))
+    for label in done:
+        configs.setdefault(label, {"container": None, "config": names[label], **recovered[label]})
+    return {
+        **manifest,
+        "configs": configs,
+        "recovered": {
+            "configs": done,
+            "not_finished": sorted(k for k, v in recovered.items() if isinstance(v, str) and "didn't finish" in v),
+        },
+        "cost_note": "the local process died before recording container costs; read them from Modal's usage page",
+    }
+
+
 def in_finish_order(n: int, poll: Callable[[int], tuple[bool, object]], wait: Callable[[], object]):
     """Yield (i, result) for calls 0 to n - 1 as each finishes. poll(i) returns (True, result) once
     call i has finished, else (False, None). wait() runs between rounds that found nothing new."""

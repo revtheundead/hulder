@@ -323,7 +323,8 @@ def main(experiment: str, spent_usd: float, out: str = ".cache/modal-runs", back
             def poll(i: int) -> tuple[bool, dict | None]:
                 try:
                     return True, calls[i].get(timeout=0)
-                except modal.exception.TimeoutError:
+                # modal 1.6.1 raises the builtin TimeoutError here (_functions.py:346), not its own.
+                except (TimeoutError, modal.exception.TimeoutError):
                     return False, None
 
             # Each container is written as it finishes, so a slow first one holds nothing back.
