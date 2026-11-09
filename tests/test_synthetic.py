@@ -38,3 +38,12 @@ def test_missed_attack_delta_auroc_at_a_given_threshold_matches_monte_carlo():
     moved = np.where(attack <= t, attack + shift, attack)
     monte_carlo = (moved > benign).mean() - (attack > benign).mean()
     assert missed_attack_delta_auroc(shift, threshold_logit=t) == pytest.approx(monte_carlo, abs=1e-3)
+
+
+def test_a_given_threshold_replaces_the_fitted_one_for_extending_a_sample():
+    base = unchanged_scorer(0, candidate_fpr=0.02)
+    extra = unchanged_scorer(1, n_benign=50_000, n_attack=0, candidate_fpr=0.02, threshold=base.threshold)
+    assert extra.threshold == base.threshold
+    assert len(extra.labels) == 50_000
+    # The candidate's shift is set from the given threshold, so its FPR there is the requested one.
+    assert abs((extra.candidate > base.threshold).mean() - 0.02) < 0.003
