@@ -237,6 +237,10 @@
       "primary": "INCONCLUSIVE, exit 12, within the prediction",
       "replication": "THRESHOLD STALE, exit 10, as predicted more likely",
       "added": "2026-11-09, after the run; no rule or prediction above changed"
+    },
+    "D": {
+      "skipped": "C answered the question; FP8 KV stays unsettled",
+      "added": "2026-11-09, after C; no rule or prediction above changed"
     }
   }
 }

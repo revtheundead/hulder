@@ -1,6 +1,6 @@
 # Qwen3-4B sweep: results so far
 
-**A: AWQ runs in bf16, and FP8 KV is unsettled. B: the test rerun is PASS, as predicted. C: AWQ int4 is INCONCLUSIVE on calibration, the primary verdict, and THRESHOLD STALE on test, its replication, both within the predictions.** AWQ pushes the probe's scores up on every flipped prompt, with no measurable loss of ranking. The rules and predictions were committed before any run, in `sweep.md` and `sweep_expected.json`. D hasn't run.
+**A: AWQ runs in bf16, and FP8 KV is unsettled. B: the test rerun is PASS, as predicted. C: AWQ int4 is INCONCLUSIVE on calibration, the primary verdict, and THRESHOLD STALE on test, its replication, both within the predictions.** AWQ pushes the probe's scores up on every flipped prompt, with no measurable loss of ranking. The rules and predictions were committed before any run, in `sweep.md` and `sweep_expected.json`. D is skipped, since C answered the question, and FP8 KV stays unsettled.
 
 ## A. Smoke
 

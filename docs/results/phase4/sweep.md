@@ -76,6 +76,8 @@ AWQ on C's slice, three replicas, each in its own fresh container, each batch ke
 
 Chosen after C has been read, and only after A's FP8 KV answer. The options, none of them settled: bitsandbytes NF4 at load, which needs `bitsandbytes` added to `uv.lock`; a community GPTQ checkpoint, which is unofficial; or AWQ alone. D gets its own rules and predictions, committed before it runs.
 
+**Outcome, added after C.** D is skipped. C answered the sweep's question, whether the gate reads a real quantization change on Qwen3-4B, and no harsher config is needed for that. FP8 KV stays unsettled, as step A left it.
+
 ## How each run keeps what it has
 
 The machine that launches runs has lost files and in-memory results before (`docs/design.md` §10 covers what that means for captures). So:
