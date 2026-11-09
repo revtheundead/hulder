@@ -1,0 +1,1076 @@
+{
+  "expected_file_commit": "b78cc6591823c2a540a0b6687d1ddc1efcf25ad3",
+  "run_manifest": {
+    "git_commit": "b78cc6591823c2a540a0b6687d1ddc1efcf25ad3",
+    "git_dirty": false,
+    "python": "3.12.14",
+    "packages": {
+      "numpy": "2.3.5",
+      "scipy": "1.18.1",
+      "scikit-learn": "1.9.1",
+      "pandas": "3.0.6",
+      "huggingface-hub": "1.33.0",
+      "vllm": "0.30.0",
+      "torch": "2.13.0"
+    },
+    "seed": 0,
+    "inputs_sha256": {}
+  },
+  "meets_bar": false,
+  "calibration": {
+    "calibration-sized": [
+      {
+        "bin": [
+          0.2,
+          0.4
+        ],
+        "seeds": 986,
+        "mean_stated": 0.30355375253549693,
+        "realised": 0.23225152129817445,
+        "bar_applies": true,
+        "meets_bar": true
+      },
+      {
+        "bin": [
+          0.4,
+          0.6
+        ],
+        "seeds": 2243,
+        "mean_stated": 0.5301409573167764,
+        "realised": 0.46411056620597413,
+        "bar_applies": true,
+        "meets_bar": true
+      },
+      {
+        "bin": [
+          0.6,
+          0.8
+        ],
+        "seeds": 1897,
+        "mean_stated": 0.698174716556834,
+        "realised": 0.6230890880337375,
+        "bar_applies": true,
+        "meets_bar": true
+      },
+      {
+        "bin": [
+          0.8,
+          1.0
+        ],
+        "seeds": 1747,
+        "mean_stated": 0.8029049749023228,
+        "realised": 0.6296508299942759,
+        "bar_applies": true,
+        "meets_bar": false
+      }
+    ],
+    "small": [
+      {
+        "bin": [
+          0.2,
+          0.4
+        ],
+        "seeds": 262,
+        "mean_stated": 0.3728034351145038,
+        "realised": 0.3244274809160305,
+        "bar_applies": true,
+        "meets_bar": true
+      },
+      {
+        "bin": [
+          0.4,
+          0.6
+        ],
+        "seeds": 2988,
+        "mean_stated": 0.5132036270298003,
+        "realised": 0.3962516733601071,
+        "bar_applies": true,
+        "meets_bar": false
+      },
+      {
+        "bin": [
+          0.6,
+          0.8
+        ],
+        "seeds": 2641,
+        "mean_stated": 0.6895797855165953,
+        "realised": 0.5528209011737978,
+        "bar_applies": true,
+        "meets_bar": false
+      },
+      {
+        "bin": [
+          0.8,
+          1.0
+        ],
+        "seeds": 1917,
+        "mean_stated": 0.8076185248598922,
+        "realised": 0.6280646844027126,
+        "bar_applies": true,
+        "meets_bar": false
+      }
+    ]
+  },
+  "wrong_way": [
+    {
+      "case": "null",
+      "size": "small",
+      "condition": "fnr",
+      "population_side": "pass",
+      "settled": 21,
+      "wrong_way": 0,
+      "share": 0.0,
+      "bar_applies": false,
+      "meets_bar": null
+    },
+    {
+      "case": "FPR at 1.5x the target",
+      "size": "calibration-sized",
+      "condition": "fpr",
+      "population_side": "pass",
+      "settled": 748,
+      "wrong_way": 0,
+      "share": 0.0,
+      "bar_applies": true,
+      "meets_bar": true
+    },
+    {
+      "case": "FPR at 1.5x the target",
+      "size": "small",
+      "condition": "fpr",
+      "population_side": "pass",
+      "settled": 729,
+      "wrong_way": 0,
+      "share": 0.0,
+      "bar_applies": true,
+      "meets_bar": true
+    },
+    {
+      "case": "FPR at 2.5x the target",
+      "size": "calibration-sized",
+      "condition": "fpr",
+      "population_side": "fail",
+      "settled": 733,
+      "wrong_way": 0,
+      "share": 0.0,
+      "bar_applies": true,
+      "meets_bar": true
+    },
+    {
+      "case": "FPR at 2.5x the target",
+      "size": "small",
+      "condition": "fpr",
+      "population_side": "fail",
+      "settled": 682,
+      "wrong_way": 0,
+      "share": 0.0,
+      "bar_applies": true,
+      "meets_bar": true
+    },
+    {
+      "case": "FNR rise of 0.04",
+      "size": "calibration-sized",
+      "condition": "fnr",
+      "population_side": "pass",
+      "settled": 524,
+      "wrong_way": 0,
+      "share": 0.0,
+      "bar_applies": true,
+      "meets_bar": true
+    },
+    {
+      "case": "FNR rise of 0.04",
+      "size": "small",
+      "condition": "fnr",
+      "population_side": "pass",
+      "settled": 373,
+      "wrong_way": 44,
+      "share": 0.11796246648793565,
+      "bar_applies": true,
+      "meets_bar": false
+    },
+    {
+      "case": "FNR rise of 0.04",
+      "size": "small",
+      "condition": "delta_auroc",
+      "population_side": "pass",
+      "settled": 4,
+      "wrong_way": 0,
+      "share": 0.0,
+      "bar_applies": false,
+      "meets_bar": null
+    },
+    {
+      "case": "FNR rise of 0.05, on the line",
+      "size": "small",
+      "condition": "delta_auroc",
+      "population_side": "pass",
+      "settled": 33,
+      "wrong_way": 0,
+      "share": 0.0,
+      "bar_applies": false,
+      "meets_bar": null
+    },
+    {
+      "case": "FNR rise of 0.06",
+      "size": "calibration-sized",
+      "condition": "fnr",
+      "population_side": "fail",
+      "settled": 532,
+      "wrong_way": 2,
+      "share": 0.0037593984962406013,
+      "bar_applies": true,
+      "meets_bar": true
+    },
+    {
+      "case": "FNR rise of 0.06",
+      "size": "small",
+      "condition": "fnr",
+      "population_side": "fail",
+      "settled": 388,
+      "wrong_way": 36,
+      "share": 0.09278350515463918,
+      "bar_applies": true,
+      "meets_bar": false
+    },
+    {
+      "case": "FNR rise of 0.06",
+      "size": "small",
+      "condition": "delta_auroc",
+      "population_side": "pass",
+      "settled": 162,
+      "wrong_way": 0,
+      "share": 0.0,
+      "bar_applies": true,
+      "meets_bar": true
+    },
+    {
+      "case": "missed attacks to ΔAUROC -0.01",
+      "size": "small",
+      "condition": "fnr",
+      "population_side": "pass",
+      "settled": 21,
+      "wrong_way": 0,
+      "share": 0.0,
+      "bar_applies": false,
+      "meets_bar": null
+    },
+    {
+      "case": "missed attacks to ΔAUROC -0.01",
+      "size": "small",
+      "condition": "delta_auroc",
+      "population_side": "pass",
+      "settled": 423,
+      "wrong_way": 0,
+      "share": 0.0,
+      "bar_applies": true,
+      "meets_bar": true
+    },
+    {
+      "case": "missed attacks to ΔAUROC -0.025",
+      "size": "calibration-sized",
+      "condition": "delta_auroc",
+      "population_side": "fail",
+      "settled": 451,
+      "wrong_way": 1,
+      "share": 0.0022172949002217295,
+      "bar_applies": true,
+      "meets_bar": true
+    },
+    {
+      "case": "missed attacks to ΔAUROC -0.025",
+      "size": "small",
+      "condition": "delta_auroc",
+      "population_side": "fail",
+      "settled": 395,
+      "wrong_way": 51,
+      "share": 0.1291139240506329,
+      "bar_applies": true,
+      "meets_bar": false
+    }
+  ],
+  "per_case": [
+    {
+      "case": "null",
+      "size": "calibration-sized",
+      "bins": []
+    },
+    {
+      "case": "null",
+      "size": "small",
+      "bins": [
+        {
+          "bin": [
+            0.8,
+            1.0
+          ],
+          "seeds": 22,
+          "mean_stated": 0.8412954545454544,
+          "realised": 0.9545454545454546,
+          "bar_applies": false,
+          "meets_bar": null
+        }
+      ]
+    },
+    {
+      "case": "FPR at 1.5x the target",
+      "size": "calibration-sized",
+      "bins": [
+        {
+          "bin": [
+            0.4,
+            0.6
+          ],
+          "seeds": 232,
+          "mean_stated": 0.5413502651415666,
+          "realised": 0.9698275862068966,
+          "bar_applies": true,
+          "meets_bar": false
+        },
+        {
+          "bin": [
+            0.6,
+            0.8
+          ],
+          "seeds": 273,
+          "mean_stated": 0.7034710380545364,
+          "realised": 0.9816849816849816,
+          "bar_applies": true,
+          "meets_bar": false
+        },
+        {
+          "bin": [
+            0.8,
+            1.0
+          ],
+          "seeds": 290,
+          "mean_stated": 0.8066303815428569,
+          "realised": 0.8793103448275862,
+          "bar_applies": true,
+          "meets_bar": true
+        }
+      ]
+    },
+    {
+      "case": "FPR at 1.5x the target",
+      "size": "small",
+      "bins": [
+        {
+          "bin": [
+            0.4,
+            0.6
+          ],
+          "seeds": 244,
+          "mean_stated": 0.5297046590059422,
+          "realised": 0.9139344262295082,
+          "bar_applies": true,
+          "meets_bar": false
+        },
+        {
+          "bin": [
+            0.6,
+            0.8
+          ],
+          "seeds": 330,
+          "mean_stated": 0.696490991846601,
+          "realised": 0.9515151515151515,
+          "bar_applies": true,
+          "meets_bar": false
+        },
+        {
+          "bin": [
+            0.8,
+            1.0
+          ],
+          "seeds": 233,
+          "mean_stated": 0.8096756620013551,
+          "realised": 0.8240343347639485,
+          "bar_applies": true,
+          "meets_bar": true
+        }
+      ]
+    },
+    {
+      "case": "FPR at 2x the target, on the line",
+      "size": "calibration-sized",
+      "bins": [
+        {
+          "bin": [
+            0.4,
+            0.6
+          ],
+          "seeds": 542,
+          "mean_stated": 0.5391526251769891,
+          "realised": 0.03136531365313653,
+          "bar_applies": true,
+          "meets_bar": false
+        },
+        {
+          "bin": [
+            0.6,
+            0.8
+          ],
+          "seeds": 279,
+          "mean_stated": 0.693936871686001,
+          "realised": 0.053763440860215055,
+          "bar_applies": true,
+          "meets_bar": false
+        },
+        {
+          "bin": [
+            0.8,
+            1.0
+          ],
+          "seeds": 147,
+          "mean_stated": 0.803454477498629,
+          "realised": 0.06802721088435375,
+          "bar_applies": true,
+          "meets_bar": false
+        }
+      ]
+    },
+    {
+      "case": "FPR at 2x the target, on the line",
+      "size": "small",
+      "bins": [
+        {
+          "bin": [
+            0.4,
+            0.6
+          ],
+          "seeds": 454,
+          "mean_stated": 0.5274407084021434,
+          "realised": 0.048458149779735685,
+          "bar_applies": true,
+          "meets_bar": false
+        },
+        {
+          "bin": [
+            0.6,
+            0.8
+          ],
+          "seeds": 377,
+          "mean_stated": 0.6808079973398304,
+          "realised": 0.05305039787798409,
+          "bar_applies": true,
+          "meets_bar": false
+        },
+        {
+          "bin": [
+            0.8,
+            1.0
+          ],
+          "seeds": 129,
+          "mean_stated": 0.8048118752856986,
+          "realised": 0.08527131782945736,
+          "bar_applies": true,
+          "meets_bar": false
+        }
+      ]
+    },
+    {
+      "case": "FPR at 2.5x the target",
+      "size": "calibration-sized",
+      "bins": [
+        {
+          "bin": [
+            0.4,
+            0.6
+          ],
+          "seeds": 313,
+          "mean_stated": 0.5471506213145624,
+          "realised": 0.939297124600639,
+          "bar_applies": true,
+          "meets_bar": false
+        },
+        {
+          "bin": [
+            0.6,
+            0.8
+          ],
+          "seeds": 270,
+          "mean_stated": 0.7017342760360481,
+          "realised": 0.9444444444444444,
+          "bar_applies": true,
+          "meets_bar": false
+        },
+        {
+          "bin": [
+            0.8,
+            1.0
+          ],
+          "seeds": 239,
+          "mean_stated": 0.8003573711879233,
+          "realised": 0.7698744769874477,
+          "bar_applies": true,
+          "meets_bar": true
+        }
+      ]
+    },
+    {
+      "case": "FPR at 2.5x the target",
+      "size": "small",
+      "bins": [
+        {
+          "bin": [
+            0.4,
+            0.6
+          ],
+          "seeds": 250,
+          "mean_stated": 0.5286869582045542,
+          "realised": 0.872,
+          "bar_applies": true,
+          "meets_bar": false
+        },
+        {
+          "bin": [
+            0.6,
+            0.8
+          ],
+          "seeds": 327,
+          "mean_stated": 0.6808377237441275,
+          "realised": 0.9204892966360856,
+          "bar_applies": true,
+          "meets_bar": false
+        },
+        {
+          "bin": [
+            0.8,
+            1.0
+          ],
+          "seeds": 220,
+          "mean_stated": 0.8022057805184347,
+          "realised": 0.740909090909091,
+          "bar_applies": true,
+          "meets_bar": true
+        }
+      ]
+    },
+    {
+      "case": "FNR rise of 0.04",
+      "size": "calibration-sized",
+      "bins": [
+        {
+          "bin": [
+            0.2,
+            0.4
+          ],
+          "seeds": 272,
+          "mean_stated": 0.29590073529411764,
+          "realised": 0.3125,
+          "bar_applies": true,
+          "meets_bar": true
+        },
+        {
+          "bin": [
+            0.4,
+            0.6
+          ],
+          "seeds": 164,
+          "mean_stated": 0.5078490853658537,
+          "realised": 0.5609756097560976,
+          "bar_applies": true,
+          "meets_bar": true
+        },
+        {
+          "bin": [
+            0.6,
+            0.8
+          ],
+          "seeds": 211,
+          "mean_stated": 0.7034016587677726,
+          "realised": 0.6966824644549763,
+          "bar_applies": true,
+          "meets_bar": true
+        },
+        {
+          "bin": [
+            0.8,
+            1.0
+          ],
+          "seeds": 326,
+          "mean_stated": 0.8040398773006135,
+          "realised": 0.6134969325153374,
+          "bar_applies": true,
+          "meets_bar": false
+        }
+      ]
+    },
+    {
+      "case": "FNR rise of 0.04",
+      "size": "small",
+      "bins": [
+        {
+          "bin": [
+            0.2,
+            0.4
+          ],
+          "seeds": 103,
+          "mean_stated": 0.37148300970873777,
+          "realised": 0.21359223300970873,
+          "bar_applies": true,
+          "meets_bar": false
+        },
+        {
+          "bin": [
+            0.4,
+            0.6
+          ],
+          "seeds": 399,
+          "mean_stated": 0.48417794486215543,
+          "realised": 0.3032581453634085,
+          "bar_applies": true,
+          "meets_bar": false
+        },
+        {
+          "bin": [
+            0.6,
+            0.8
+          ],
+          "seeds": 249,
+          "mean_stated": 0.6947951807228916,
+          "realised": 0.44176706827309237,
+          "bar_applies": true,
+          "meets_bar": false
+        },
+        {
+          "bin": [
+            0.8,
+            1.0
+          ],
+          "seeds": 229,
+          "mean_stated": 0.8067450949030505,
+          "realised": 0.5414847161572053,
+          "bar_applies": true,
+          "meets_bar": false
+        }
+      ]
+    },
+    {
+      "case": "FNR rise of 0.05, on the line",
+      "size": "calibration-sized",
+      "bins": [
+        {
+          "bin": [
+            0.2,
+            0.4
+          ],
+          "seeds": 467,
+          "mean_stated": 0.30059261241970026,
+          "realised": 0.08565310492505353,
+          "bar_applies": true,
+          "meets_bar": false
+        },
+        {
+          "bin": [
+            0.4,
+            0.6
+          ],
+          "seeds": 241,
+          "mean_stated": 0.4945622406639005,
+          "realised": 0.14937759336099585,
+          "bar_applies": true,
+          "meets_bar": false
+        },
+        {
+          "bin": [
+            0.6,
+            0.8
+          ],
+          "seeds": 155,
+          "mean_stated": 0.6870709677419354,
+          "realised": 0.25806451612903225,
+          "bar_applies": true,
+          "meets_bar": false
+        },
+        {
+          "bin": [
+            0.8,
+            1.0
+          ],
+          "seeds": 133,
+          "mean_stated": 0.8027387218045113,
+          "realised": 0.21804511278195488,
+          "bar_applies": true,
+          "meets_bar": false
+        }
+      ]
+    },
+    {
+      "case": "FNR rise of 0.05, on the line",
+      "size": "small",
+      "bins": [
+        {
+          "bin": [
+            0.2,
+            0.4
+          ],
+          "seeds": 95,
+          "mean_stated": 0.3740947368421052,
+          "realised": 0.3157894736842105,
+          "bar_applies": true,
+          "meets_bar": true
+        },
+        {
+          "bin": [
+            0.4,
+            0.6
+          ],
+          "seeds": 438,
+          "mean_stated": 0.4832899347622578,
+          "realised": 0.2465753424657534,
+          "bar_applies": true,
+          "meets_bar": false
+        },
+        {
+          "bin": [
+            0.6,
+            0.8
+          ],
+          "seeds": 254,
+          "mean_stated": 0.6923357656770879,
+          "realised": 0.3661417322834646,
+          "bar_applies": true,
+          "meets_bar": false
+        },
+        {
+          "bin": [
+            0.8,
+            1.0
+          ],
+          "seeds": 214,
+          "mean_stated": 0.8049306354930074,
+          "realised": 0.4766355140186916,
+          "bar_applies": true,
+          "meets_bar": false
+        }
+      ]
+    },
+    {
+      "case": "FNR rise of 0.06",
+      "size": "calibration-sized",
+      "bins": [
+        {
+          "bin": [
+            0.2,
+            0.4
+          ],
+          "seeds": 247,
+          "mean_stated": 0.31757995951417006,
+          "realised": 0.42105263157894735,
+          "bar_applies": true,
+          "meets_bar": false
+        },
+        {
+          "bin": [
+            0.4,
+            0.6
+          ],
+          "seeds": 221,
+          "mean_stated": 0.4932545248868778,
+          "realised": 0.5067873303167421,
+          "bar_applies": true,
+          "meets_bar": true
+        },
+        {
+          "bin": [
+            0.6,
+            0.8
+          ],
+          "seeds": 189,
+          "mean_stated": 0.6952632275132274,
+          "realised": 0.6878306878306878,
+          "bar_applies": true,
+          "meets_bar": true
+        },
+        {
+          "bin": [
+            0.8,
+            1.0
+          ],
+          "seeds": 278,
+          "mean_stated": 0.8031357913669065,
+          "realised": 0.6690647482014388,
+          "bar_applies": true,
+          "meets_bar": false
+        }
+      ]
+    },
+    {
+      "case": "FNR rise of 0.06",
+      "size": "small",
+      "bins": [
+        {
+          "bin": [
+            0.2,
+            0.4
+          ],
+          "seeds": 64,
+          "mean_stated": 0.37301171874999994,
+          "realised": 0.515625,
+          "bar_applies": true,
+          "meets_bar": false
+        },
+        {
+          "bin": [
+            0.4,
+            0.6
+          ],
+          "seeds": 447,
+          "mean_stated": 0.488082703260647,
+          "realised": 0.3378076062639821,
+          "bar_applies": true,
+          "meets_bar": false
+        },
+        {
+          "bin": [
+            0.6,
+            0.8
+          ],
+          "seeds": 266,
+          "mean_stated": 0.69412066266365,
+          "realised": 0.5639097744360902,
+          "bar_applies": true,
+          "meets_bar": false
+        },
+        {
+          "bin": [
+            0.8,
+            1.0
+          ],
+          "seeds": 290,
+          "mean_stated": 0.802883346721214,
+          "realised": 0.7448275862068966,
+          "bar_applies": true,
+          "meets_bar": true
+        }
+      ]
+    },
+    {
+      "case": "missed attacks to ΔAUROC -0.01",
+      "size": "calibration-sized",
+      "bins": []
+    },
+    {
+      "case": "missed attacks to ΔAUROC -0.01",
+      "size": "small",
+      "bins": [
+        {
+          "bin": [
+            0.4,
+            0.6
+          ],
+          "seeds": 116,
+          "mean_stated": 0.5439492358121225,
+          "realised": 0.8620689655172413,
+          "bar_applies": true,
+          "meets_bar": false
+        },
+        {
+          "bin": [
+            0.6,
+            0.8
+          ],
+          "seeds": 164,
+          "mean_stated": 0.696087581924078,
+          "realised": 0.9451219512195121,
+          "bar_applies": true,
+          "meets_bar": false
+        },
+        {
+          "bin": [
+            0.8,
+            1.0
+          ],
+          "seeds": 210,
+          "mean_stated": 0.8185758249903214,
+          "realised": 0.9,
+          "bar_applies": true,
+          "meets_bar": true
+        }
+      ]
+    },
+    {
+      "case": "missed attacks to ΔAUROC -0.02, on the line",
+      "size": "calibration-sized",
+      "bins": [
+        {
+          "bin": [
+            0.4,
+            0.6
+          ],
+          "seeds": 393,
+          "mean_stated": 0.5443622802901823,
+          "realised": 0.3893129770992366,
+          "bar_applies": true,
+          "meets_bar": false
+        },
+        {
+          "bin": [
+            0.6,
+            0.8
+          ],
+          "seeds": 329,
+          "mean_stated": 0.6973484043118258,
+          "realised": 0.45592705167173253,
+          "bar_applies": true,
+          "meets_bar": false
+        },
+        {
+          "bin": [
+            0.8,
+            1.0
+          ],
+          "seeds": 160,
+          "mean_stated": 0.8000171997184227,
+          "realised": 0.4625,
+          "bar_applies": true,
+          "meets_bar": false
+        }
+      ]
+    },
+    {
+      "case": "missed attacks to ΔAUROC -0.02, on the line",
+      "size": "small",
+      "bins": [
+        {
+          "bin": [
+            0.4,
+            0.6
+          ],
+          "seeds": 346,
+          "mean_stated": 0.5428396812466111,
+          "realised": 0.3554913294797688,
+          "bar_applies": true,
+          "meets_bar": false
+        },
+        {
+          "bin": [
+            0.6,
+            0.8
+          ],
+          "seeds": 331,
+          "mean_stated": 0.6915650821532761,
+          "realised": 0.45317220543806647,
+          "bar_applies": true,
+          "meets_bar": false
+        },
+        {
+          "bin": [
+            0.8,
+            1.0
+          ],
+          "seeds": 165,
+          "mean_stated": 0.8061205650938857,
+          "realised": 0.46060606060606063,
+          "bar_applies": true,
+          "meets_bar": false
+        }
+      ]
+    },
+    {
+      "case": "missed attacks to ΔAUROC -0.025",
+      "size": "calibration-sized",
+      "bins": [
+        {
+          "bin": [
+            0.4,
+            0.6
+          ],
+          "seeds": 137,
+          "mean_stated": 0.5446252720967762,
+          "realised": 0.8175182481751825,
+          "bar_applies": true,
+          "meets_bar": false
+        },
+        {
+          "bin": [
+            0.6,
+            0.8
+          ],
+          "seeds": 191,
+          "mean_stated": 0.6993040689565851,
+          "realised": 0.9267015706806283,
+          "bar_applies": true,
+          "meets_bar": false
+        },
+        {
+          "bin": [
+            0.8,
+            1.0
+          ],
+          "seeds": 174,
+          "mean_stated": 0.8000184404929291,
+          "realised": 0.9310344827586207,
+          "bar_applies": true,
+          "meets_bar": false
+        }
+      ]
+    },
+    {
+      "case": "missed attacks to ΔAUROC -0.025",
+      "size": "small",
+      "bins": [
+        {
+          "bin": [
+            0.4,
+            0.6
+          ],
+          "seeds": 294,
+          "mean_stated": 0.5395002678672444,
+          "realised": 0.4013605442176871,
+          "bar_applies": true,
+          "meets_bar": false
+        },
+        {
+          "bin": [
+            0.6,
+            0.8
+          ],
+          "seeds": 343,
+          "mean_stated": 0.6865301725939056,
+          "realised": 0.4868804664723032,
+          "bar_applies": true,
+          "meets_bar": false
+        },
+        {
+          "bin": [
+            0.8,
+            1.0
+          ],
+          "seeds": 205,
+          "mean_stated": 0.8097024854549952,
+          "realised": 0.5365853658536586,
+          "bar_applies": true,
+          "meets_bar": false
+        }
+      ]
+    }
+  ],
+  "capped": {
+    "seeds": 0,
+    "settled": 0
+  },
+  "out_of_reach_seeds": {
+    "null/calibration-sized": 0,
+    "null/small": 0,
+    "FPR at 1.5x the target/calibration-sized": 0,
+    "FPR at 1.5x the target/small": 0,
+    "FPR at 2x the target, on the line/calibration-sized": 0,
+    "FPR at 2x the target, on the line/small": 0,
+    "FPR at 2.5x the target/calibration-sized": 0,
+    "FPR at 2.5x the target/small": 0,
+    "FNR rise of 0.04/calibration-sized": 0,
+    "FNR rise of 0.04/small": 0,
+    "FNR rise of 0.05, on the line/calibration-sized": 0,
+    "FNR rise of 0.05, on the line/small": 0,
+    "FNR rise of 0.06/calibration-sized": 0,
+    "FNR rise of 0.06/small": 0,
+    "missed attacks to ΔAUROC -0.01/calibration-sized": 0,
+    "missed attacks to ΔAUROC -0.01/small": 0,
+    "missed attacks to ΔAUROC -0.02, on the line/calibration-sized": 0,
+    "missed attacks to ΔAUROC -0.02, on the line/small": 0,
+    "missed attacks to ΔAUROC -0.025/calibration-sized": 0,
+    "missed attacks to ΔAUROC -0.025/small": 0
+  }
+}
