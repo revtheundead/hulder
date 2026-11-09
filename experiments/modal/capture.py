@@ -209,7 +209,9 @@ GPU_FUNCTION = {
 }
 
 
-@app.function(**GPU_FUNCTION)
+# Without retries: modal 1.6.1 refuses any retry policy on a generator, even retries=0, and its
+# default is none.
+@app.function(**{k: v for k, v in GPU_FUNCTION.items() if k != "retries"})
 def capture_group(group: list[tuple[str, dict]], run_id: str):
     """A generator, so the local entrypoint receives each config as soon as it finishes."""
     yield from run_group(group, run_id)
