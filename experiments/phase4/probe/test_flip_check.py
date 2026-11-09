@@ -106,6 +106,85 @@ def test_select_margin_is_none_when_no_candidate_meets_the_bars():
 
 def test_bars_name_every_candidate_margin_and_both_rates():
     document = f.expected_document([])
-    assert document["margins"] == [0.005, 0.01, 0.02]
+    assert document["margins"] == [0.005, 0.01, 0.02, 0.03, 0.04, 0.05]
     assert document["bar"]["null"].startswith("the rule fires in at most 2%")
     assert document["bar"]["small shift"].startswith("the rule fires in at most 5%")
+    assert "at most 5%" in document["bar"]["population PASS"]
+
+
+def row(**over):
+    return {
+        "split": "calibration",
+        "mode": "refit",
+        "kind": "graded",
+        "planted_kind": "graded",
+        "current_expected": "THRESHOLD STALE",
+        **over,
+    }
+
+
+def test_tally_counts_only_what_the_rule_adds():
+    verdicts = ["INCONCLUSIVE", "INCONCLUSIVE", "THRESHOLD STALE", "PASS"]
+    t = f.tally_margin(verdicts, [85, 3, 85, 85], [0, 1, 0, 0], 2101, 0.02, "THRESHOLD STALE")
+    assert t["fires"] == 1
+    assert t["fires_rate"] == 0.25
+    assert t["combined_counts"]["THRESHOLD STALE"] == 2
+    assert t["combined_expected_rate"] == 0.5
+    assert t["combined_non_pass_rate"] == 0.75
+    assert t["only_inconclusive_to_stale"] is True
+
+
+@pytest.mark.parametrize(
+    ("over", "rate", "bar", "meets"),
+    [
+        ({"kind": "null", "planted_kind": "null", "current_expected": "PASS"}, 0.02, "null", True),
+        ({"kind": "null", "planted_kind": "null", "current_expected": "PASS"}, 0.021, "null", False),
+        ({"kind": "path-switch null", "current_expected": "PASS"}, 0.021, "path-switch null", False),
+        ({"kind": "small shift", "current_expected": "PASS"}, 0.05, "small shift", True),
+        ({"kind": "small shift", "current_expected": "PASS"}, 0.051, "small shift", False),
+        ({"current_expected": "PASS"}, 0.051, "population PASS", False),
+        ({"current_expected": "PASS"}, 0.05, "population PASS", True),
+    ],
+)
+def test_bars_on_the_rate_the_rule_fires(over, rate, bar, meets):
+    t = {"fires_rate": rate, "only_inconclusive_to_stale": True}
+    assert f.row_bars(row(**over), t)[bar] is meets
+
+
+def test_graded_rows_with_another_population_verdict_have_no_rate_bar():
+    assert f.row_bars(row(), {"fires_rate": 0.9, "only_inconclusive_to_stale": True}) == {"every row": True}
+
+
+def test_gross_bars_read_the_combined_verdict():
+    gross = row(kind="gross", planted_kind="gross")
+    either = row(kind="gross", planted_kind="gross, either verdict")
+    t = {
+        "fires_rate": 0.1,
+        "only_inconclusive_to_stale": True,
+        "combined_expected_rate": 0.94,
+        "combined_non_pass_rate": 1.0,
+    }
+    assert f.row_bars(gross, t)["gross"] is False
+    assert f.row_bars(either, t)["gross"] is True
+
+
+def test_frozen_rows_have_no_bars():
+    assert f.row_bars(row(mode="frozen", kind="frozen"), {"fires_rate": 1.0}) == {}
+
+
+def test_decide_selects_on_calibration_and_replicates_on_test():
+    def summary(split, fails_below):
+        return {"split": split, "mode": "refit", "bars": {f"{m:g}": {"null": m >= fails_below} for m in f.MARGINS}}
+
+    rows = [summary("calibration", 0.02), summary("test", 0.03)]
+    synthetic = [{"fires_rate": {f"{m:g}": 0.0 for m in f.MARGINS}}]
+    out = f.decide(rows, synthetic)
+    assert out["selected_margin"] == 0.02
+    assert out["test_meets"] is False
+    assert out["ships"] is False
+
+
+def test_decide_ships_nothing_without_a_margin():
+    rows = [{"split": "calibration", "mode": "refit", "bars": {f"{m:g}": {"null": False} for m in f.MARGINS}}]
+    out = f.decide(rows, [])
+    assert out["selected_margin"] is None and out["ships"] is False

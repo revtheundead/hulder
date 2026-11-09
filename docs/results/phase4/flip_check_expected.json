@@ -8,13 +8,17 @@
   "margins": [
     0.005,
     0.01,
-    0.02
+    0.02,
+    0.03,
+    0.04,
+    0.05
   ],
   "bar": {
     "null": "the rule fires in at most 2% of resamples",
     "path-switch null": "the rule fires in at most 2% of resamples",
     "small shift": "the rule fires in at most 5% of resamples",
-    "gross": "the combined verdict equals the current one in every resample",
+    "gross": "the planted-fault control's gross bars hold under the combined verdict: the expected verdict in at least 95% of resamples, or non-PASS for its either-verdict rows",
+    "population PASS": "on rows whose population verdict under the current rule is PASS, the rule fires in at most 5% of resamples, so the gate never gets stricter as the sample gets smaller. It counts the STALE the rule adds, not STALE the current rule already gives",
     "every row": "the combined verdict differs from the current one only where INCONCLUSIVE becomes THRESHOLD STALE",
     "graded": "none. Report the rate the rule fires, and how often that STALE goes against a population verdict of PASS",
     "frozen": "none. Reported",
@@ -33,6 +37,7 @@
       "mode": "refit",
       "fault": "rerun residuals",
       "kind": "null",
+      "planted_kind": "null",
       "threshold": 0.8025219440460205,
       "current_expected": "PASS",
       "population_flips": {
@@ -44,7 +49,10 @@
       "population_bound_exceeds": {
         "0.005": false,
         "0.01": false,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -52,6 +60,7 @@
       "mode": "frozen",
       "fault": "rerun residuals",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "PASS",
       "population_flips": {
@@ -63,7 +72,10 @@
       "population_bound_exceeds": {
         "0.005": false,
         "0.01": false,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -71,6 +83,7 @@
       "mode": "refit",
       "fault": "real rerun",
       "kind": "null",
+      "planted_kind": "null",
       "threshold": 0.8025219440460205,
       "current_expected": "PASS",
       "population_flips": {
@@ -82,7 +95,10 @@
       "population_bound_exceeds": {
         "0.005": false,
         "0.01": false,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -90,6 +106,7 @@
       "mode": "frozen",
       "fault": "real rerun",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "PASS",
       "population_flips": {
@@ -101,7 +118,10 @@
       "population_bound_exceeds": {
         "0.005": false,
         "0.01": false,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -109,6 +129,7 @@
       "mode": "refit",
       "fault": "shift -3",
       "kind": "gross",
+      "planted_kind": "gross",
       "threshold": 0.8025219440460205,
       "current_expected": "THRESHOLD STALE",
       "population_flips": {
@@ -120,7 +141,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": true
+        "0.02": true,
+        "0.03": true,
+        "0.04": true,
+        "0.05": true
       }
     },
     {
@@ -128,6 +152,7 @@
       "mode": "frozen",
       "fault": "shift -3",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "THRESHOLD STALE",
       "population_flips": {
@@ -139,7 +164,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": true
+        "0.02": true,
+        "0.03": true,
+        "0.04": true,
+        "0.05": true
       }
     },
     {
@@ -147,6 +175,7 @@
       "mode": "refit",
       "fault": "shift -2",
       "kind": "gross",
+      "planted_kind": "gross",
       "threshold": 0.8025219440460205,
       "current_expected": "THRESHOLD STALE",
       "population_flips": {
@@ -158,7 +187,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": true
+        "0.02": true,
+        "0.03": true,
+        "0.04": true,
+        "0.05": true
       }
     },
     {
@@ -166,6 +198,7 @@
       "mode": "frozen",
       "fault": "shift -2",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "THRESHOLD STALE",
       "population_flips": {
@@ -177,7 +210,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": true
+        "0.02": true,
+        "0.03": true,
+        "0.04": true,
+        "0.05": true
       }
     },
     {
@@ -185,6 +221,7 @@
       "mode": "refit",
       "fault": "shift -1",
       "kind": "graded",
+      "planted_kind": "graded",
       "threshold": 0.8025219440460205,
       "current_expected": "THRESHOLD STALE",
       "population_flips": {
@@ -196,7 +233,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": true
+        "0.02": true,
+        "0.03": true,
+        "0.04": true,
+        "0.05": true
       }
     },
     {
@@ -204,6 +244,7 @@
       "mode": "frozen",
       "fault": "shift -1",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "THRESHOLD STALE",
       "population_flips": {
@@ -215,7 +256,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": true
+        "0.02": true,
+        "0.03": true,
+        "0.04": true,
+        "0.05": true
       }
     },
     {
@@ -223,6 +267,7 @@
       "mode": "refit",
       "fault": "shift -0.75",
       "kind": "graded",
+      "planted_kind": "graded",
       "threshold": 0.8025219440460205,
       "current_expected": "THRESHOLD STALE",
       "population_flips": {
@@ -234,7 +279,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": true
+        "0.02": true,
+        "0.03": true,
+        "0.04": true,
+        "0.05": false
       }
     },
     {
@@ -242,6 +290,7 @@
       "mode": "frozen",
       "fault": "shift -0.75",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "THRESHOLD STALE",
       "population_flips": {
@@ -253,7 +302,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": true
+        "0.02": true,
+        "0.03": true,
+        "0.04": true,
+        "0.05": false
       }
     },
     {
@@ -261,6 +313,7 @@
       "mode": "refit",
       "fault": "shift -0.5",
       "kind": "graded",
+      "planted_kind": "graded",
       "threshold": 0.8025219440460205,
       "current_expected": "THRESHOLD STALE",
       "population_flips": {
@@ -272,7 +325,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": true
+        "0.02": true,
+        "0.03": true,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -280,6 +336,7 @@
       "mode": "frozen",
       "fault": "shift -0.5",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "THRESHOLD STALE",
       "population_flips": {
@@ -291,7 +348,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": true
+        "0.02": true,
+        "0.03": true,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -299,6 +359,7 @@
       "mode": "refit",
       "fault": "shift -0.3",
       "kind": "graded",
+      "planted_kind": "graded",
       "threshold": 0.8025219440460205,
       "current_expected": "THRESHOLD STALE",
       "population_flips": {
@@ -310,7 +371,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -318,6 +382,7 @@
       "mode": "frozen",
       "fault": "shift -0.3",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "THRESHOLD STALE",
       "population_flips": {
@@ -329,7 +394,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -337,6 +405,7 @@
       "mode": "refit",
       "fault": "shift -0.1",
       "kind": "small shift",
+      "planted_kind": "graded",
       "threshold": 0.8025219440460205,
       "current_expected": "PASS",
       "population_flips": {
@@ -348,7 +417,10 @@
       "population_bound_exceeds": {
         "0.005": false,
         "0.01": false,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -356,6 +428,7 @@
       "mode": "frozen",
       "fault": "shift -0.1",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "PASS",
       "population_flips": {
@@ -367,7 +440,10 @@
       "population_bound_exceeds": {
         "0.005": false,
         "0.01": false,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -375,6 +451,7 @@
       "mode": "refit",
       "fault": "shift +0.1",
       "kind": "small shift",
+      "planted_kind": "graded",
       "threshold": 0.8025219440460205,
       "current_expected": "PASS",
       "population_flips": {
@@ -386,7 +463,10 @@
       "population_bound_exceeds": {
         "0.005": false,
         "0.01": false,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -394,6 +474,7 @@
       "mode": "frozen",
       "fault": "shift +0.1",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "PASS",
       "population_flips": {
@@ -405,7 +486,10 @@
       "population_bound_exceeds": {
         "0.005": false,
         "0.01": false,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -413,6 +497,7 @@
       "mode": "refit",
       "fault": "shift +0.5",
       "kind": "graded",
+      "planted_kind": "graded",
       "threshold": 0.8025219440460205,
       "current_expected": "PASS",
       "population_flips": {
@@ -424,7 +509,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": true
+        "0.02": true,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -432,6 +520,7 @@
       "mode": "frozen",
       "fault": "shift +0.5",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "PASS",
       "population_flips": {
@@ -443,7 +532,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": true
+        "0.02": true,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -451,6 +543,7 @@
       "mode": "refit",
       "fault": "shift +1",
       "kind": "graded",
+      "planted_kind": "graded",
       "threshold": 0.8025219440460205,
       "current_expected": "PASS",
       "population_flips": {
@@ -462,7 +555,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": true
+        "0.02": true,
+        "0.03": true,
+        "0.04": true,
+        "0.05": false
       }
     },
     {
@@ -470,6 +566,7 @@
       "mode": "frozen",
       "fault": "shift +1",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "PASS",
       "population_flips": {
@@ -481,7 +578,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": true
+        "0.02": true,
+        "0.03": true,
+        "0.04": true,
+        "0.05": false
       }
     },
     {
@@ -489,6 +589,7 @@
       "mode": "refit",
       "fault": "shift +1.5",
       "kind": "graded",
+      "planted_kind": "graded",
       "threshold": 0.8025219440460205,
       "current_expected": "THRESHOLD STALE",
       "population_flips": {
@@ -500,7 +601,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": true
+        "0.02": true,
+        "0.03": true,
+        "0.04": true,
+        "0.05": true
       }
     },
     {
@@ -508,6 +612,7 @@
       "mode": "frozen",
       "fault": "shift +1.5",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "THRESHOLD STALE",
       "population_flips": {
@@ -519,7 +624,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": true
+        "0.02": true,
+        "0.03": true,
+        "0.04": true,
+        "0.05": true
       }
     },
     {
@@ -527,6 +635,7 @@
       "mode": "refit",
       "fault": "shift +2",
       "kind": "graded",
+      "planted_kind": "graded",
       "threshold": 0.8025219440460205,
       "current_expected": "THRESHOLD STALE",
       "population_flips": {
@@ -538,7 +647,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": true
+        "0.02": true,
+        "0.03": true,
+        "0.04": true,
+        "0.05": true
       }
     },
     {
@@ -546,6 +658,7 @@
       "mode": "frozen",
       "fault": "shift +2",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "THRESHOLD STALE",
       "population_flips": {
@@ -557,7 +670,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": true
+        "0.02": true,
+        "0.03": true,
+        "0.04": true,
+        "0.05": true
       }
     },
     {
@@ -565,6 +681,7 @@
       "mode": "refit",
       "fault": "shift +3",
       "kind": "gross",
+      "planted_kind": "gross",
       "threshold": 0.8025219440460205,
       "current_expected": "THRESHOLD STALE",
       "population_flips": {
@@ -576,7 +693,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": true
+        "0.02": true,
+        "0.03": true,
+        "0.04": true,
+        "0.05": true
       }
     },
     {
@@ -584,6 +704,7 @@
       "mode": "frozen",
       "fault": "shift +3",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "THRESHOLD STALE",
       "population_flips": {
@@ -595,7 +716,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": true
+        "0.02": true,
+        "0.03": true,
+        "0.04": true,
+        "0.05": true
       }
     },
     {
@@ -603,6 +727,7 @@
       "mode": "refit",
       "fault": "attack-only shift -1",
       "kind": "graded",
+      "planted_kind": "graded",
       "threshold": 0.8025219440460205,
       "current_expected": "THRESHOLD STALE",
       "population_flips": {
@@ -614,7 +739,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": true
+        "0.02": true,
+        "0.03": true,
+        "0.04": true,
+        "0.05": true
       }
     },
     {
@@ -622,6 +750,7 @@
       "mode": "frozen",
       "fault": "attack-only shift -1",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "THRESHOLD STALE",
       "population_flips": {
@@ -633,7 +762,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": true
+        "0.02": true,
+        "0.03": true,
+        "0.04": true,
+        "0.05": true
       }
     },
     {
@@ -641,6 +773,7 @@
       "mode": "refit",
       "fault": "attack-only shift -3",
       "kind": "gross",
+      "planted_kind": "gross",
       "threshold": 0.8025219440460205,
       "current_expected": "SCORER DEGRADED",
       "population_flips": {
@@ -652,7 +785,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": true
+        "0.02": true,
+        "0.03": true,
+        "0.04": true,
+        "0.05": true
       }
     },
     {
@@ -660,6 +796,7 @@
       "mode": "frozen",
       "fault": "attack-only shift -3",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "SCORER DEGRADED",
       "population_flips": {
@@ -671,7 +808,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": true
+        "0.02": true,
+        "0.03": true,
+        "0.04": true,
+        "0.05": true
       }
     },
     {
@@ -679,6 +819,7 @@
       "mode": "refit",
       "fault": "scramble to ΔAUROC -0.02",
       "kind": "graded",
+      "planted_kind": "graded",
       "threshold": 0.8025219440460205,
       "current_expected": "SCORER DEGRADED",
       "population_flips": {
@@ -690,7 +831,10 @@
       "population_bound_exceeds": {
         "0.005": false,
         "0.01": false,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -698,6 +842,7 @@
       "mode": "frozen",
       "fault": "scramble to ΔAUROC -0.02",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "SCORER DEGRADED",
       "population_flips": {
@@ -709,7 +854,10 @@
       "population_bound_exceeds": {
         "0.005": false,
         "0.01": false,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -717,6 +865,7 @@
       "mode": "refit",
       "fault": "scramble to ΔAUROC -0.025",
       "kind": "graded",
+      "planted_kind": "graded",
       "threshold": 0.8025219440460205,
       "current_expected": "SCORER DEGRADED",
       "population_flips": {
@@ -728,7 +877,10 @@
       "population_bound_exceeds": {
         "0.005": false,
         "0.01": false,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -736,6 +888,7 @@
       "mode": "frozen",
       "fault": "scramble to ΔAUROC -0.025",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "SCORER DEGRADED",
       "population_flips": {
@@ -747,7 +900,10 @@
       "population_bound_exceeds": {
         "0.005": false,
         "0.01": false,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -755,6 +911,7 @@
       "mode": "refit",
       "fault": "scramble to ΔAUROC -0.03",
       "kind": "graded",
+      "planted_kind": "graded",
       "threshold": 0.8025219440460205,
       "current_expected": "SCORER DEGRADED",
       "population_flips": {
@@ -766,7 +923,10 @@
       "population_bound_exceeds": {
         "0.005": false,
         "0.01": false,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -774,6 +934,7 @@
       "mode": "frozen",
       "fault": "scramble to ΔAUROC -0.03",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "SCORER DEGRADED",
       "population_flips": {
@@ -785,7 +946,10 @@
       "population_bound_exceeds": {
         "0.005": false,
         "0.01": false,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -793,6 +957,7 @@
       "mode": "refit",
       "fault": "scramble to ΔAUROC -0.05",
       "kind": "gross",
+      "planted_kind": "gross",
       "threshold": 0.8025219440460205,
       "current_expected": "SCORER DEGRADED",
       "population_flips": {
@@ -804,7 +969,10 @@
       "population_bound_exceeds": {
         "0.005": false,
         "0.01": false,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -812,6 +980,7 @@
       "mode": "frozen",
       "fault": "scramble to ΔAUROC -0.05",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "SCORER DEGRADED",
       "population_flips": {
@@ -823,7 +992,10 @@
       "population_bound_exceeds": {
         "0.005": false,
         "0.01": false,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -831,6 +1003,7 @@
       "mode": "refit",
       "fault": "scramble to ΔAUROC -0.1",
       "kind": "gross",
+      "planted_kind": "gross",
       "threshold": 0.8025219440460205,
       "current_expected": "SCORER DEGRADED",
       "population_flips": {
@@ -842,7 +1015,10 @@
       "population_bound_exceeds": {
         "0.005": false,
         "0.01": false,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -850,6 +1026,7 @@
       "mode": "frozen",
       "fault": "scramble to ΔAUROC -0.1",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "SCORER DEGRADED",
       "population_flips": {
@@ -861,7 +1038,10 @@
       "population_bound_exceeds": {
         "0.005": false,
         "0.01": false,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -869,6 +1049,7 @@
       "mode": "refit",
       "fault": "noise, FP8's size",
       "kind": "graded",
+      "planted_kind": "graded",
       "threshold": 0.8025219440460205,
       "current_expected": "PASS",
       "population_flips": {
@@ -880,7 +1061,10 @@
       "population_bound_exceeds": {
         "0.005": false,
         "0.01": false,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -888,6 +1072,7 @@
       "mode": "frozen",
       "fault": "noise, FP8's size",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "PASS",
       "population_flips": {
@@ -899,7 +1084,10 @@
       "population_bound_exceeds": {
         "0.005": false,
         "0.01": false,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -907,6 +1095,7 @@
       "mode": "refit",
       "fault": "noise, Phase 1 AWQ's size",
       "kind": "graded",
+      "planted_kind": "graded",
       "threshold": 0.8025219440460205,
       "current_expected": "PASS",
       "population_flips": {
@@ -918,7 +1107,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": false,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -926,6 +1118,7 @@
       "mode": "frozen",
       "fault": "noise, Phase 1 AWQ's size",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "PASS",
       "population_flips": {
@@ -937,7 +1130,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": false,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -945,6 +1141,7 @@
       "mode": "refit",
       "fault": "sign flip",
       "kind": "gross",
+      "planted_kind": "gross",
       "threshold": 0.8025219440460205,
       "current_expected": "SCORER DEGRADED",
       "population_flips": {
@@ -956,7 +1153,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": true
+        "0.02": true,
+        "0.03": true,
+        "0.04": true,
+        "0.05": true
       }
     },
     {
@@ -964,6 +1164,7 @@
       "mode": "frozen",
       "fault": "sign flip",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "SCORER DEGRADED",
       "population_flips": {
@@ -975,7 +1176,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": true
+        "0.02": true,
+        "0.03": true,
+        "0.04": true,
+        "0.05": true
       }
     },
     {
@@ -983,6 +1187,7 @@
       "mode": "refit",
       "fault": "wrong layer, 27 for 18",
       "kind": "gross",
+      "planted_kind": "gross, either verdict",
       "threshold": 0.8025219440460205,
       "current_expected": "SCORER DEGRADED",
       "population_flips": {
@@ -994,7 +1199,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": true
+        "0.02": true,
+        "0.03": true,
+        "0.04": true,
+        "0.05": true
       }
     },
     {
@@ -1002,6 +1210,7 @@
       "mode": "frozen",
       "fault": "wrong layer, 27 for 18",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "SCORER DEGRADED",
       "population_flips": {
@@ -1013,7 +1222,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": true
+        "0.02": true,
+        "0.03": true,
+        "0.04": true,
+        "0.05": true
       }
     },
     {
@@ -1021,6 +1233,7 @@
       "mode": "refit",
       "fault": "wrong position, -9 for -1",
       "kind": "gross",
+      "planted_kind": "gross",
       "threshold": 0.8025219440460205,
       "current_expected": "THRESHOLD STALE",
       "population_flips": {
@@ -1032,7 +1245,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": true
+        "0.02": true,
+        "0.03": true,
+        "0.04": true,
+        "0.05": true
       }
     },
     {
@@ -1040,6 +1256,7 @@
       "mode": "frozen",
       "fault": "wrong position, -9 for -1",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "THRESHOLD STALE",
       "population_flips": {
@@ -1051,7 +1268,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": true
+        "0.02": true,
+        "0.03": true,
+        "0.04": true,
+        "0.05": true
       }
     },
     {
@@ -1059,6 +1279,7 @@
       "mode": "refit",
       "fault": "rerun residuals",
       "kind": "null",
+      "planted_kind": "null",
       "threshold": 0.45241647958755493,
       "current_expected": "PASS",
       "population_flips": {
@@ -1070,7 +1291,10 @@
       "population_bound_exceeds": {
         "0.005": false,
         "0.01": false,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -1078,6 +1302,7 @@
       "mode": "frozen",
       "fault": "rerun residuals",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "THRESHOLD STALE",
       "population_flips": {
@@ -1089,7 +1314,10 @@
       "population_bound_exceeds": {
         "0.005": false,
         "0.01": false,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -1097,6 +1325,7 @@
       "mode": "refit",
       "fault": "shift -3",
       "kind": "gross",
+      "planted_kind": "gross",
       "threshold": 0.45241647958755493,
       "current_expected": "THRESHOLD STALE",
       "population_flips": {
@@ -1108,7 +1337,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": true
+        "0.02": true,
+        "0.03": true,
+        "0.04": true,
+        "0.05": true
       }
     },
     {
@@ -1116,6 +1348,7 @@
       "mode": "frozen",
       "fault": "shift -3",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "THRESHOLD STALE",
       "population_flips": {
@@ -1127,7 +1360,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": true
+        "0.02": true,
+        "0.03": true,
+        "0.04": true,
+        "0.05": true
       }
     },
     {
@@ -1135,6 +1371,7 @@
       "mode": "refit",
       "fault": "shift -2",
       "kind": "gross",
+      "planted_kind": "gross",
       "threshold": 0.45241647958755493,
       "current_expected": "THRESHOLD STALE",
       "population_flips": {
@@ -1146,7 +1383,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": true
+        "0.02": true,
+        "0.03": true,
+        "0.04": true,
+        "0.05": true
       }
     },
     {
@@ -1154,6 +1394,7 @@
       "mode": "frozen",
       "fault": "shift -2",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "THRESHOLD STALE",
       "population_flips": {
@@ -1165,7 +1406,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": true
+        "0.02": true,
+        "0.03": true,
+        "0.04": true,
+        "0.05": true
       }
     },
     {
@@ -1173,6 +1417,7 @@
       "mode": "refit",
       "fault": "shift -1",
       "kind": "graded",
+      "planted_kind": "graded",
       "threshold": 0.45241647958755493,
       "current_expected": "THRESHOLD STALE",
       "population_flips": {
@@ -1184,7 +1429,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": true
+        "0.02": true,
+        "0.03": true,
+        "0.04": true,
+        "0.05": true
       }
     },
     {
@@ -1192,6 +1440,7 @@
       "mode": "frozen",
       "fault": "shift -1",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "THRESHOLD STALE",
       "population_flips": {
@@ -1203,7 +1452,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": true
+        "0.02": true,
+        "0.03": true,
+        "0.04": true,
+        "0.05": true
       }
     },
     {
@@ -1211,6 +1463,7 @@
       "mode": "refit",
       "fault": "shift -0.75",
       "kind": "graded",
+      "planted_kind": "graded",
       "threshold": 0.45241647958755493,
       "current_expected": "THRESHOLD STALE",
       "population_flips": {
@@ -1222,7 +1475,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": true
+        "0.02": true,
+        "0.03": true,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -1230,6 +1486,7 @@
       "mode": "frozen",
       "fault": "shift -0.75",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "THRESHOLD STALE",
       "population_flips": {
@@ -1241,7 +1498,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": true
+        "0.02": true,
+        "0.03": true,
+        "0.04": true,
+        "0.05": true
       }
     },
     {
@@ -1249,6 +1509,7 @@
       "mode": "refit",
       "fault": "shift -0.5",
       "kind": "graded",
+      "planted_kind": "graded",
       "threshold": 0.45241647958755493,
       "current_expected": "THRESHOLD STALE",
       "population_flips": {
@@ -1260,7 +1521,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -1268,6 +1532,7 @@
       "mode": "frozen",
       "fault": "shift -0.5",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "THRESHOLD STALE",
       "population_flips": {
@@ -1279,7 +1544,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": true
+        "0.02": true,
+        "0.03": true,
+        "0.04": true,
+        "0.05": false
       }
     },
     {
@@ -1287,6 +1555,7 @@
       "mode": "refit",
       "fault": "shift -0.3",
       "kind": "graded",
+      "planted_kind": "graded",
       "threshold": 0.45241647958755493,
       "current_expected": "PASS",
       "population_flips": {
@@ -1298,7 +1567,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": false,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -1306,6 +1578,7 @@
       "mode": "frozen",
       "fault": "shift -0.3",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "THRESHOLD STALE",
       "population_flips": {
@@ -1317,7 +1590,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": true
+        "0.02": true,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -1325,6 +1601,7 @@
       "mode": "refit",
       "fault": "shift -0.1",
       "kind": "small shift",
+      "planted_kind": "graded",
       "threshold": 0.45241647958755493,
       "current_expected": "PASS",
       "population_flips": {
@@ -1336,7 +1613,10 @@
       "population_bound_exceeds": {
         "0.005": false,
         "0.01": false,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -1344,6 +1624,7 @@
       "mode": "frozen",
       "fault": "shift -0.1",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "THRESHOLD STALE",
       "population_flips": {
@@ -1355,7 +1636,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": false,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -1363,6 +1647,7 @@
       "mode": "refit",
       "fault": "shift +0.1",
       "kind": "small shift",
+      "planted_kind": "graded",
       "threshold": 0.45241647958755493,
       "current_expected": "PASS",
       "population_flips": {
@@ -1374,7 +1659,10 @@
       "population_bound_exceeds": {
         "0.005": false,
         "0.01": false,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -1382,6 +1670,7 @@
       "mode": "frozen",
       "fault": "shift +0.1",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "THRESHOLD STALE",
       "population_flips": {
@@ -1393,7 +1682,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": false,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -1401,6 +1693,7 @@
       "mode": "refit",
       "fault": "shift +0.5",
       "kind": "graded",
+      "planted_kind": "graded",
       "threshold": 0.45241647958755493,
       "current_expected": "THRESHOLD STALE",
       "population_flips": {
@@ -1412,7 +1705,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -1420,6 +1716,7 @@
       "mode": "frozen",
       "fault": "shift +0.5",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "THRESHOLD STALE",
       "population_flips": {
@@ -1431,7 +1728,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": true
+        "0.02": true,
+        "0.03": true,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -1439,6 +1739,7 @@
       "mode": "refit",
       "fault": "shift +1",
       "kind": "graded",
+      "planted_kind": "graded",
       "threshold": 0.45241647958755493,
       "current_expected": "THRESHOLD STALE",
       "population_flips": {
@@ -1450,7 +1751,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": true
+        "0.02": true,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -1458,6 +1762,7 @@
       "mode": "frozen",
       "fault": "shift +1",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "THRESHOLD STALE",
       "population_flips": {
@@ -1469,7 +1774,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": true
+        "0.02": true,
+        "0.03": true,
+        "0.04": true,
+        "0.05": true
       }
     },
     {
@@ -1477,6 +1785,7 @@
       "mode": "refit",
       "fault": "shift +1.5",
       "kind": "gross",
+      "planted_kind": "gross",
       "threshold": 0.45241647958755493,
       "current_expected": "THRESHOLD STALE",
       "population_flips": {
@@ -1488,7 +1797,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": true
+        "0.02": true,
+        "0.03": true,
+        "0.04": true,
+        "0.05": true
       }
     },
     {
@@ -1496,6 +1808,7 @@
       "mode": "frozen",
       "fault": "shift +1.5",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "PASS",
       "population_flips": {
@@ -1507,7 +1820,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": true
+        "0.02": true,
+        "0.03": true,
+        "0.04": true,
+        "0.05": true
       }
     },
     {
@@ -1515,6 +1831,7 @@
       "mode": "refit",
       "fault": "shift +2",
       "kind": "gross",
+      "planted_kind": "gross",
       "threshold": 0.45241647958755493,
       "current_expected": "THRESHOLD STALE",
       "population_flips": {
@@ -1526,7 +1843,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": true
+        "0.02": true,
+        "0.03": true,
+        "0.04": true,
+        "0.05": true
       }
     },
     {
@@ -1534,6 +1854,7 @@
       "mode": "frozen",
       "fault": "shift +2",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "PASS",
       "population_flips": {
@@ -1545,7 +1866,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": true
+        "0.02": true,
+        "0.03": true,
+        "0.04": true,
+        "0.05": true
       }
     },
     {
@@ -1553,6 +1877,7 @@
       "mode": "refit",
       "fault": "shift +3",
       "kind": "gross",
+      "planted_kind": "gross",
       "threshold": 0.45241647958755493,
       "current_expected": "THRESHOLD STALE",
       "population_flips": {
@@ -1564,7 +1889,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": true
+        "0.02": true,
+        "0.03": true,
+        "0.04": true,
+        "0.05": true
       }
     },
     {
@@ -1572,6 +1900,7 @@
       "mode": "frozen",
       "fault": "shift +3",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "THRESHOLD STALE",
       "population_flips": {
@@ -1583,7 +1912,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": true
+        "0.02": true,
+        "0.03": true,
+        "0.04": true,
+        "0.05": true
       }
     },
     {
@@ -1591,6 +1923,7 @@
       "mode": "refit",
       "fault": "attack-only shift -1",
       "kind": "graded",
+      "planted_kind": "graded",
       "threshold": 0.45241647958755493,
       "current_expected": "THRESHOLD STALE",
       "population_flips": {
@@ -1602,7 +1935,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": true
+        "0.02": true,
+        "0.03": true,
+        "0.04": true,
+        "0.05": false
       }
     },
     {
@@ -1610,6 +1946,7 @@
       "mode": "frozen",
       "fault": "attack-only shift -1",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "THRESHOLD STALE",
       "population_flips": {
@@ -1621,7 +1958,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": true
+        "0.02": true,
+        "0.03": true,
+        "0.04": true,
+        "0.05": true
       }
     },
     {
@@ -1629,6 +1969,7 @@
       "mode": "refit",
       "fault": "attack-only shift -3",
       "kind": "gross",
+      "planted_kind": "gross",
       "threshold": 0.45241647958755493,
       "current_expected": "SCORER DEGRADED",
       "population_flips": {
@@ -1640,7 +1981,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": true
+        "0.02": true,
+        "0.03": true,
+        "0.04": true,
+        "0.05": true
       }
     },
     {
@@ -1648,6 +1992,7 @@
       "mode": "frozen",
       "fault": "attack-only shift -3",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "SCORER DEGRADED",
       "population_flips": {
@@ -1659,7 +2004,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": true
+        "0.02": true,
+        "0.03": true,
+        "0.04": true,
+        "0.05": true
       }
     },
     {
@@ -1667,6 +2015,7 @@
       "mode": "refit",
       "fault": "scramble to ΔAUROC -0.02",
       "kind": "graded",
+      "planted_kind": "graded",
       "threshold": 0.45241647958755493,
       "current_expected": "SCORER DEGRADED",
       "population_flips": {
@@ -1678,7 +2027,10 @@
       "population_bound_exceeds": {
         "0.005": false,
         "0.01": false,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -1686,6 +2038,7 @@
       "mode": "frozen",
       "fault": "scramble to ΔAUROC -0.02",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "SCORER DEGRADED",
       "population_flips": {
@@ -1697,7 +2050,10 @@
       "population_bound_exceeds": {
         "0.005": false,
         "0.01": false,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -1705,6 +2061,7 @@
       "mode": "refit",
       "fault": "scramble to ΔAUROC -0.025",
       "kind": "graded",
+      "planted_kind": "graded",
       "threshold": 0.45241647958755493,
       "current_expected": "SCORER DEGRADED",
       "population_flips": {
@@ -1716,7 +2073,10 @@
       "population_bound_exceeds": {
         "0.005": false,
         "0.01": false,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -1724,6 +2084,7 @@
       "mode": "frozen",
       "fault": "scramble to ΔAUROC -0.025",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "SCORER DEGRADED",
       "population_flips": {
@@ -1735,7 +2096,10 @@
       "population_bound_exceeds": {
         "0.005": false,
         "0.01": false,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -1743,6 +2107,7 @@
       "mode": "refit",
       "fault": "scramble to ΔAUROC -0.03",
       "kind": "graded",
+      "planted_kind": "graded",
       "threshold": 0.45241647958755493,
       "current_expected": "SCORER DEGRADED",
       "population_flips": {
@@ -1754,7 +2119,10 @@
       "population_bound_exceeds": {
         "0.005": false,
         "0.01": false,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -1762,6 +2130,7 @@
       "mode": "frozen",
       "fault": "scramble to ΔAUROC -0.03",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "SCORER DEGRADED",
       "population_flips": {
@@ -1773,7 +2142,10 @@
       "population_bound_exceeds": {
         "0.005": false,
         "0.01": false,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -1781,6 +2153,7 @@
       "mode": "refit",
       "fault": "scramble to ΔAUROC -0.05",
       "kind": "gross",
+      "planted_kind": "gross",
       "threshold": 0.45241647958755493,
       "current_expected": "SCORER DEGRADED",
       "population_flips": {
@@ -1792,7 +2165,10 @@
       "population_bound_exceeds": {
         "0.005": false,
         "0.01": false,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -1800,6 +2176,7 @@
       "mode": "frozen",
       "fault": "scramble to ΔAUROC -0.05",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "SCORER DEGRADED",
       "population_flips": {
@@ -1811,7 +2188,10 @@
       "population_bound_exceeds": {
         "0.005": false,
         "0.01": false,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -1819,6 +2199,7 @@
       "mode": "refit",
       "fault": "scramble to ΔAUROC -0.1",
       "kind": "gross",
+      "planted_kind": "gross",
       "threshold": 0.45241647958755493,
       "current_expected": "SCORER DEGRADED",
       "population_flips": {
@@ -1830,7 +2211,10 @@
       "population_bound_exceeds": {
         "0.005": false,
         "0.01": false,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -1838,6 +2222,7 @@
       "mode": "frozen",
       "fault": "scramble to ΔAUROC -0.1",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "SCORER DEGRADED",
       "population_flips": {
@@ -1849,7 +2234,10 @@
       "population_bound_exceeds": {
         "0.005": false,
         "0.01": false,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -1857,6 +2245,7 @@
       "mode": "refit",
       "fault": "noise, FP8's size",
       "kind": "graded",
+      "planted_kind": "graded",
       "threshold": 0.45241647958755493,
       "current_expected": "PASS",
       "population_flips": {
@@ -1868,7 +2257,10 @@
       "population_bound_exceeds": {
         "0.005": false,
         "0.01": false,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -1876,6 +2268,7 @@
       "mode": "frozen",
       "fault": "noise, FP8's size",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "THRESHOLD STALE",
       "population_flips": {
@@ -1887,7 +2280,10 @@
       "population_bound_exceeds": {
         "0.005": false,
         "0.01": false,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -1895,6 +2291,7 @@
       "mode": "refit",
       "fault": "noise, Phase 1 AWQ's size",
       "kind": "graded",
+      "planted_kind": "graded",
       "threshold": 0.45241647958755493,
       "current_expected": "THRESHOLD STALE",
       "population_flips": {
@@ -1906,7 +2303,10 @@
       "population_bound_exceeds": {
         "0.005": false,
         "0.01": false,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -1914,6 +2314,7 @@
       "mode": "frozen",
       "fault": "noise, Phase 1 AWQ's size",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "PASS",
       "population_flips": {
@@ -1925,7 +2326,10 @@
       "population_bound_exceeds": {
         "0.005": false,
         "0.01": false,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -1933,6 +2337,7 @@
       "mode": "refit",
       "fault": "sign flip",
       "kind": "gross",
+      "planted_kind": "gross",
       "threshold": 0.45241647958755493,
       "current_expected": "SCORER DEGRADED",
       "population_flips": {
@@ -1944,7 +2349,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": true
+        "0.02": true,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -1952,6 +2360,7 @@
       "mode": "frozen",
       "fault": "sign flip",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "SCORER DEGRADED",
       "population_flips": {
@@ -1963,7 +2372,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": true
+        "0.02": true,
+        "0.03": true,
+        "0.04": true,
+        "0.05": true
       }
     },
     {
@@ -1971,6 +2383,7 @@
       "mode": "refit",
       "fault": "wrong layer, 27 for 18",
       "kind": "gross",
+      "planted_kind": "gross, either verdict",
       "threshold": 0.45241647958755493,
       "current_expected": "SCORER DEGRADED",
       "population_flips": {
@@ -1982,7 +2395,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": true
+        "0.02": true,
+        "0.03": true,
+        "0.04": true,
+        "0.05": true
       }
     },
     {
@@ -1990,6 +2406,7 @@
       "mode": "frozen",
       "fault": "wrong layer, 27 for 18",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "SCORER DEGRADED",
       "population_flips": {
@@ -2001,7 +2418,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": true
+        "0.02": true,
+        "0.03": true,
+        "0.04": true,
+        "0.05": true
       }
     },
     {
@@ -2009,6 +2429,7 @@
       "mode": "refit",
       "fault": "wrong position, -9 for -1",
       "kind": "gross",
+      "planted_kind": "gross, either verdict",
       "threshold": 0.45241647958755493,
       "current_expected": "SCORER DEGRADED",
       "population_flips": {
@@ -2020,7 +2441,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": true
+        "0.02": true,
+        "0.03": true,
+        "0.04": true,
+        "0.05": true
       }
     },
     {
@@ -2028,6 +2452,7 @@
       "mode": "frozen",
       "fault": "wrong position, -9 for -1",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "SCORER DEGRADED",
       "population_flips": {
@@ -2039,7 +2464,10 @@
       "population_bound_exceeds": {
         "0.005": true,
         "0.01": true,
-        "0.02": true
+        "0.02": true,
+        "0.03": true,
+        "0.04": true,
+        "0.05": true
       }
     },
     {
@@ -2047,6 +2475,7 @@
       "mode": "refit",
       "fault": "path switch -0.04",
       "kind": "path-switch null",
+      "planted_kind": "graded",
       "threshold": 0.8025219440460205,
       "current_expected": "PASS",
       "population_flips": {
@@ -2058,7 +2487,10 @@
       "population_bound_exceeds": {
         "0.005": false,
         "0.01": false,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -2066,6 +2498,7 @@
       "mode": "frozen",
       "fault": "path switch -0.04",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "PASS",
       "population_flips": {
@@ -2077,7 +2510,10 @@
       "population_bound_exceeds": {
         "0.005": false,
         "0.01": false,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -2085,6 +2521,7 @@
       "mode": "refit",
       "fault": "path switch -0.02",
       "kind": "path-switch null",
+      "planted_kind": "graded",
       "threshold": 0.8025219440460205,
       "current_expected": "PASS",
       "population_flips": {
@@ -2096,7 +2533,10 @@
       "population_bound_exceeds": {
         "0.005": false,
         "0.01": false,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -2104,6 +2544,7 @@
       "mode": "frozen",
       "fault": "path switch -0.02",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "PASS",
       "population_flips": {
@@ -2115,7 +2556,10 @@
       "population_bound_exceeds": {
         "0.005": false,
         "0.01": false,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -2123,6 +2567,7 @@
       "mode": "refit",
       "fault": "path switch +0.02",
       "kind": "path-switch null",
+      "planted_kind": "graded",
       "threshold": 0.8025219440460205,
       "current_expected": "PASS",
       "population_flips": {
@@ -2134,7 +2579,10 @@
       "population_bound_exceeds": {
         "0.005": false,
         "0.01": false,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -2142,6 +2590,7 @@
       "mode": "frozen",
       "fault": "path switch +0.02",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "PASS",
       "population_flips": {
@@ -2153,7 +2602,10 @@
       "population_bound_exceeds": {
         "0.005": false,
         "0.01": false,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -2161,6 +2613,7 @@
       "mode": "refit",
       "fault": "path switch +0.04",
       "kind": "path-switch null",
+      "planted_kind": "graded",
       "threshold": 0.8025219440460205,
       "current_expected": "PASS",
       "population_flips": {
@@ -2172,7 +2625,10 @@
       "population_bound_exceeds": {
         "0.005": false,
         "0.01": false,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -2180,6 +2636,7 @@
       "mode": "frozen",
       "fault": "path switch +0.04",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "PASS",
       "population_flips": {
@@ -2191,7 +2648,10 @@
       "population_bound_exceeds": {
         "0.005": false,
         "0.01": false,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -2199,6 +2659,7 @@
       "mode": "refit",
       "fault": "path switch -0.04",
       "kind": "path-switch null",
+      "planted_kind": "graded",
       "threshold": 0.45241647958755493,
       "current_expected": "PASS",
       "population_flips": {
@@ -2210,7 +2671,10 @@
       "population_bound_exceeds": {
         "0.005": false,
         "0.01": false,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -2218,6 +2682,7 @@
       "mode": "frozen",
       "fault": "path switch -0.04",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "THRESHOLD STALE",
       "population_flips": {
@@ -2229,7 +2694,10 @@
       "population_bound_exceeds": {
         "0.005": false,
         "0.01": false,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -2237,6 +2705,7 @@
       "mode": "refit",
       "fault": "path switch -0.02",
       "kind": "path-switch null",
+      "planted_kind": "graded",
       "threshold": 0.45241647958755493,
       "current_expected": "PASS",
       "population_flips": {
@@ -2248,7 +2717,10 @@
       "population_bound_exceeds": {
         "0.005": false,
         "0.01": false,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -2256,6 +2728,7 @@
       "mode": "frozen",
       "fault": "path switch -0.02",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "THRESHOLD STALE",
       "population_flips": {
@@ -2267,7 +2740,10 @@
       "population_bound_exceeds": {
         "0.005": false,
         "0.01": false,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -2275,6 +2751,7 @@
       "mode": "refit",
       "fault": "path switch +0.02",
       "kind": "path-switch null",
+      "planted_kind": "graded",
       "threshold": 0.45241647958755493,
       "current_expected": "PASS",
       "population_flips": {
@@ -2286,7 +2763,10 @@
       "population_bound_exceeds": {
         "0.005": false,
         "0.01": false,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -2294,6 +2774,7 @@
       "mode": "frozen",
       "fault": "path switch +0.02",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "THRESHOLD STALE",
       "population_flips": {
@@ -2305,7 +2786,10 @@
       "population_bound_exceeds": {
         "0.005": false,
         "0.01": false,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -2313,6 +2797,7 @@
       "mode": "refit",
       "fault": "path switch +0.04",
       "kind": "path-switch null",
+      "planted_kind": "graded",
       "threshold": 0.45241647958755493,
       "current_expected": "PASS",
       "population_flips": {
@@ -2324,7 +2809,10 @@
       "population_bound_exceeds": {
         "0.005": false,
         "0.01": false,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     },
     {
@@ -2332,6 +2820,7 @@
       "mode": "frozen",
       "fault": "path switch +0.04",
       "kind": "frozen",
+      "planted_kind": "frozen",
       "threshold": 0.8025219440460205,
       "current_expected": "THRESHOLD STALE",
       "population_flips": {
@@ -2343,7 +2832,10 @@
       "population_bound_exceeds": {
         "0.005": false,
         "0.01": false,
-        "0.02": false
+        "0.02": false,
+        "0.03": false,
+        "0.04": false,
+        "0.05": false
       }
     }
   ]
