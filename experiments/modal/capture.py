@@ -21,6 +21,15 @@ was spent today, plus this run so far and that container's worst case, would pas
 spend is --spent-usd, which is required and read from Modal's usage page. Estimates use Modal's
 published rates (smoke_lib.py) and have run high against the actual charge on that page.
 
+Each config is kept as soon as it finishes. On Modal its snapshots, log, manifest and snapshot
+hashes are committed to the hulder-runs Volume before the next config starts. Locally its folder and
+the run manifest are written as soon as it arrives: a multi-config container streams each config
+back, and single-use containers are collected in the order they finish. Start long runs with
+`modal run --detach`, so the containers finish if the local process dies, and then rebuild what
+finished from the Volume:
+
+    uv run --with modal==1.6.1 modal run experiments/modal/capture.py::recover --run-id <run id> --backup-dir <dir>
+
 Writes, per run, the snapshots (one per layer), the full log and a manifest to
 --out/<run id>/<label>/, and the run's manifest to --out/<run id>/manifest.json. The tracked tree
 must be clean, so the manifest's commit is what ran. Snapshots come back from the hulder-runs
@@ -117,14 +126,15 @@ def download(models: list[tuple[str, str]]) -> dict:
     return {"seconds": round(time.time() - start, 1)}
 
 
-def run_group(group: list[tuple[str, dict]], run_id: str) -> dict:
+def run_group(group: list[tuple[str, dict]], run_id: str):
     """Run worker.py on each (label, spec) in order, each in its own process with the Hub offline,
-    and return their manifests and files."""
+    and yield (label, its manifest and files) as each finishes. Each config's snapshot hashes and
+    manifest are committed to the Volume before the next config starts, so what finished survives
+    a lost local process (recover)."""
     query = "--query-gpu=name,uuid,driver_version,memory.total"
     gpu = subprocess.run(
         ["nvidia-smi", query, "--format=csv,noheader"], capture_output=True, text=True, check=False
     ).stdout.strip()
-    results = {}
     for label, spec in group:
         start = time.time()
         out = Path(RUNS) / run_id / label
@@ -163,25 +173,29 @@ def run_group(group: list[tuple[str, dict]], run_id: str) -> dict:
             **({"error": error} if error else {}),
             "nvidia_smi": gpu,
             "engine_env": {**ENGINE_ENV, **env},
+            "engine_kwargs": spec.get("engine_kwargs", {}),
             "seconds": round(time.time() - start, 1),
             "log": lib.log_facts(text),
         }
         if (out / "worker.json").exists():
             manifest["worker"] = json.loads((out / "worker.json").read_text())
+        hashes = lib.record_volume_files(out)  # before the manifest, whose presence means finished
         (out / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
         runs.commit()
         hf.commit()  # compile caches, for the next engine
         # Logs and manifests come back inline. Snapshots stay on the Volume, named with their sha256,
         # for the local entrypoint to fetch, check, back up and remove (smoke_lib.settle_volume_files).
         names = ("capture.log", "manifest.json", "cublas_fingerprint.txt")
-        results[label] = {
-            "manifest": manifest,
-            "files": {p.name: p.read_bytes() for p in out.iterdir() if p.name in names},
-            "volume_files": {p.name: lib.sha256_file(p) for p in sorted(out.glob("*.npz"))},
-        }
-        if returncode != 0:
+        yield (
+            label,
+            {
+                "manifest": manifest,
+                "files": {p.name: p.read_bytes() for p in out.iterdir() if p.name in names},
+                "volume_files": hashes,
+            },
+        )
+        if returncode != 0 and not spec.get("continue_on_failure"):
             break
-    return results
 
 
 GPU_FUNCTION = {
@@ -196,13 +210,15 @@ GPU_FUNCTION = {
 
 
 @app.function(**GPU_FUNCTION)
-def capture_group(group: list[tuple[str, dict]], run_id: str) -> dict:
-    return run_group(group, run_id)
+def capture_group(group: list[tuple[str, dict]], run_id: str):
+    """A generator, so the local entrypoint receives each config as soon as it finishes."""
+    yield from run_group(group, run_id)
 
 
 @app.function(**GPU_FUNCTION, single_use_containers=True)
 def capture_group_single_use(group: list[tuple[str, dict]], run_id: str) -> dict:
-    return run_group(group, run_id)
+    # Spawned, which a generator can't be. Single-use experiments run one config per container.
+    return dict(run_group(group, run_id))
 
 
 def git(*args: str) -> str:
@@ -256,36 +272,44 @@ def main(experiment: str, spent_usd: float, out: str = ".cache/modal-runs", back
     manifest["download"] = {**fetched, "wall_seconds": round(wall, 1), "estimated_usd": round(cost, 4)}
     record()
 
-    def collect(i: int, group: list, results: dict, wall: float) -> bool:
+    configs = {e[0]: e[1] for group in containers for e in group}
+
+    def collect_config(i: int, label: str, result: dict) -> bool:
+        """Write one config's files, fetch and back up its snapshots, and record it, as soon as it
+        arrives rather than when its container or the run ends."""
+        (run_dir / label).mkdir()
+        for filename, data in result["files"].items():
+            lib._write_synced(run_dir / label / filename, [data])
+        m = result["manifest"]
+        volume = lib.settle_volume_files(
+            result["volume_files"],
+            lambda name: runs.read_file(f"{run_id}/{label}/{name}"),
+            run_dir / label,
+            Path(backup_dir) / run_id / label if backup_dir else None,
+        )
+        manifest["configs"][label] = {
+            "container": i,
+            "config": configs[label],
+            "returncode": m["returncode"],
+            "volume": volume,
+        }
+        record()
+        return m["returncode"] == 0 and volume["problem"] is None
+
+    def close_container(i: int, group: list, received: list[str], wall: float) -> bool:
         cost = lib.estimate_cost(wall, gpu=True, cpu=lib.GPU_CPU, memory_gib=lib.GPU_MEMORY_GIB)
         manifest["containers"].append(
-            {"labels": [e[0] for e in group], "wall_seconds": round(wall, 1), "estimated_usd": round(cost, 4)}
-        )
-        ok = len(results) == len(group)
-        for label, config, *_ in group:
-            if label not in results:
-                continue
-            (run_dir / label).mkdir()
-            for filename, data in results[label]["files"].items():
-                (run_dir / label / filename).write_bytes(data)
-            m = results[label]["manifest"]
-            volume = lib.settle_volume_files(
-                results[label]["volume_files"],
-                lambda name, label=label: runs.read_file(f"{run_id}/{label}/{name}"),
-                run_dir / label,
-                Path(backup_dir) / run_id / label if backup_dir else None,
-            )
-            manifest["configs"][label] = {
-                "container": i,
-                "config": config,
-                "returncode": m["returncode"],
-                "volume": volume,
+            {
+                "index": i,
+                "labels": [e[0] for e in group],
+                "wall_seconds": round(wall, 1),
+                "estimated_usd": round(cost, 4),
             }
-            ok = ok and m["returncode"] == 0 and volume["problem"] is None
+        )
         record()
-        return ok
+        return len(received) == len(group)
 
-    groups = [[(e[0], lib.worker_spec(e, timeout_s)) for e in group] for group in containers]
+    groups = lib.experiment_specs(experiment)
     if single_use:
         # All at once, so each container holds its own GPU; the budget covers all of them up front.
         if not affordable(containers):
@@ -293,10 +317,23 @@ def main(experiment: str, spent_usd: float, out: str = ".cache/modal-runs", back
         else:
             start = time.time()
             calls = [capture_group_single_use.spawn(group, run_id) for group in groups]
-            for i, (group, call) in enumerate(zip(containers, calls, strict=True)):
-                results = call.get()
-                if not collect(i, group, results, time.time() - start):
+
+            def poll(i: int) -> tuple[bool, dict | None]:
+                try:
+                    return True, calls[i].get(timeout=0)
+                except modal.exception.TimeoutError:
+                    return False, None
+
+            # Each container is written as it finishes, so a slow first one holds nothing back.
+            for i, results in lib.in_finish_order(len(calls), poll, lambda: time.sleep(10)):
+                print(f"container {i} finished after {time.time() - start:.0f} s", flush=True)
+                # A list, not a generator, so every config is collected even after one fails.
+                collected = [collect_config(i, label, result) for label, result in results.items()]
+                ok = all(collected)
+                if not close_container(i, containers[i], list(results), time.time() - start) or not ok:
+                    manifest.setdefault("failed_containers", []).append(i)
                     manifest["stopped"] = f"container {i} failed; its logs are in {run_dir}"
+                    record()
     else:
         for i, (group, specs) in enumerate(zip(containers, groups, strict=True)):
             if not affordable([group]):
@@ -304,10 +341,50 @@ def main(experiment: str, spent_usd: float, out: str = ".cache/modal-runs", back
                 break
             print(f"container {i}: {', '.join(e[0] for e in group)} on an L4", flush=True)
             start = time.time()
-            results = capture_group.remote(specs, run_id)
-            if not collect(i, group, results, time.time() - start):
+            received, ok = [], True
+            for label, result in capture_group.remote_gen(specs, run_id):
+                print(f"{label} finished, returncode {result['manifest']['returncode']}", flush=True)
+                received.append(label)
+                ok = collect_config(i, label, result) and ok
+            if not close_container(i, group, received, time.time() - start) or not ok:
                 manifest["stopped"] = f"container {i} failed; its logs are in {run_dir}"
                 break
     record()
     print(json.dumps({k: manifest.get(k) for k in ("configs", "estimated_usd", "stopped")}, indent=2))
     print(f"Run {run_id} in {run_dir}. Check the actual charge on Modal's usage page.")
+
+
+@app.local_entrypoint()
+def recover(run_id: str, out: str = ".cache/modal-runs", backup_dir: str = "") -> None:
+    """Rebuild a run's config folders from the Volume after its local process died. Each config
+    whose manifest reached the Volume is fetched and checked against the hashes its container
+    recorded, and backed up with --backup-dir. A config folder that already exists locally is left
+    alone. Writes <run>/recovered.json; costs and the run manifest stay as the local process left them."""
+    from pathlib import PurePosixPath
+
+    run_dir = ROOT / out / run_id
+    run_dir.mkdir(parents=True, exist_ok=True)
+    labels = sorted({PurePosixPath(e.path).name for e in runs.listdir(run_id)})
+
+    def reader(label: str):
+        def read(name: str) -> bytes:
+            try:
+                return b"".join(runs.read_file(f"{run_id}/{label}/{name}"))
+            except (modal.exception.NotFoundError, FileNotFoundError) as e:
+                raise FileNotFoundError(name) from e
+
+        return read
+
+    recovered = {}
+    for label in labels:
+        if (run_dir / label).exists():
+            recovered[label] = "already local, left alone"
+            continue
+        entry = lib.recover_config(
+            reader(label), run_dir / label, Path(backup_dir) / run_id / label if backup_dir else None
+        )
+        recovered[label] = entry if entry is not None else "no manifest on the Volume: its engine didn't finish"
+    (run_dir / "recovered.json").write_text(
+        json.dumps({"boot_id": lib.boot_id(), "configs": recovered}, indent=2) + "\n"
+    )
+    print(json.dumps(recovered, indent=2))
