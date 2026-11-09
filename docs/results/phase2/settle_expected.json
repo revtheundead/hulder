@@ -1,7 +1,7 @@
 {
   "promise": "the extra prompts per class reported for an undecided condition decide it with chance 80%, if the observed rates held",
   "bar": "for each case, size and condition with at least 50 INCONCLUSIVE seeds where the condition was undecided and had a finite estimate, the share of them decided after the extension lies in [70%, 90%]",
-  "decided_means": "the condition's 95% bound has cleared its line on one side, read from the extended report: FPR above 2x the target, FPR below 0.5x the target, FNR above the reference's + 0.05, ΔAUROC below -0.02",
+  "decided_means": "the condition's 95% bound has cleared its line on one side, read from the extended report: FPR above 2x the target, FNR above the reference's + 0.05, ΔAUROC below -0.02",
   "extension": "the seed's own data plus fresh examples from the same generator and arguments, drawn with seed + 1,000,000, scored against the original threshold, so the reference's FNR line is re-read on the extended data",
   "reported_without_bar": [
     "conditions settled the wrong way against the case's population side",
@@ -33,7 +33,6 @@
   },
   "conditions": [
     "fpr_high",
-    "fpr_low",
     "fnr",
     "delta_auroc"
   ],

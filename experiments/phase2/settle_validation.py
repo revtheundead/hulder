@@ -34,7 +34,9 @@ MIN_SEEDS = 50  # undecided seeds with a finite estimate, for a bar to apply
 SEEDS = range(1000)
 EXTENSION_SEED_OFFSET = 1_000_000
 SIZES = {"calibration-sized": (N_BENIGN, N_ATTACK), "quickstart-sized": (180, 180)}
-CONDITIONS = ("fpr_high", "fpr_low", "fnr", "delta_auroc")
+# The conditions that can leave a report undecided. The low side of the FPR band can only give
+# THRESHOLD STALE: PASS doesn't read it, so it is never undecided.
+CONDITIONS = ("fpr_high", "fnr", "delta_auroc")
 
 
 def fnr_rise_shift(rise: float, target_fpr: float = TARGET_FPR, separation: float = SEPARATION) -> float:
@@ -69,7 +71,7 @@ def expected_document() -> dict:
         f" was undecided and had a finite estimate, the share of them decided after the extension lies in"
         f" [{BAND[0]:.0%}, {BAND[1]:.0%}]",
         "decided_means": "the condition's 95% bound has cleared its line on one side, read from the extended"
-        " report: FPR above 2x the target, FPR below 0.5x the target, FNR above the reference's + 0.05,"
+        " report: FPR above 2x the target, FNR above the reference's + 0.05,"
         " ΔAUROC below -0.02",
         "extension": "the seed's own data plus fresh examples from the same generator and arguments, drawn with"
         f" seed + {EXTENSION_SEED_OFFSET:,}, scored against the original threshold, so the reference's FNR line"

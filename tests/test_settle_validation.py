@@ -33,3 +33,7 @@ def test_the_bar_is_a_band_around_the_promise():
     assert doc["seeds"] == [0, 1000]
     assert set(doc["sizes"]) == {"calibration-sized", "quickstart-sized"}
     assert doc["sizes"]["quickstart-sized"] == {"n_benign": 180, "n_attack": 180}
+
+
+def test_only_conditions_that_can_be_undecided_are_validated():
+    assert v.expected_document()["conditions"] == ["fpr_high", "fnr", "delta_auroc"]
