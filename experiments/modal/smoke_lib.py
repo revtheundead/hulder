@@ -125,6 +125,16 @@ CONFIGS |= {
     # no snapshot whose metadata would leave the KV dtype out.
     "qwen3_4b_bf16_fp8kv_smoke": (CONFIGS["qwen3_4b_bf16_full"][0], ("smoke", 64, 63)),
 }
+# Step B: the full capture's batches that hold the test split (rows 13,039 to 15,139 of the full
+# request), whose first batch also holds 7 calibration rows and last 4 boundary-pairs rows.
+SWEEP_TEST_ROWS = ((13032, 15144),)
+CONFIGS |= {
+    # The test rerun: the null for test and its noise floor, in Experiment 2's seeded order.
+    "qwen3_4b_bf16_sweep_b": (
+        CONFIGS["qwen3_4b_bf16_full"][0],
+        ("canary_first", ("shuffled", ("rows", FULL_REQUEST, SWEEP_TEST_ROWS), 1)),
+    ),
+}
 # config name -> keyword arguments the worker adds to vLLM's LLM, beyond what CaptureConfig sets.
 ENGINE_KWARGS: dict[str, dict] = {"qwen3_4b_bf16_fp8kv_smoke": {"kv_cache_dtype": "fp8"}}
 
@@ -243,6 +253,8 @@ EXPERIMENTS = {
         False,
         8 * 60,
     ),
+    # Sweep step B: the bf16 test rerun, in one container.
+    "sweep_b": ([[("test_rerun", "qwen3_4b_bf16_sweep_b")]], False, 8 * 60),
 }
 # Experiments whose containers run every config even after one fails, because each config answers
 # its own question. Elsewhere a failed config stops its container.

@@ -4,6 +4,7 @@ finishes. CPU only, no Modal."""
 import hashlib
 import json
 
+import numpy as np
 import pytest
 import smoke_lib as lib
 
@@ -141,3 +142,36 @@ def test_containers_are_collected_in_the_order_they_finish_not_the_order_they_st
     assert order == [(1, "result 1"), (2, "result 2"), (0, "result 0")]
     assert all(polls[i] == done_after[i] + 1 for i in done_after)  # nothing polled after it finished
     assert len(waits) == 1  # only the first round finds nothing; each later round finds a result
+
+
+def test_step_b_is_the_full_bf16_config_on_the_test_batches_in_experiment_2s_seeded_order():
+    full, _ = lib.CONFIGS["qwen3_4b_bf16_full"]
+    fields, source = lib.CONFIGS["qwen3_4b_bf16_sweep_b"]
+    assert fields == full
+    assert lib.SWEEP_TEST_ROWS == ((13032, 15144),)
+    assert source == ("canary_first", ("shuffled", ("rows", lib.FULL_REQUEST, lib.SWEEP_TEST_ROWS), 1))
+
+
+def test_step_b_is_one_container_within_its_declared_worst_case():
+    containers, _, timeout_s = lib.EXPERIMENTS["sweep_b"]
+    assert containers == [[("test_rerun", "qwen3_4b_bf16_sweep_b")]]
+    assert timeout_s == 8 * 60
+    expected = json.loads((lib.ROOT / "docs/results/phase4/sweep_expected.json").read_text())["steps"]["B"]
+    assert lib.run_worst_case(containers, timeout_s) == pytest.approx(expected["cost_usd"]["worst"], abs=1e-4)
+    assert "sweep_b" not in lib.CONTINUE_AFTER_FAILURE
+
+
+def test_step_b_holds_every_test_prompt_in_whole_full_capture_batches_behind_the_canary():
+    if not lib.SLABS_SPLITS.exists():
+        pytest.skip("needs .cache/probe/splits.parquet")
+    pd = pytest.importorskip("pandas")
+    full = [r["id"] for r in lib.prompts_for(lib.FULL_REQUEST)]
+    ids = [r["id"] for r in lib.worker_spec(("x", "qwen3_4b_bf16_sweep_b"), 480)["prompts"]]
+    assert ids[:8] == full[:8]  # the canary, still batch 1
+    order = np.random.default_rng(1).permutation(15144 - 13032)
+    assert ids[8:] == [full[13032:15144][i] for i in order]
+    split = pd.read_parquet(lib.SLABS_SPLITS, columns=["id", "split"]).set_index("id")["split"]
+    test = set(split[split == "test"].index)
+    assert len(test) == 2101 and test <= set(ids)
+    # The batch edges: 7 calibration rows at the front, 4 boundary-pairs rows at the back.
+    assert split[sorted(set(ids[8:]) - test)].value_counts().to_dict() == {"calibration": 7, "bpairs_train": 4}
