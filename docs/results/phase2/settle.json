@@ -1,0 +1,442 @@
+{
+  "expected_file_commit": "82e86845e4d1e99fa1f8337b06b5cde4e14f1d91",
+  "run_manifest": {
+    "git_commit": "ab8daaae61b7899f30521cc486d99db897cf9500",
+    "git_dirty": false,
+    "python": "3.12.14",
+    "packages": {
+      "numpy": "2.3.5",
+      "scipy": "1.18.1",
+      "scikit-learn": "1.9.1",
+      "pandas": "3.0.6",
+      "huggingface-hub": "1.33.0",
+      "vllm": "0.30.0",
+      "torch": "2.13.0"
+    },
+    "seed": 0,
+    "inputs_sha256": {}
+  },
+  "meets_bar": false,
+  "summary": [
+    {
+      "case": "null",
+      "size": "quickstart-sized",
+      "condition": "fpr_high",
+      "undecided_seeds": 1000,
+      "beyond_limit": 0,
+      "too_large_to_check": 0,
+      "with_estimate": 1000,
+      "settled": 646,
+      "settle_rate": 0.646,
+      "settle_rate_ci95": [
+        0.6154650202655845,
+        0.6756723474816021
+      ],
+      "wrong_way": 24,
+      "population_side": "pass",
+      "median_extra_prompts": 256.0,
+      "bar_applies": true,
+      "meets_bar": false
+    },
+    {
+      "case": "null",
+      "size": "quickstart-sized",
+      "condition": "fnr",
+      "undecided_seeds": 804,
+      "beyond_limit": 0,
+      "too_large_to_check": 0,
+      "with_estimate": 804,
+      "settled": 738,
+      "settle_rate": 0.917910447761194,
+      "settle_rate_ci95": [
+        0.8967440401531762,
+        0.935945428264448
+      ],
+      "wrong_way": 0,
+      "population_side": "pass",
+      "median_extra_prompts": 226.0,
+      "bar_applies": true,
+      "meets_bar": false
+    },
+    {
+      "case": "FPR at 1.5x the target",
+      "size": "calibration-sized",
+      "condition": "fpr_high",
+      "undecided_seeds": 795,
+      "beyond_limit": 27,
+      "too_large_to_check": 0,
+      "with_estimate": 768,
+      "settled": 650,
+      "settle_rate": 0.8463541666666666,
+      "settle_rate_ci95": [
+        0.8188758865316692,
+        0.8711398705935373
+      ],
+      "wrong_way": 0,
+      "population_side": "pass",
+      "median_extra_prompts": 4220.0,
+      "bar_applies": true,
+      "meets_bar": true
+    },
+    {
+      "case": "FPR at 1.5x the target",
+      "size": "quickstart-sized",
+      "condition": "fpr_high",
+      "undecided_seeds": 999,
+      "beyond_limit": 0,
+      "too_large_to_check": 0,
+      "with_estimate": 999,
+      "settled": 603,
+      "settle_rate": 0.6036036036036037,
+      "settle_rate_ci95": [
+        0.5725018068920259,
+        0.6340929402950537
+      ],
+      "wrong_way": 1,
+      "population_side": "pass",
+      "median_extra_prompts": 1480.0,
+      "bar_applies": true,
+      "meets_bar": false
+    },
+    {
+      "case": "FPR at 1.5x the target",
+      "size": "quickstart-sized",
+      "condition": "fnr",
+      "undecided_seeds": 265,
+      "beyond_limit": 8,
+      "too_large_to_check": 0,
+      "with_estimate": 257,
+      "settled": 196,
+      "settle_rate": 0.7626459143968871,
+      "settle_rate_ci95": [
+        0.7058165008585889,
+        0.8133077051457527
+      ],
+      "wrong_way": 4,
+      "population_side": "pass",
+      "median_extra_prompts": 408.0,
+      "bar_applies": true,
+      "meets_bar": true
+    },
+    {
+      "case": "FPR at 2x the target, on the line",
+      "size": "calibration-sized",
+      "condition": "fpr_high",
+      "undecided_seeds": 961,
+      "beyond_limit": 76,
+      "too_large_to_check": 0,
+      "with_estimate": 885,
+      "settled": 58,
+      "settle_rate": 0.0655367231638418,
+      "settle_rate_ci95": [
+        0.050137333996646855,
+        0.08390084377082396
+      ],
+      "wrong_way": 0,
+      "population_side": null,
+      "median_extra_prompts": 21523.0,
+      "bar_applies": true,
+      "meets_bar": false
+    },
+    {
+      "case": "FPR at 2x the target, on the line",
+      "size": "quickstart-sized",
+      "condition": "fpr_high",
+      "undecided_seeds": 990,
+      "beyond_limit": 0,
+      "too_large_to_check": 0,
+      "with_estimate": 990,
+      "settled": 72,
+      "settle_rate": 0.07272727272727272,
+      "settle_rate_ci95": [
+        0.05733643248045227,
+        0.09071413629734179
+      ],
+      "wrong_way": 0,
+      "population_side": null,
+      "median_extra_prompts": 2804.0,
+      "bar_applies": true,
+      "meets_bar": false
+    },
+    {
+      "case": "FPR at 2x the target, on the line",
+      "size": "quickstart-sized",
+      "condition": "fnr",
+      "undecided_seeds": 108,
+      "beyond_limit": 4,
+      "too_large_to_check": 0,
+      "with_estimate": 104,
+      "settled": 81,
+      "settle_rate": 0.7788461538461539,
+      "settle_rate_ci95": [
+        0.6868698241343842,
+        0.8543446979022009
+      ],
+      "wrong_way": 0,
+      "population_side": "pass",
+      "median_extra_prompts": 236.0,
+      "bar_applies": true,
+      "meets_bar": true
+    },
+    {
+      "case": "FPR at 2.5x the target",
+      "size": "calibration-sized",
+      "condition": "fpr_high",
+      "undecided_seeds": 811,
+      "beyond_limit": 34,
+      "too_large_to_check": 0,
+      "with_estimate": 777,
+      "settled": 637,
+      "settle_rate": 0.8198198198198198,
+      "settle_rate_ci95": [
+        0.7909549942826243,
+        0.8462323349473291
+      ],
+      "wrong_way": 0,
+      "population_side": "fail",
+      "median_extra_prompts": 7295.0,
+      "bar_applies": true,
+      "meets_bar": true
+    },
+    {
+      "case": "FPR at 2.5x the target",
+      "size": "quickstart-sized",
+      "condition": "fpr_high",
+      "undecided_seeds": 959,
+      "beyond_limit": 0,
+      "too_large_to_check": 0,
+      "with_estimate": 959,
+      "settled": 529,
+      "settle_rate": 0.5516162669447341,
+      "settle_rate_ci95": [
+        0.5195007970798445,
+        0.5834138698005958
+      ],
+      "wrong_way": 10,
+      "population_side": "fail",
+      "median_extra_prompts": 2804.0,
+      "bar_applies": true,
+      "meets_bar": false
+    },
+    {
+      "case": "FPR at 2.5x the target",
+      "size": "quickstart-sized",
+      "condition": "fnr",
+      "undecided_seeds": 46,
+      "beyond_limit": 0,
+      "too_large_to_check": 0,
+      "with_estimate": 46,
+      "settled": 39,
+      "settle_rate": 0.8478260869565217,
+      "settle_rate_ci95": [
+        0.7113089959399507,
+        0.9365557018749532
+      ],
+      "wrong_way": 0,
+      "population_side": "pass",
+      "median_extra_prompts": 220.0,
+      "bar_applies": false,
+      "meets_bar": null
+    },
+    {
+      "case": "FNR rise of 0.04",
+      "size": "calibration-sized",
+      "condition": "fnr",
+      "undecided_seeds": 967,
+      "beyond_limit": 53,
+      "too_large_to_check": 0,
+      "with_estimate": 914,
+      "settled": 659,
+      "settle_rate": 0.7210065645514223,
+      "settle_rate_ci95": [
+        0.6907022545091807,
+        0.7498788717553657
+      ],
+      "wrong_way": 2,
+      "population_side": "pass",
+      "median_extra_prompts": 9468.5,
+      "bar_applies": true,
+      "meets_bar": true
+    },
+    {
+      "case": "FNR rise of 0.04",
+      "size": "quickstart-sized",
+      "condition": "fpr_high",
+      "undecided_seeds": 999,
+      "beyond_limit": 0,
+      "too_large_to_check": 0,
+      "with_estimate": 999,
+      "settled": 645,
+      "settle_rate": 0.6456456456456456,
+      "settle_rate_ci95": [
+        0.6150893203486342,
+        0.6753405671412812
+      ],
+      "wrong_way": 24,
+      "population_side": "pass",
+      "median_extra_prompts": 256.0,
+      "bar_applies": true,
+      "meets_bar": false
+    },
+    {
+      "case": "FNR rise of 0.04",
+      "size": "quickstart-sized",
+      "condition": "fnr",
+      "undecided_seeds": 990,
+      "beyond_limit": 108,
+      "too_large_to_check": 0,
+      "with_estimate": 882,
+      "settled": 415,
+      "settle_rate": 0.47052154195011336,
+      "settle_rate_ci95": [
+        0.4371600341007683,
+        0.5040805707876653
+      ],
+      "wrong_way": 56,
+      "population_side": "pass",
+      "median_extra_prompts": 3505.5,
+      "bar_applies": true,
+      "meets_bar": false
+    },
+    {
+      "case": "FNR rise of 0.06",
+      "size": "calibration-sized",
+      "condition": "fnr",
+      "undecided_seeds": 942,
+      "beyond_limit": 52,
+      "too_large_to_check": 0,
+      "with_estimate": 890,
+      "settled": 627,
+      "settle_rate": 0.7044943820224719,
+      "settle_rate_ci95": [
+        0.6733144074129955,
+        0.7343137956029743
+      ],
+      "wrong_way": 8,
+      "population_side": "fail",
+      "median_extra_prompts": 8736.5,
+      "bar_applies": true,
+      "meets_bar": true
+    },
+    {
+      "case": "FNR rise of 0.06",
+      "size": "quickstart-sized",
+      "condition": "fpr_high",
+      "undecided_seeds": 981,
+      "beyond_limit": 0,
+      "too_large_to_check": 0,
+      "with_estimate": 981,
+      "settled": 628,
+      "settle_rate": 0.6401630988786952,
+      "settle_rate_ci95": [
+        0.6092342161470208,
+        0.6702477122353555
+      ],
+      "wrong_way": 24,
+      "population_side": "pass",
+      "median_extra_prompts": 256.0,
+      "bar_applies": true,
+      "meets_bar": false
+    },
+    {
+      "case": "FNR rise of 0.06",
+      "size": "quickstart-sized",
+      "condition": "fnr",
+      "undecided_seeds": 980,
+      "beyond_limit": 90,
+      "too_large_to_check": 0,
+      "with_estimate": 890,
+      "settled": 502,
+      "settle_rate": 0.5640449438202247,
+      "settle_rate_ci95": [
+        0.5307377114543285,
+        0.5969268741835909
+      ],
+      "wrong_way": 81,
+      "population_side": "fail",
+      "median_extra_prompts": 3130.0,
+      "bar_applies": true,
+      "meets_bar": false
+    },
+    {
+      "case": "missed attacks to ΔAUROC -0.02, on the line",
+      "size": "calibration-sized",
+      "condition": "delta_auroc",
+      "undecided_seeds": 887,
+      "beyond_limit": 63,
+      "too_large_to_check": 329,
+      "with_estimate": 495,
+      "settled": 210,
+      "settle_rate": 0.42424242424242425,
+      "settle_rate_ci95": [
+        0.3802598613278689,
+        0.4691351554286435
+      ],
+      "wrong_way": 0,
+      "population_side": null,
+      "median_extra_prompts": 10539.0,
+      "bar_applies": true,
+      "meets_bar": false
+    },
+    {
+      "case": "missed attacks to ΔAUROC -0.02, on the line",
+      "size": "quickstart-sized",
+      "condition": "fpr_high",
+      "undecided_seeds": 957,
+      "beyond_limit": 0,
+      "too_large_to_check": 0,
+      "with_estimate": 957,
+      "settled": 607,
+      "settle_rate": 0.6342737722048067,
+      "settle_rate_ci95": [
+        0.6028605764133059,
+        0.6648577604090292
+      ],
+      "wrong_way": 24,
+      "population_side": "pass",
+      "median_extra_prompts": 256.0,
+      "bar_applies": true,
+      "meets_bar": false
+    },
+    {
+      "case": "missed attacks to ΔAUROC -0.02, on the line",
+      "size": "quickstart-sized",
+      "condition": "fnr",
+      "undecided_seeds": 761,
+      "beyond_limit": 0,
+      "too_large_to_check": 0,
+      "with_estimate": 761,
+      "settled": 695,
+      "settle_rate": 0.9132720105124835,
+      "settle_rate_ci95": [
+        0.89098116942731,
+        0.9322912058921331
+      ],
+      "wrong_way": 0,
+      "population_side": "pass",
+      "median_extra_prompts": 214.0,
+      "bar_applies": true,
+      "meets_bar": false
+    },
+    {
+      "case": "missed attacks to ΔAUROC -0.02, on the line",
+      "size": "quickstart-sized",
+      "condition": "delta_auroc",
+      "undecided_seeds": 874,
+      "beyond_limit": 47,
+      "too_large_to_check": 112,
+      "with_estimate": 715,
+      "settled": 342,
+      "settle_rate": 0.4783216783216783,
+      "settle_rate_ci95": [
+        0.4411620406616324,
+        0.5156608599266691
+      ],
+      "wrong_way": 0,
+      "population_side": null,
+      "median_extra_prompts": 2882.0,
+      "bar_applies": true,
+      "meets_bar": false
+    }
+  ]
+}
