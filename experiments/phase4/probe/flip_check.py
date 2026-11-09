@@ -11,6 +11,13 @@ until the rule is accepted. The bars are committed before the run, as with the p
     source scripts/dev-env.sh
     uv run python experiments/phase4/probe/flip_check.py expected
     git add docs/results/phase4/flip_check_expected.json && git commit
+    CUDA_VISIBLE_DEVICES="" OMP_NUM_THREADS=1 uv run python experiments/phase4/probe/flip_check.py run
+
+`run` refuses unless the bars are committed and match what the code recomputes. It draws the
+planted-fault control's 1,000 pair-preserving resamples per row, records each resample's current
+verdict and its up and down counts, and writes each row to .cache/flip-check/rows.jsonl as it
+finishes. A rerun resumes from there unless the bars or the code changed. The bars are then read
+from those records, at every margin, into docs/results/phase4/flip_check.json.
 
 The rows are the planted-fault control's (planted_faults_expected.json, which `expected` checks it
 still reproduces), plus a uniform shift at a numerical-path switch's size.
@@ -19,16 +26,29 @@ still reproduces), plus a uniform shift at a numerical-path switch's size.
 import argparse
 import hashlib
 import json
+import subprocess
 import sys
+from functools import partial
 from pathlib import Path
 
 import numpy as np
 import planted_faults as p
+from resumable_rows import RowStore, run_rows
 from scipy.special import expit
 from scipy.stats import beta, binomtest
 
+import hulder
+
 ROOT = Path(__file__).resolve().parents[3]
 EXPECTED = ROOT / "docs/results/phase4/flip_check_expected.json"
+RESULTS = ROOT / "docs/results/phase4/flip_check.json"
+WORK = ROOT / ".cache/flip-check"
+CODE = (
+    Path(__file__).resolve(),
+    *p.CODE,
+    ROOT / "tests/synthetic.py",
+)
+SYNTHETIC_SEEDS = range(1000)
 
 ALPHA = 0.05  # the direction test, two-sided
 CONFIDENCE = 0.95  # the net shift's lower bound, one-sided
@@ -278,11 +298,120 @@ def stage_expected() -> int:
     return 0
 
 
+_ARRAYS: dict = {}
+
+
+def synthetic_maker(name: str):
+    sys.path.insert(0, str(ROOT / "tests"))
+    from synthetic import FRESH_ENGINE_NOISE, FRESH_ENGINE_P_ZERO, unchanged_scorer
+
+    makers = {
+        "null": unchanged_scorer,
+        "fresh_engine_noise": partial(unchanged_scorer, noise=FRESH_ENGINE_NOISE, p_zero=FRESH_ENGINE_P_ZERO),
+    }
+    return makers[name]
+
+
+def run_synthetic(row: dict) -> dict:
+    """One seed per check, as experiments/phase1/gate/calibration.py draws them."""
+    make = synthetic_maker(row["fault"])
+    verdicts, ups, downs, n = [], [], [], None
+    for seed in SYNTHETIC_SEEDS:
+        d = make(seed)
+        report = hulder.check(d.reference, d.candidate, d.labels, threshold=d.threshold, target_fpr=p.TARGET_FPR)
+        up, down = discordant(d.reference, d.candidate, d.threshold)
+        verdicts.append(report.verdict.value)
+        ups.append(up)
+        downs.append(down)
+        n = len(d.labels)
+    return {"key": row["key"], "verdicts": verdicts, "up": ups, "down": downs, "n": n}
+
+
+def run_row(row: dict) -> dict:
+    """One row's current verdict and flips on each resample, with the planted-fault control's draws."""
+    if row["split"] == "synthetic":
+        return run_synthetic(row)
+    data = _ARRAYS[row["split"]]
+    labels, reference, candidate = data["labels"], expit(data["reference"]), expit(data[row["fault"]])
+    verdicts, ups, downs = [], [], []
+    for i in range(p.RESAMPLES):
+        rows = p.resample_rows(labels, p.SEED + i)
+        ref, cand, y = reference[rows], candidate[rows], labels[rows]
+        threshold = row["threshold"] if row["mode"] == "frozen" else p.refit_threshold(ref[y == 0], p.TARGET_FPR)
+        verdicts.append(hulder.check(ref, cand, y, threshold, p.TARGET_FPR, seed=p.SEED + i).verdict.value)
+        up, down = discordant(ref, cand, threshold)
+        ups.append(up)
+        downs.append(down)
+    print(row["key"], {v: verdicts.count(v) for v in VERDICTS}, flush=True)
+    return {"key": row["key"], "verdicts": verdicts, "up": ups, "down": downs, "n": len(labels)}
+
+
+def row_key(row: dict) -> str:
+    return f"{row['split']}/{row['mode']}/{row['fault']}"
+
+
+def summarise(rows: list[dict], raw: dict[str, dict]) -> dict:
+    """The bars read from the stored resamples, at every margin."""
+    out_rows, synthetic = [], []
+    for row in rows:
+        r = raw[row_key(row)]
+        current = {v: r["verdicts"].count(v) for v in VERDICTS}
+        tallies = {
+            f"{m:g}": tally_margin(r["verdicts"], r["up"], r["down"], r["n"], m, row.get("current_expected", "PASS"))
+            for m in MARGINS
+        }
+        if row["split"] == "synthetic":
+            synthetic.append(
+                {
+                    **row,
+                    "current_counts": current,
+                    "fires_rate": {k: t["fires_rate"] for k, t in tallies.items()},
+                    "by_margin": tallies,
+                }
+            )
+            continue
+        bars = {k: row_bars(row, t) for k, t in tallies.items()}
+        out_rows.append({**row, "current_counts": current, "by_margin": tallies, "bars": bars})
+    return {"decision": decide(out_rows, synthetic), "rows": out_rows, "synthetic": synthetic}
+
+
+def stage_run(workers: int) -> int:
+    if p.uncommitted(EXPECTED):
+        print(f"{EXPECTED.name} isn't committed. Commit the bars before running.", file=sys.stderr)
+        return 1
+    rows, arrays = build()
+    if json.loads(EXPECTED.read_text()) != json.loads(json.dumps(expected_document(rows), ensure_ascii=False)):
+        print(f"{EXPECTED.name} differs from what the code recomputes.", file=sys.stderr)
+        return 1
+    _ARRAYS.update(arrays)
+    sys.path.insert(0, str(ROOT / "experiments/phase1/probe"))
+    from common import run_manifest
+
+    git_log = ["git", "log", "-1", "--format=%H", "--", EXPECTED.name]
+    expected_commit = subprocess.run(git_log, cwd=EXPECTED.parent, capture_output=True, text=True, check=True)
+    store = RowStore(
+        WORK / "rows.jsonl",
+        p.identity_of(EXPECTED, CODE, p.RESAMPLES, p.SEED),
+        extra={"expected_file_commit": expected_commit.stdout.strip(), "run_manifest": run_manifest(seed=p.SEED)},
+    )
+    print(f"{len(store.done)} rows already written", flush=True)
+    synthetic = [
+        {"split": "synthetic", "mode": "seeds", "fault": name, "kind": "synthetic null"} for name in SYNTHETIC_NULLS
+    ]
+    everything = [{**row, "key": row_key(row)} for row in rows + synthetic]
+    run_rows(everything, run_row, store, workers)
+    report = {**store.extra, **summarise(rows + synthetic, store.done)}
+    RESULTS.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n")
+    print(json.dumps(report["decision"], indent=2))
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("stage", choices=("expected",))
-    parser.parse_args()
-    return stage_expected()
+    parser.add_argument("stage", choices=("expected", "run"))
+    parser.add_argument("--workers", type=int, default=5)
+    args = parser.parse_args()
+    return stage_expected() if args.stage == "expected" else stage_run(args.workers)
 
 
 if __name__ == "__main__":

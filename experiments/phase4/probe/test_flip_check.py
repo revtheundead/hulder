@@ -188,3 +188,31 @@ def test_decide_ships_nothing_without_a_margin():
     rows = [{"split": "calibration", "mode": "refit", "bars": {f"{m:g}": {"null": False} for m in f.MARGINS}}]
     out = f.decide(rows, [])
     assert out["selected_margin"] is None and out["ships"] is False
+
+
+def test_summarise_reads_bars_from_the_stored_resamples():
+    planted = {
+        "split": "calibration",
+        "mode": "refit",
+        "fault": "real rerun",
+        "kind": "null",
+        "planted_kind": "null",
+        "current_expected": "PASS",
+    }
+    synthetic = {"split": "synthetic", "mode": "seeds", "fault": "null", "kind": "synthetic null"}
+    raw = {
+        "calibration/refit/real rerun": {
+            "verdicts": ["PASS", "INCONCLUSIVE"],
+            "up": [0, 85],
+            "down": [0, 0],
+            "n": 2101,
+        },
+        "synthetic/seeds/null": {"verdicts": ["PASS", "PASS"], "up": [0, 0], "down": [0, 0], "n": 2101},
+    }
+    out = f.summarise([planted, synthetic], raw)
+    row = out["rows"][0]
+    assert row["current_counts"]["INCONCLUSIVE"] == 1
+    assert row["by_margin"]["0.02"]["fires"] == 1
+    assert row["bars"]["0.02"] == {"every row": True, "null": False, "population PASS": False}
+    assert out["synthetic"][0]["fires_rate"]["0.005"] == 0.0
+    assert out["decision"]["selected_margin"] == 0.04  # 85 up bounds at 3.8%
