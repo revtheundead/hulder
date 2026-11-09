@@ -1,5 +1,6 @@
 """The release gate: compare a scorer under reference and candidate serving configs (docs/design.md §4)."""
 
+import math
 from collections.abc import Iterable
 from dataclasses import dataclass, replace
 from enum import Enum
@@ -8,6 +9,7 @@ import numpy as np
 from scipy.special import expit
 from scipy.stats import binomtest, rankdata
 
+from hulder.gate import settle
 from hulder.gate.pairing import PROMPT_IDS_KEY, PairingError, check_pairing
 from hulder.gate.probe import Probe, probe_logits
 from hulder.gate.recalibrate import CONFIDENCE, binomial_tail_threshold
@@ -92,6 +94,22 @@ class Recalibration:
 
 
 @dataclass(frozen=True)
+class Undecided:
+    """A condition an INCONCLUSIVE report couldn't decide, and roughly how many more examples per class
+    would settle it with an 80% chance if the observed values held (hulder.gate.settle). The FPR needs
+    benign examples, the FNR attacks, and ΔAUROC both. Both counts are None when the estimate sits on
+    the line and more data is unlikely to settle it."""
+
+    # "fpr", "fnr" or "delta_auroc"
+    condition: str
+    estimate: Estimate
+    # The tolerance line the estimate's interval straddles.
+    line: float
+    more_benign: int | None
+    more_attack: int | None
+
+
+@dataclass(frozen=True)
 class Report:
     """Plain data: it neither prints nor exits, and compares with ==. Unhashable by design:
     changes_under_test can hold metadata values such as dicts."""
@@ -150,6 +168,8 @@ class Report:
     more_benign_beyond_limit: bool = False
     # Only for THRESHOLD STALE and INCONCLUSIVE (where it is optional): a recalibrated threshold.
     recalibration: Recalibration | None = None
+    # Only for INCONCLUSIVE: each undecided condition with the extra examples that would settle it.
+    undecided: tuple[Undecided, ...] = ()
 
 
 def check(
@@ -275,6 +295,9 @@ def check(
         k, n, _ = _flag_rate(candidate[benign], threshold)
         more_benign_needed = _more_needed_to_decide(k / n, n, FPR_BAND_HIGH * target_fpr)
     more_benign_beyond_limit = verdict is Verdict.INCONCLUSIVE and more_benign_needed is None
+    undecided = ()
+    if verdict is Verdict.INCONCLUSIVE:
+        undecided = _undecided(candidate_fpr, candidate_fnr, reference_fnr, delta_auroc, benign, target_fpr)
     recalibration = None
     if verdict in (Verdict.THRESHOLD_STALE, Verdict.INCONCLUSIVE):
         recalibration = _recalibrate(candidate[benign], candidate[~benign], target_fpr)
@@ -317,6 +340,7 @@ def check(
         more_benign_needed=more_benign_needed,
         more_benign_beyond_limit=more_benign_beyond_limit,
         recalibration=recalibration,
+        undecided=undecided,
         rerun_identical_to_reference=rerun_identical,
         **floor,
         **logit_shift,
@@ -489,6 +513,34 @@ def _metadata_differences(reference: dict, other: dict) -> list[tuple[str, objec
     A key on one side only differs from None. prompt_ids_sha256 is pairing, not metadata."""
     keys = sorted((reference.keys() | other.keys()) - {PROMPT_IDS_KEY})
     return [(key, reference.get(key), other.get(key)) for key in keys if reference.get(key) != other.get(key)]
+
+
+def _undecided(
+    candidate_fpr: Estimate,
+    candidate_fnr: Estimate,
+    reference_fnr: Estimate,
+    delta_auroc: Estimate,
+    benign: np.ndarray,
+    target_fpr: float,
+) -> tuple[Undecided, ...]:
+    """The conditions whose bounds straddle their lines, in the order the report prints them. The low
+    side of the FPR band only ever gives THRESHOLD STALE, so it can't be undecided."""
+    n_benign, n_attack = int(benign.sum()), int((~benign).sum())
+    out = []
+    line = FPR_BAND_HIGH * target_fpr
+    if candidate_fpr.low <= line < candidate_fpr.high:
+        extra = settle.extra_to_settle(round(candidate_fpr.value * n_benign), n_benign, line)
+        out.append(Undecided("fpr", candidate_fpr, line, extra, None if extra is None else 0))
+    line = reference_fnr.value + FNR_TOLERANCE
+    if candidate_fnr.low <= line < candidate_fnr.high:
+        extra = settle.extra_to_settle(round(candidate_fnr.value * n_attack), n_attack, line)
+        out.append(Undecided("fnr", candidate_fnr, line, None if extra is None else 0, extra))
+    line = -AUROC_TOLERANCE
+    if delta_auroc.low < line <= delta_auroc.high:
+        scale = settle.scale_to_settle_auroc(delta_auroc, line)
+        more = (None, None) if scale is None else (math.ceil((scale - 1) * n_benign), math.ceil((scale - 1) * n_attack))
+        out.append(Undecided("delta_auroc", delta_auroc, line, *more))
+    return tuple(out)
 
 
 def _fpr(benign_scores: np.ndarray, threshold: float) -> Estimate:

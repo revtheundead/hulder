@@ -150,22 +150,25 @@ def test_a_decided_verdict_leads_with_the_inputs(tmp_path, capsys):
 
 
 @pytest.mark.parametrize(
-    ("k_flagged", "number", "caveat"),
+    ("k_flagged", "line"),
     [
-        (20, "6,407 more benign examples", False),  # under 10 x 1,191
-        (22, "31,752 more benign examples", True),  # over 10 x 1,191
-        (24, "More than 1,000,000 benign examples in all", True),
+        (
+            20,
+            "FPR 1.0% to 2.6% against the 2.0% line; about 13,000 more benign prompts give an 80% chance to settle it.",
+        ),
+        (
+            22,
+            "FPR 1.2% to 2.8% against the 2.0% line; about 63,000 more benign prompts give an 80% chance to settle it.",
+        ),
+        (24, "FPR 1.3% to 3.0% against the 2.0% line; it sits on the line, so more prompts are unlikely to settle it."),
     ],
 )
-def test_more_benign_needed_past_ten_times_the_calibration_set_carries_the_caveat(
-    tmp_path, capsys, k_flagged, number, caveat
-):
+def test_inconclusive_prints_one_line_per_undecided_condition(tmp_path, capsys, k_flagged, line):
     reference, labels = _benign_then_attack(1191, 11)
     candidate, _ = _benign_then_attack(1191, k_flagged)
     _run(tmp_path, reference, candidate, labels)
     out = capsys.readouterr().out
-    assert number in out
-    assert (cli.EDGE_CAVEAT in out) is caveat
+    assert f"Verdict: INCONCLUSIVE\n  {line}\n" in out
 
 
 def test_json_output_carries_the_report_and_its_intervals(tmp_path, capsys):
