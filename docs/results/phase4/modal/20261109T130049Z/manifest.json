@@ -1,0 +1,93 @@
+{
+  "run_id": "20261109T130049Z",
+  "experiment": "sweep_c",
+  "single_use": true,
+  "commit": "78c20305a3c2bbf459ea7a7d128daacf38f1e1c8",
+  "command": "uv run --with modal==1.6.1 modal run experiments/modal/capture.py --experiment sweep_c --spent-usd 0.14 --backup-dir /mnt/e/hulder-backup/verified-2026-11-09/.cache/modal-runs",
+  "modal": "1.6.1",
+  "rates_usd_per_s": {
+    "L4": 0.000222,
+    "cpu_core": 1.31e-05,
+    "memory_gib": 2.22e-06
+  },
+  "spent_before_usd": 0.14,
+  "boot_id": "1d627ba5-8d51-4fa5-b20e-ee38a7d2aa90",
+  "containers": [],
+  "configs": {
+    "awq_r1": {
+      "container": null,
+      "config": "qwen3_4b_awq_sweep_c",
+      "returncode": 0,
+      "volume": {
+        "files": {
+          "18_-1.npz": "309cb1a0dfd7d576041427806a924a01550213281f2902ab6b76d33f7a5ec4ff",
+          "18_-10.npz": "cb4b993dde0b04fd8e9ca5a59a053fb163100a77d0a0393006b17dd48cc89329",
+          "18_-9.npz": "cb83fefab7356625a185877c23757b99ec36004eded2f5d508d5ccbaf41fd724",
+          "27_-1.npz": "b7e7dd9b3eaa9fc2fbcf08b1b08e25b151bb82c9fee1a51c6f8c48bfc8c0788d",
+          "27_-10.npz": "a54566c2ea21bce3d320affe403d17b6fffaf34ef632a582d19983c006e43a1d",
+          "27_-9.npz": "464c3635f29e73f92a4e0e6fc074687621b92b7f550eea0aafc9dff622c863ff",
+          "token_ids.npz": "e80c2bf9e8d135d3c83807b3cf5ace1e1986412d79e2589b493939ab883238b7"
+        },
+        "fetched": true,
+        "backed_up": true,
+        "problem": null
+      },
+      "recovered": true
+    },
+    "awq_r2": {
+      "container": null,
+      "config": "qwen3_4b_awq_sweep_c",
+      "returncode": 0,
+      "volume": {
+        "files": {
+          "18_-1.npz": "35475ca3beceeeb965200f6b21ad20fdd05dce45c7f3fd000defabc0f5d2cd78",
+          "18_-10.npz": "c675279b032cd3b57a3360ad685f5125b4ad338ff17dd7bca587417bd0a2726a",
+          "18_-9.npz": "86688d19a57a9bdbaf3ae7330025533d4ce84f76af7f0e4cad33591661f11cd0",
+          "27_-1.npz": "355cad54e083021c1bb1b28d283603414ba5c3872d678f84de10da24d287a377",
+          "27_-10.npz": "de04e09f9af1506a0a286fe85f7c5301cfe7f04451fb94ac931883446345bc3c",
+          "27_-9.npz": "3fd97c5869a06c4d4f70a937191c542526afdcc6f2060c003c93171e9bf33fbf",
+          "token_ids.npz": "e80c2bf9e8d135d3c83807b3cf5ace1e1986412d79e2589b493939ab883238b7"
+        },
+        "fetched": true,
+        "backed_up": true,
+        "problem": null
+      },
+      "recovered": true
+    },
+    "awq_r3": {
+      "container": null,
+      "config": "qwen3_4b_awq_sweep_c",
+      "returncode": 0,
+      "volume": {
+        "files": {
+          "18_-1.npz": "ab5853adf87bbde76cc4cf71c64b097a009bb515d8d40ef3931c8551743785ad",
+          "18_-10.npz": "c805a0d51398f92874d701acf012a66d3b93b9b1cbce8289d7a7897ccaf172a2",
+          "18_-9.npz": "bbd0c46552351cdecc87e2e30d551a88bf4d3b517967ea91fd70befcbc972baa",
+          "27_-1.npz": "65ceca7209719fcffc3d49f392a54b008d8ec4d858bf6637cebb5d2a026ad1c2",
+          "27_-10.npz": "0aa6553cb2b0a0c6556bb6ec42a7313ce3f889dcdc818235c1594f1fd37848d3",
+          "27_-9.npz": "b849d6af657617c66d2355b2671e200278a917f1b25a3d1ea71cffbbe95f8dbc",
+          "token_ids.npz": "e80c2bf9e8d135d3c83807b3cf5ace1e1986412d79e2589b493939ab883238b7"
+        },
+        "fetched": true,
+        "backed_up": true,
+        "problem": null
+      },
+      "recovered": true
+    }
+  },
+  "download": {
+    "seconds": 0.1,
+    "wall_seconds": 5.8,
+    "estimated_usd": 0.0002
+  },
+  "estimated_usd": 0.0002,
+  "recovered": {
+    "configs": [
+      "awq_r1",
+      "awq_r2",
+      "awq_r3"
+    ],
+    "not_finished": []
+  },
+  "cost_note": "the local process died before recording container costs; read them from Modal's usage page"
+}

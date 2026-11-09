@@ -230,6 +230,13 @@
       "stop_rules": "B0, B1 and B2 pass; canary is cluster 2.0",
       "null": "PASS, exit 0, as predicted",
       "added": "2026-11-09, after the run; no rule or prediction above changed"
+    },
+    "C": {
+      "run": "20261109T130049Z",
+      "stop_rules": "C0, C1 and C2 pass; 655 of 676 batches unanimous, 21 split, none without a majority",
+      "primary": "INCONCLUSIVE, exit 12, within the prediction",
+      "replication": "THRESHOLD STALE, exit 10, as predicted more likely",
+      "added": "2026-11-09, after the run; no rule or prediction above changed"
     }
   }
 }
