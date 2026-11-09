@@ -154,13 +154,15 @@ def test_a_decided_verdict_leads_with_the_inputs(tmp_path, capsys):
     [
         (
             20,
-            "FPR 1.0% to 2.6% against the 2.0% line; about 13,000 more benign prompts give an 80% chance to settle it.",
+            (
+                "FPR 1.0% to 2.6% against the 2.0% line; even 10 times the data, 11,000 more benign prompts, gives "
+                "only about a 64% chance to settle it. The true rate may be close to the line: check the tolerance."
+            ),
         ),
         (
-            22,
-            "FPR 1.2% to 2.8% against the 2.0% line; about 63,000 more benign prompts give an 80% chance to settle it.",
+            33,
+            "FPR 1.9% to 3.9% against the 2.0% line; about 2,900 more benign prompts give an 80% chance to settle it.",
         ),
-        (24, "FPR 1.3% to 3.0% against the 2.0% line; it sits on the line, so more prompts are unlikely to settle it."),
     ],
 )
 def test_inconclusive_prints_one_line_per_undecided_condition(tmp_path, capsys, k_flagged, line):
@@ -355,3 +357,12 @@ def test_a_probe_file_whose_threshold_is_null_exits_1_naming_it(tmp_path, capsys
     hulder.Probe(probe.weights, probe.bias, probe.mean, probe.std, {**probe.metadata, "threshold": None}).save(path)
     assert _probe_check(str(path)) == 1
     assert capsys.readouterr().err == f"hulder: error: {path}: its threshold is None, not a number\n"
+
+
+def test_pass_out_of_reach_comes_before_the_settle_line(tmp_path, capsys):
+    reference, labels = _benign_then_attack(180, 2)
+    candidate, _ = _benign_then_attack(180, 3)
+    _run(tmp_path, reference, candidate, labels)
+    out = capsys.readouterr().out
+    expected = "Verdict: INCONCLUSIVE\n  PASS is out of reach at 180 benign, even with no false positives: the FPR bound stays above the 2.0% line below 183 benign.\n  FPR "
+    assert expected in out

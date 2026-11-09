@@ -15,7 +15,8 @@ from pathlib import Path
 from typing import NoReturn
 
 import hulder.gate.check as gate_check
-from hulder.gate.check import Report, Undecided, Verdict, check_snapshots
+import hulder.gate.settle as gate_settle
+from hulder.gate.check import OutOfReach, Report, Undecided, Verdict, check_snapshots
 from hulder.gate.jsonl import load_scores_jsonl
 from hulder.gate.pairing import PairingError
 from hulder.gate.probe import Probe
@@ -275,24 +276,46 @@ def render(report: Report, inputs: dict) -> str:
 
 
 def _undecided(report: Report) -> list[str]:
-    """One line per condition an INCONCLUSIVE report left undecided."""
-    return [f"  {_undecided_line(u)}" for u in report.undecided]
+    """For INCONCLUSIVE: first any condition PASS can't satisfy at this size, then one line per undecided condition."""
+    return [f"  {_out_of_reach_line(r)}" for r in report.out_of_reach] + [
+        f"  {_undecided_line(u)}" for u in report.undecided
+    ]
+
+
+def _out_of_reach_line(r: OutOfReach) -> str:
+    kind, errors, name = (
+        ("benign", "false positives", "FPR") if r.condition == "fpr" else ("attacks", "missed attacks", "FNR")
+    )
+    return (
+        f"PASS is out of reach at {r.n:,} {kind}, even with no {errors}: "
+        f"the {name} bound stays above the {r.line:.1%} line below {r.minimum:,} {kind}."
+    )
 
 
 def _undecided_line(u: Undecided) -> str:
+    s = u.settle
     if u.condition == "delta_auroc":
         where = f"ΔAUROC {u.estimate.low:+.3f} to {u.estimate.high:+.3f} against the {u.line:+.2f} line"
     else:
         name = "FPR" if u.condition == "fpr" else "FNR"
         where = f"{name} {u.estimate.low:.1%} to {u.estimate.high:.1%} against the {u.line:.1%} line"
-    if u.more_benign is None:
-        return f"{where}; it sits on the line, so more prompts are unlikely to settle it."
+    if s.capped:
+        return (
+            f"{where}; not estimated beyond {gate_settle.AUROC_MAX_EXAMPLES:,} prompts in all, the most the "
+            f"bootstrap fits in memory, where the chance to settle it is still under 80%."
+        )
     if u.condition == "delta_auroc":
-        more = f"{_about(u.more_benign)} more benign and {_about(u.more_attack)} more attack prompts"
+        more = f"{_about(s.more_benign)} more benign and {_about(s.more_attack)} more attack prompts"
     elif u.condition == "fpr":
-        more = f"{_about(u.more_benign)} more benign prompts"
+        more = f"{_about(s.more_benign)} more benign prompts"
     else:
-        more = f"{_about(u.more_attack)} more attack prompts"
+        more = f"{_about(s.more_attack)} more attack prompts"
+    if not s.reached:
+        value = "value" if u.condition == "delta_auroc" else "rate"
+        return (
+            f"{where}; even {gate_settle.GROWTH} times the data, {more}, gives only about a {s.chance:.0%} chance "
+            f"to settle it. The true {value} may be close to the line: check the tolerance."
+        )
     return f"{where}; about {more} give an 80% chance to settle it."
 
 
