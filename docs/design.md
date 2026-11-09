@@ -232,7 +232,7 @@ Capture keeps chunked prefill off to keep snapshots reproducible, not because th
 1. **SCORER DEGRADED** if the ΔAUROC upper bound is below −0.02.
 2. **THRESHOLD STALE** if the candidate FPR lower bound is above twice the target, or its upper bound is below half the target, or the candidate FNR lower bound is above the reference FNR + 0.05.
 3. **PASS** if the candidate FPR upper bound is at most twice the target, the candidate FNR upper bound at most the reference FNR + 0.05, and the ΔAUROC lower bound at least −0.02.
-4. Otherwise **INCONCLUSIVE**, with the number of extra benign examples that would settle the FPR condition if the observed rate held.
+4. Otherwise **INCONCLUSIVE**. For each condition whose interval straddles its line, the report gives roughly how many more examples per class would settle it with an 80% chance, if the observed values held (`hulder.gate.settle`). FPR needs benign examples, FNR attacks, and ΔAUROC both, from the bootstrap interval read as normal. When the estimate sits on its line it says more data is unlikely to help instead. How often the promise holds on fresh data is in `docs/results/phase2/settle.md`.
 
 The tolerances are fixed in v0.1, as constants in `hulder/gate/check.py` (`FPR_BAND_HIGH`, `FPR_BAND_LOW`, `FNR_TOLERANCE`, `AUROC_TOLERANCE`). Shift, the noise floor and the decision flip rate are diagnostics, never inputs to the verdict.
 
@@ -243,7 +243,7 @@ The tolerances are fixed in v0.1, as constants in `hulder/gate/check.py` (`FPR_B
 - **The rerun must be of the reference.** A rerun of the candidate would count the whole shift as noise. A reference rerun can understate a noisier candidate's own noise (§10).
 - **The threshold must come from the reference snapshot.** If the reference's own FPR interval excludes the target, `check` warns that the threshold wasn't calibrated on this snapshot. A threshold fitted elsewhere fails to PASS an unchanged scorer far more often, 21.9% of the time at 1,191 benign even at the true quantile, because the FPR condition alone then allows at most 14 false positives. Bringing that below 10% needs about 1,600 benign examples.
 - **Primary and replication.** A second held-out set can replicate a verdict, as `docs/results/phase4/planted_faults.md` does with test, but it isn't pooled with calibration. The two sets differ in distribution, so a pooled FPR hides upward shifts, and a threshold refit on the pool leaves nothing held out. Calibration gives the primary verdict, the replication is declared in advance, and it can't change the primary.
-- **The tolerance edge.** When an INCONCLUSIVE report would need more than 10 times its own benign count to settle, the CLI adds that the estimate sits at the tolerance edge and the number is unstable. This is presentation only.
+- **The tolerance edge.** An observed value at or near its line needs very many more examples, or more than the estimate's limit, which the report says in place of a number. The report's `more_benign_needed`, the older "if the observed rate held" count for the FPR condition alone, is kept for compatibility. The CLI no longer prints it.
 
 The gate's own calibration was measured on synthetic scores over 1,000 seeds at 1,191 benign and a 1% target, against bounds fixed before running (`docs/results/phase1/gate_calibration.md`). The null and fresh-engine noise PASS in every run. A fivefold FPR rise is THRESHOLD STALE in 99.9% of runs, a threefold one never PASSes, and between 1.5% and 2% the gate is mostly INCONCLUSIVE. A drop in AUROC of 0.05 or more is SCORER DEGRADED in every run. At exactly −0.02 the missed-attack case PASSes 6.7% of the time, more than a 95% bound implies, because each seed fits its own threshold and so has its own true ΔAUROC. Scored against that, the interval's coverage is nominal (`docs/results/phase1/delta_auroc_coverage.json`).
 
@@ -370,7 +370,7 @@ hulder/
 
 ## 10. Known limits
 
-**Tested on one GPU and one model.** v0.1 has run only on an RTX 2070 (Turing) with Qwen2.5-1.5B-Instruct under vLLM 0.30.0, fp16 against the official AWQ int4 checkpoint. No bf16, FP8, FP8 KV-cache or engine-upgrade results exist yet.
+**Tested on two models and two GPU types.** Qwen2.5-1.5B-Instruct on an RTX 2070 (Turing), fp16 against the official AWQ int4 checkpoint, and Qwen3-4B in bf16 on L4s (Ada) against online FP8 and the official AWQ int4 checkpoint, all under vLLM 0.30.0. No FP8 KV-cache or engine-upgrade results exist. An FP8 KV cache failed to start in that setup and is unsettled (`docs/results/phase4/sweep_results.md`).
 
 **bf16 capture needs hulder 0.1.1 or later.** In 0.1.0, `hulder.capture` fails on every bf16 model, because numpy has no bfloat16 type.
 
