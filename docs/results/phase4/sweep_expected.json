@@ -216,5 +216,14 @@
       ],
       "rules": "committed before it runs"
     }
+  },
+  "outcomes": {
+    "A": {
+      "run": "20261109T112130Z",
+      "awq_bf16_smoke": "as predicted: ran in bfloat16 through auto_awq with MarlinLinearKernel, activations finite",
+      "bf16_fp8kv_smoke": "prediction wrong, unsettled: no assertion, died on missing nvcc under FlashInfer",
+      "consequence": "A2 and C_fp16_arm don't apply; FP8 KV is revisited only if D runs",
+      "added": "2026-11-09, after the run; no rule or prediction above changed"
+    }
   }
 }

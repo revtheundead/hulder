@@ -43,6 +43,8 @@ The FP8 KV arm runs the full capture's bf16 config with `kv_cache_dtype="fp8"` p
 - **If the FP8 KV arm fails as predicted,** `docs/design.md` §10 records that at vLLM 0.30.0 the extraction path can't capture, or score live, under an FP8 KV cache. D is then a harsher non-KV config.
 - **If it starts,** that limit doesn't exist, and FP8 KV becomes a candidate for D.
 
+**Outcome, added after run `20261109T112130Z`.** AWQ ran in bf16, as predicted, so A2 and C's fp16 arm don't apply. The FP8 KV prediction was wrong, and the question is unsettled. No assertion fired. The engine built the extraction layers with an FP8 KV cache, switched attention from FLASH_ATTN to FLASHINFER, and died at CUDA-graph profiling on a missing nvcc, when FlashInfer tried to compile its FP8 KV prefill kernel. Neither branch above applies, so nothing goes into `docs/design.md` §10. It is revisited only if D runs.
+
 ### A2 and C's fp16 arm, pre-declared
 
 If AWQ can't run in bf16, C runs AWQ in fp16 and the comparison with bf16 changes two things at once, the weights and the dtype. To separate them, C then adds an unquantized fp16 arm. A2 first checks that AWQ and unquantized Qwen3-4B both start in fp16 and capture the smoke prompts without overflow, since a value beyond float16's range stops a capture (`docs/design.md` §5).
