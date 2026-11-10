@@ -8,6 +8,7 @@ Notable changes to hulder. The format follows [Keep a Changelog](https://keepach
 
 - `hulder.runtime`, in the `vllm` extra and experimental like `hulder.capture`: in-server probe scoring for `vllm serve` on vLLM 0.30.0. A KV connector scores a linear probe on each request's last prompt token at the end of prefill, with no host sync, and puts the score in a non-streamed reply's `kv_transfer_params` as `hulder_score` and on `/metrics`. It is monitor-only, so nothing waits for the score, and a streamed or very short reply can come back without one. `hulder.runtime.serve_args(probe_path)` returns the `--speculative-config` and `--kv-transfer-config` arguments that load it, with no drafted tokens, and refuses a probe that doesn't record a layer, position -1 and a threshold.
 - A draft counter in `hulder.runtime`. vLLM 0.30.0 drops the zero-draft schedule without an error when async scheduling is off or `data_parallel_size` is above 1, and each decode step then carries a drafted token again. The connector counts every scheduled draft in `hulder_draft_tokens` on `/metrics` and logs one warning naming the likely causes (`docs/results/phase3/draft_counter.md`).
+- `docs/runtime.md`, the `vllm serve` command, metrics and limits, with example Prometheus alerting rules in `examples/prometheus/hulder-rules.yml` for the flag rate, missing scores and draft tokens.
 
 ## [0.2.1] - 2026-11-10
 

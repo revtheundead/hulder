@@ -85,3 +85,11 @@ _Avoid_: retraining, retuning
 **Drift**:
 An online, unpaired change in the score distribution over live traffic, which raises an alarm rather than a verdict.
 _Avoid_: shift (in runtime contexts)
+
+**Flag rate**:
+The fraction of scored live requests whose score is strictly above the threshold. Live traffic mixes benign prompts and attacks, so it is not a false-positive rate.
+_Avoid_: FPR (for live traffic), alert rate
+
+**Zero-draft**:
+Serving with vLLM's hidden-state extraction while scheduling no draft tokens, through the speculative schedule `[[1, 1, 0]]`. It holds only on Model Runner V2 with async scheduling on.
+_Avoid_: no-draft, draftless
