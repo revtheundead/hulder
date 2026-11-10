@@ -10,11 +10,14 @@ The image is d1_modal.py's (uv.lock with the vllm extra, on Python 3.12.14) with
 hulder is a wheel built from this checkout, so the server loads hulder.runtime as installed. The
 weights come from the hulder-hf Volume at d1_local's revision, with the Hub offline.
 
-Stop rules: the call has 15 minutes in all, and each server 6 minutes to answer /health (the
-1.5B overhead run's slowest cold start was 316 s). Nothing retries. The run doesn't start if
-today's spend (--spent-usd, read from Modal's usage page) plus the worst case would pass $3. The
-estimate uses Modal's published rates (experiments/modal/smoke_lib.py) and counts the call's
-whole wall time, so it runs high.
+Stop rules: the call has 15 minutes once its container runs, and each server 6 minutes to answer
+/health (the 1.5B overhead run's slowest cold start was 316 s). Waiting for a GPU, container
+startup and the call together get WALL_LIMIT_S, after which the call is cancelled with its
+container. Nothing retries. The run doesn't start if today's spend (--spent-usd, read from
+Modal's usage page) plus the worst case would pass $3. The worst case and the estimate both use
+Modal's published rates (experiments/modal/smoke_lib.py) over wall time, queue included, so the
+estimate can't pass the guarded worst case and runs high. The manifest also records the wait
+before the function ran and an estimate from the container's own time, closer to the charge.
 
 Writes draft_counter.json, both server logs, a manifest with the estimated cost and SHA256SUMS
 to --out/<run id>/.
@@ -54,6 +57,11 @@ ENGINE_ENV = {"VLLM_USE_FLASHINFER_SAMPLER": "0", "HF_HUB_OFFLINE": "1"}
 UV_VERSION = "0.12.21"
 CALL_TIMEOUT_S = 15 * 60
 STARTUP_TIMEOUT_S = 6 * 60
+# Run 20261110T152540Z waited about 20 minutes for a GPU, so its 1,652 s of wall time passed the
+# worst case its guard had counted. The guard now counts this much queue, and the call is cancelled
+# when the whole wall time would pass it.
+QUEUE_LIMIT_S = 30 * 60
+WALL_LIMIT_S = QUEUE_LIMIT_S + lib.CONTAINER_STARTUP_S + CALL_TIMEOUT_S
 
 
 def build_wheel() -> Path:
@@ -107,6 +115,7 @@ def nvidia_smi() -> str:
     scaledown_window=2,
 )
 def check() -> dict:
+    started = time.time()
     os.environ.update({**CACHE_ENV, **ENGINE_ENV})
     from importlib.resources import as_file, files
 
@@ -119,7 +128,7 @@ def check() -> dict:
     with as_file(files("hulder") / "data" / "probe_demo.npz") as probe:
         results = draft_counter.run(probe, out, STARTUP_TIMEOUT_S)
     logs = {path.name: path.read_bytes() for path in sorted(out.glob("*.log"))}
-    return {"results": results, "logs": logs, "nvidia_smi": gpu}
+    return {"results": results, "logs": logs, "nvidia_smi": gpu, "container_started": started}
 
 
 def git(*args: str) -> str:
@@ -128,7 +137,7 @@ def git(*args: str) -> str:
 
 @app.local_entrypoint()
 def main(spent_usd: float, out: str = ".cache/modal-runs") -> None:
-    worst = lib.estimate_cost(CALL_TIMEOUT_S, gpu=True, cpu=lib.GPU_CPU, memory_gib=lib.GPU_MEMORY_GIB)
+    worst = lib.estimate_cost(WALL_LIMIT_S, gpu=True, cpu=lib.GPU_CPU, memory_gib=lib.GPU_MEMORY_GIB)
     if spent_usd + worst > lib.BUDGET_USD:
         raise SystemExit(f"today's ${spent_usd} plus the worst case ${worst:.2f} would pass ${lib.BUDGET_USD}")
     if git("status", "--porcelain", "--untracked-files=no"):
@@ -145,7 +154,7 @@ def main(spent_usd: float, out: str = ".cache/modal-runs") -> None:
         "rates_usd_per_s": {"L4": lib.L4_PER_S, "cpu_core": lib.CPU_CORE_PER_S, "memory_gib": lib.MEMORY_GIB_PER_S},
         "spent_before_usd": spent_usd,
         "worst_case_usd": round(worst, 4),
-        "timeouts_s": {"call": CALL_TIMEOUT_S, "startup": STARTUP_TIMEOUT_S},
+        "timeouts_s": {"call": CALL_TIMEOUT_S, "startup": STARTUP_TIMEOUT_S, "wall": WALL_LIMIT_S},
         "model": d1_local.MODEL,
         "revision": d1_local.REVISION,
         "workload": {
@@ -160,8 +169,13 @@ def main(spent_usd: float, out: str = ".cache/modal-runs") -> None:
 
     record()
     start = time.time()
+    call = check.spawn()
     try:
-        returned = check.remote()
+        returned = call.get(timeout=WALL_LIMIT_S)
+    except (TimeoutError, modal.exception.TimeoutError):
+        call.cancel(terminate_containers=True)
+        manifest["cancelled"] = f"no result within {WALL_LIMIT_S} s of wall time, queue included"
+        raise
     finally:
         wall = time.time() - start
         manifest["wall_seconds"] = round(wall, 1)
@@ -173,6 +187,20 @@ def main(spent_usd: float, out: str = ".cache/modal-runs") -> None:
         (run_dir / name).write_bytes(data)
     (run_dir / "draft_counter.json").write_text(json.dumps(returned["results"], indent=2) + "\n")
     manifest["nvidia_smi"] = returned["nvidia_smi"]
+    # The wait for a GPU plus the container's boot, up to the function's first line by the
+    # container's clock, so a few seconds of skew either way. Modal bills the boot but not the
+    # queue, so the closer estimate adds back the most boot time measured.
+    waited = min(max(returned["container_started"] - start, 0.0), wall)
+    manifest["waited_before_function_seconds"] = round(waited, 1)
+    manifest["estimated_container_usd"] = round(
+        lib.estimate_cost(
+            min(wall - waited + lib.CONTAINER_STARTUP_S, wall),
+            gpu=True,
+            cpu=lib.GPU_CPU,
+            memory_gib=lib.GPU_MEMORY_GIB,
+        ),
+        4,
+    )
     record()
     sums = [
         f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.name}"
