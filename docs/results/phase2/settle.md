@@ -51,7 +51,10 @@ The per-condition lines can't claim "an 80% chance" as validated. That holds onl
 ## Reproduce
 
 ```bash
-source scripts/dev-env.sh && OMP_NUM_THREADS=1 uv run python experiments/phase2/settle_validation.py run
+git worktree add .cache/settle-ab8daaae61b7 ab8daaae61b7
+cd .cache/settle-ab8daaae61b7 && source scripts/dev-env.sh && OMP_NUM_THREADS=1 uv run python experiments/phase2/settle_validation.py run
 ```
 
-Run at commit `ab8daaae61b7`, CPU only, about 40 minutes with 5 workers, against the bar committed at `82e8684`. Each case and size is written to `.cache/settle-validation/rows.jsonl` as it finishes.
+The estimator it tested was replaced after it missed, and the script was removed later with the second one, so it runs from a worktree at `ab8daaae61b7`.
+
+Run at commit `ab8daaae61b7`, CPU only, about 40 minutes with 5 workers, against the bar committed at `82e8684`. Each case and size is written to `.cache/settle-validation/rows.jsonl` inside that worktree as it finishes.

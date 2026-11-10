@@ -75,7 +75,10 @@ Neither estimator can back a stated chance:
 ## Reproduce
 
 ```bash
-source scripts/dev-env.sh && OMP_NUM_THREADS=1 uv run python experiments/phase2/settle_validation.py run
+git worktree add .cache/settle-b78cc65 b78cc65
+cd .cache/settle-b78cc65 && source scripts/dev-env.sh && OMP_NUM_THREADS=1 uv run python experiments/phase2/settle_validation.py run
 ```
 
-Run at commit `b78cc65` on a clean tree, CPU only, about an hour with 5 workers, against the bar committed at the same commit. Each case and size is written to `.cache/settle-validation-v2/rows.jsonl` as it finishes.
+The estimator it tested left the library after it missed, and the script went with it, so it runs from a worktree at `b78cc65`.
+
+Run at commit `b78cc65` on a clean tree, CPU only, about an hour with 5 workers, against the bar committed at the same commit. Each case and size is written to `.cache/settle-validation-v2/rows.jsonl` inside that worktree as it finishes.
