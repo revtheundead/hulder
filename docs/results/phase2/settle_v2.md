@@ -4,7 +4,7 @@
 
 ## The estimator and the bar
 
-For each condition an INCONCLUSIVE report leaves undecided, `hulder.gate.settle` states the smallest extension, up to ten times the data, with at least an 80% chance to settle it, or the chance at ten times. The chance is averaged over the true values the data still allows:
+For each condition an INCONCLUSIVE report leaves undecided, `hulder.gate.settle` at `b78cc65` stated the smallest extension, up to ten times the data, with at least an 80% chance to settle it, or the chance at ten times. The chance is averaged over the true values the data still allows:
 - a Jeffreys posterior for FPR;
 - a Dirichlet posterior on the paired attack outcomes for FNR;
 - the bootstrap interval read as normal for ΔAUROC.

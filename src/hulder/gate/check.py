@@ -179,7 +179,7 @@ class Report:
     more_benign_beyond_limit: bool = False
     # Only for THRESHOLD STALE and INCONCLUSIVE (where it is optional): a recalibrated threshold.
     recalibration: Recalibration | None = None
-    # Only for INCONCLUSIVE: each undecided condition with the extra examples that would settle it.
+    # Only for INCONCLUSIVE: each undecided condition, with its floor for FPR and FNR.
     undecided: tuple[Undecided, ...] = ()
     # Only for INCONCLUSIVE: conditions PASS can't satisfy at this size even with no errors.
     out_of_reach: tuple[OutOfReach, ...] = ()
