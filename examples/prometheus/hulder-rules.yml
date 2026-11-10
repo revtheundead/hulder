@@ -1,0 +1,77 @@
+# Example Prometheus alerting rules for hulder.runtime (docs/runtime.md). An example, not a tested
+# artefact: no test loads these into Prometheus, and the thresholds are starting points to tune.
+#
+# The flag-rate rules compare live traffic with the probe's target false-positive rate, using the
+# gate's bands (twice the target, half the target). Live traffic mixes benign prompts and attacks
+# in unknown proportions, so a flag rate is not an FPR. A move outside the band is drift worth
+# looking at, not a verdict. Run `hulder check` on a labelled calibration set to get one.
+#
+# Replace 0.05 with your probe's target_fpr. The demo probe's is 5%.
+groups:
+  - name: hulder-runtime
+    rules:
+      - alert: HulderFlagRateHigh
+        expr: |
+          sum(rate(hulder_probe_flagged_total[1h]))
+            / sum(rate(hulder_probe_score_count[1h]))
+            > 2 * 0.05
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: The probe flags more than twice its target rate over the last hour.
+          description: >-
+            Scores may have drifted up after a serving change, or traffic has more attacks than
+            usual. More flagged requests reach whatever acts on the flags.
+
+      - alert: HulderFlagRateLow
+        expr: |
+          sum(rate(hulder_probe_flagged_total[1h]))
+            / sum(rate(hulder_probe_score_count[1h]))
+            < 0.5 * 0.05
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: The probe flags less than half its target rate over the last hour.
+          description: >-
+            Scores may have drifted down, which can let attacks through unflagged.
+
+      - alert: HulderNoScores
+        expr: |
+          sum(rate(vllm:request_success_total[15m])) > 0
+            and sum(rate(hulder_probe_score_count[15m])) == 0
+        for: 15m
+        labels:
+          severity: critical
+        annotations:
+          summary: Requests finish but the probe scores none of them.
+          description: >-
+            The connector may not be loaded, or scoring has stopped. Check the server's
+            --kv-transfer-config and its log.
+
+      # Streamed replies never carry a score, so with streaming traffic this fraction is high by
+      # design. Keep it for non-streamed traffic only.
+      - alert: HulderRepliesWithoutScore
+        expr: |
+          sum(rate(hulder_probe_replies_without_score_total[1h]))
+            / (sum(rate(hulder_probe_replies_with_score_total[1h]))
+               + sum(rate(hulder_probe_replies_without_score_total[1h])))
+            > 0.05
+        for: 30m
+        labels:
+          severity: info
+        annotations:
+          summary: More than 5% of replies finished before their score was ready.
+          description: >-
+            Very short replies can end before the score arrives. /metrics still counts the score.
+
+      - alert: HulderDraftTokens
+        expr: increase(hulder_draft_tokens_total[5m]) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: Zero-draft has fallen back, and each decode step carries a drafted token again.
+          description: >-
+            Likely causes are async scheduling off, data_parallel_size above 1, or Model Runner V1.
+            Throughput falls. Scores are unaffected.
