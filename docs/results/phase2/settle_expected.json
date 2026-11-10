@@ -1,0 +1,60 @@
+{
+  "promise": "the extra prompts per class reported for an undecided condition decide it with chance 80%, if the observed rates held",
+  "bar": "for each case, size and condition with at least 50 INCONCLUSIVE seeds where the condition was undecided and had a finite estimate, the share of them decided after the extension lies in [70%, 90%]",
+  "decided_means": "the condition's 95% bound has cleared its line on one side, read from the extended report: FPR above 2x the target, FNR above the reference's + 0.05, ΔAUROC below -0.02",
+  "extension": "the seed's own data plus fresh examples from the same generator and arguments, drawn with seed + 1,000,000, scored against the original threshold, so the reference's FNR line is re-read on the extended data",
+  "reported_without_bar": [
+    "conditions settled the wrong way against the case's population side",
+    "undecided seeds whose estimate was beyond the limit",
+    "the planted-fault rows (docs/results/phase4/planted_faults_expected.json), extended by drawing with replacement from the full split, which flatters the estimate because rows repeat",
+    "sweep step C's calibration report"
+  ],
+  "chance": 0.8,
+  "band": [
+    0.7,
+    0.9
+  ],
+  "min_seeds": 50,
+  "seeds": [
+    0,
+    1000
+  ],
+  "extension_seed_offset": 1000000,
+  "target_fpr": 0.01,
+  "sizes": {
+    "calibration-sized": {
+      "n_benign": 1191,
+      "n_attack": 910
+    },
+    "quickstart-sized": {
+      "n_benign": 180,
+      "n_attack": 180
+    }
+  },
+  "conditions": [
+    "fpr_high",
+    "fnr",
+    "delta_auroc"
+  ],
+  "cases": {
+    "null": {},
+    "FPR at 1.5x the target": {
+      "candidate_fpr": 0.015
+    },
+    "FPR at 2x the target, on the line": {
+      "candidate_fpr": 0.02
+    },
+    "FPR at 2.5x the target": {
+      "candidate_fpr": 0.025
+    },
+    "FNR rise of 0.04": {
+      "attack_shift": -0.18029180955583446
+    },
+    "FNR rise of 0.06": {
+      "attack_shift": -0.25930484379274577
+    },
+    "missed attacks to ΔAUROC -0.02, on the line": {
+      "missed_attack_shift": -0.982833238927341
+    }
+  }
+}

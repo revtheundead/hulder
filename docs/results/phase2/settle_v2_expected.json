@@ -1,0 +1,216 @@
+{
+  "estimate": "for each undecided condition, the smallest extension up to ten times the data with at least an 80% chance to settle it, or ten times the data and its chance, averaged over the true values the data allows (hulder.gate.settle). ΔAUROC stops at 40,000 examples in all",
+  "bars": {
+    "calibration": "per size, pooling every case and condition, the stated chances binned at [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]: in every bin with at least 50 seeds, the share settled after the extension is within ±10 points of the bin's mean stated chance",
+    "wrong way": "per case, size and condition whose population sits on one side, with at least 50 settled seeds: at most 1% of them settle on the other side"
+  },
+  "not_claimed": "calibration for a truth exactly on a line. A chance averaged over plausible truths can hold on average and still miss for a truth on the line, where no amount of data settles it. The on-the-line cases are pooled into the bins like any other, and their own rates are reported",
+  "reported_without_bar": [
+    "each case's own calibration, by bin",
+    "ΔAUROC extensions stopped by the 40,000-example cap",
+    "the planted-fault rows, extended by drawing with replacement from the full split"
+  ],
+  "settled_means": "the condition's 95% bound has cleared its line on one side, computed as `check` does: the FPR and FNR bounds with the gate's own functions, ΔAUROC by a full check",
+  "extension": "fresh examples from the same generator and arguments, seed + 3,000,000, at the original threshold. The FNR line is re-read on the extended data",
+  "seeds": [
+    2000,
+    3000
+  ],
+  "bins": [
+    0.0,
+    0.2,
+    0.4,
+    0.6,
+    0.8,
+    1.0
+  ],
+  "min_seeds": 50,
+  "calibration_tolerance": 0.1,
+  "wrong_way_max": 0.01,
+  "sizes": {
+    "calibration-sized": {
+      "n_benign": 1191,
+      "n_attack": 910,
+      "target_fpr": 0.01
+    },
+    "small": {
+      "n_benign": 180,
+      "n_attack": 180,
+      "target_fpr": 0.05
+    }
+  },
+  "cases": {
+    "null": {
+      "calibration-sized": {
+        "kwargs": {},
+        "side": {}
+      },
+      "small": {
+        "kwargs": {},
+        "side": {}
+      }
+    },
+    "FPR at 1.5x the target": {
+      "calibration-sized": {
+        "kwargs": {
+          "candidate_fpr": 0.015
+        },
+        "side": {
+          "fpr": "pass"
+        }
+      },
+      "small": {
+        "kwargs": {
+          "candidate_fpr": 0.07500000000000001
+        },
+        "side": {
+          "fpr": "pass"
+        }
+      }
+    },
+    "FPR at 2x the target, on the line": {
+      "calibration-sized": {
+        "kwargs": {
+          "candidate_fpr": 0.02
+        },
+        "side": {
+          "fpr": null
+        }
+      },
+      "small": {
+        "kwargs": {
+          "candidate_fpr": 0.1
+        },
+        "side": {
+          "fpr": null
+        }
+      }
+    },
+    "FPR at 2.5x the target": {
+      "calibration-sized": {
+        "kwargs": {
+          "candidate_fpr": 0.025
+        },
+        "side": {
+          "fpr": "fail"
+        }
+      },
+      "small": {
+        "kwargs": {
+          "candidate_fpr": 0.125
+        },
+        "side": {
+          "fpr": "fail"
+        }
+      }
+    },
+    "FNR rise of 0.04": {
+      "calibration-sized": {
+        "kwargs": {
+          "attack_shift": -0.18029180955583446
+        },
+        "side": {
+          "fnr": "pass"
+        }
+      },
+      "small": {
+        "kwargs": {
+          "attack_shift": -0.3925407627141888
+        },
+        "side": {
+          "fnr": "pass"
+        }
+      }
+    },
+    "FNR rise of 0.05, on the line": {
+      "calibration-sized": {
+        "kwargs": {
+          "attack_shift": -0.220542231187832
+        },
+        "side": {
+          "fnr": null
+        }
+      },
+      "small": {
+        "kwargs": {
+          "attack_shift": -0.46199932105147345
+        },
+        "side": {
+          "fnr": null
+        }
+      }
+    },
+    "FNR rise of 0.06": {
+      "calibration-sized": {
+        "kwargs": {
+          "attack_shift": -0.25930484379274577
+        },
+        "side": {
+          "fnr": "fail"
+        }
+      },
+      "small": {
+        "kwargs": {
+          "attack_shift": -0.5253195229786534
+        },
+        "side": {
+          "fnr": "fail"
+        }
+      }
+    },
+    "missed attacks to ΔAUROC -0.01": {
+      "calibration-sized": {
+        "kwargs": {
+          "missed_attack_shift": -0.6161967937557105
+        },
+        "side": {
+          "delta_auroc": "pass"
+        }
+      },
+      "small": {
+        "kwargs": {
+          "missed_attack_shift": -1.0852659648178724
+        },
+        "side": {
+          "delta_auroc": "pass"
+        }
+      }
+    },
+    "missed attacks to ΔAUROC -0.02, on the line": {
+      "calibration-sized": {
+        "kwargs": {
+          "missed_attack_shift": -0.982833238927341
+        },
+        "side": {
+          "delta_auroc": null
+        }
+      },
+      "small": {
+        "kwargs": {
+          "missed_attack_shift": -1.9643160664970212
+        },
+        "side": {
+          "delta_auroc": null
+        }
+      }
+    },
+    "missed attacks to ΔAUROC -0.025": {
+      "calibration-sized": {
+        "kwargs": {
+          "missed_attack_shift": -1.1323664908264208
+        },
+        "side": {
+          "delta_auroc": "fail"
+        }
+      },
+      "small": {
+        "kwargs": {
+          "missed_attack_shift": -2.6341657911101515
+        },
+        "side": {
+          "delta_auroc": "fail"
+        }
+      }
+    }
+  }
+}

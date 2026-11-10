@@ -6,10 +6,18 @@ Notable changes to hulder. The format follows [Keep a Changelog](https://keepach
 
 ### Added
 
+- INCONCLUSIVE reports name each undecided condition. `Report.undecided` lists each condition whose interval straddles its line (FPR, FNR or ΔAUROC), with the interval and the line. For FPR and FNR it adds a `floor`, the fewest extra benign or attack prompts that could settle the condition if every new one went the most favourable way. Fewer cannot settle it, and more may not. The CLI prints one line per condition under the verdict, for example `FPR 3.9% to 12.0% against the 10.0% line; at least 16 more benign prompts are needed, as fewer cannot settle it.` ΔAUROC gets its interval line only. `--json` carries it, and `schema_version` stays 1.
+- When PASS is impossible at the current size even with no errors, an INCONCLUSIVE report says so before the per-condition lines, with the size at which it becomes possible, for example `PASS is out of reach at 180 benign, even with no false positives: the FPR bound stays above the 2.0% line below 183 benign.` `Report.out_of_reach` carries it.
+- The report gives no estimate of how much data would probably settle a condition. Two were tested on fresh synthetic data against bars fixed beforehand and missed (`docs/results/phase2/settle.md`, `settle_v2.md`). The same runs showed that at about 180 prompts per class the FNR and ΔAUROC conditions can settle the wrong way, 9% to 13% of the time (`docs/design.md` §10).
 - `hulder.capture.Capture.prompt_token_counts`, each prompt's templated length in tokens as vLLM tokenized it. With chunked prefill off, a batch over `max_num_batched_tokens` is prefilled over more than one step, so this shows whether a batch ran as one forward pass.
 - `hulder.capture.Capture.engine_seconds` and `batch_seconds`. The first is the time to construct the vLLM engine, covering weight loading, profiling, KV-cache allocation, compilation and warmup, and the second is the wall time of each batch's `llm.chat` call including reading back its hidden states, so a capture's rate can be measured apart from its startup.
-- `hulder.clopper_pearson(k, n, alpha=0.05)`, the exact binomial interval the gate uses to decide how many more benign examples would settle an INCONCLUSIVE verdict, for any rate's interval. It broadcasts over arrays.
+- `hulder.clopper_pearson(k, n, alpha=0.05)`, the exact binomial interval behind an INCONCLUSIVE report's floors and size check, for any rate's interval. It broadcasts over arrays.
 - `hulder.capture.Capture.prompt_token_ids`, each prompt's templated token ids as vLLM tokenized it, so two captures can be shown to have fed the engine the same tokens rather than only the same prompt ids.
+
+### Changed
+
+- The CLI no longer prints the single count of benign examples that would settle the FPR condition "if the observed rate held", nor its tolerance-edge caveat. The per-condition lines replace it. `Report.more_benign_needed` keeps its old meaning for compatibility.
+- Release wheels and sdists are built by a workflow on GitHub's runners in the public repository, with their SHA-256s in the run's summary, instead of on a developer's machine.
 
 ## [0.2.0] - 2026-10-15
 

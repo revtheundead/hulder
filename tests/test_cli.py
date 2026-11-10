@@ -150,22 +150,28 @@ def test_a_decided_verdict_leads_with_the_inputs(tmp_path, capsys):
 
 
 @pytest.mark.parametrize(
-    ("k_flagged", "number", "caveat"),
+    ("k_flagged", "line"),
     [
-        (20, "6,407 more benign examples", False),  # under 10 x 1,191
-        (22, "31,752 more benign examples", True),  # over 10 x 1,191
-        (24, "More than 1,000,000 benign examples in all", True),
+        (
+            20,
+            "FPR 1.0% to 2.6% against the 2.0% line; at least 15 more benign prompts are needed, as fewer cannot settle it.",
+        ),
+        (
+            33,
+            "FPR 1.9% to 3.9% against the 2.0% line; at least 2 more benign prompts are needed, as fewer cannot settle it.",
+        ),
+        (
+            34,
+            "FPR 2.0% to 4.0% against the 2.0% line; at least 1 more benign prompt is needed, as fewer cannot settle it.",
+        ),
     ],
 )
-def test_more_benign_needed_past_ten_times_the_calibration_set_carries_the_caveat(
-    tmp_path, capsys, k_flagged, number, caveat
-):
+def test_inconclusive_prints_one_line_per_undecided_condition(tmp_path, capsys, k_flagged, line):
     reference, labels = _benign_then_attack(1191, 11)
     candidate, _ = _benign_then_attack(1191, k_flagged)
     _run(tmp_path, reference, candidate, labels)
     out = capsys.readouterr().out
-    assert number in out
-    assert (cli.EDGE_CAVEAT in out) is caveat
+    assert f"Verdict: INCONCLUSIVE\n  {line}\n" in out
 
 
 def test_json_output_carries_the_report_and_its_intervals(tmp_path, capsys):
@@ -352,3 +358,12 @@ def test_a_probe_file_whose_threshold_is_null_exits_1_naming_it(tmp_path, capsys
     hulder.Probe(probe.weights, probe.bias, probe.mean, probe.std, {**probe.metadata, "threshold": None}).save(path)
     assert _probe_check(str(path)) == 1
     assert capsys.readouterr().err == f"hulder: error: {path}: its threshold is None, not a number\n"
+
+
+def test_pass_out_of_reach_comes_before_the_settle_line(tmp_path, capsys):
+    reference, labels = _benign_then_attack(180, 2)
+    candidate, _ = _benign_then_attack(180, 3)
+    _run(tmp_path, reference, candidate, labels)
+    out = capsys.readouterr().out
+    expected = "Verdict: INCONCLUSIVE\n  PASS is out of reach at 180 benign, even with no false positives: the FPR bound stays above the 2.0% line below 183 benign.\n  FPR "
+    assert expected in out

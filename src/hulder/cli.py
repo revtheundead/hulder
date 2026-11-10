@@ -15,17 +15,13 @@ from pathlib import Path
 from typing import NoReturn
 
 import hulder.gate.check as gate_check
-from hulder.gate.check import Report, Verdict, check_snapshots
+from hulder.gate.check import OutOfReach, Report, Undecided, Verdict, check_snapshots
 from hulder.gate.jsonl import load_scores_jsonl
 from hulder.gate.pairing import PairingError
 from hulder.gate.probe import Probe
 from hulder.gate.snapshot import Snapshot
 
-# The tolerance-edge presentation rule (docs/design.md §6): past this many times the calibration set's benign count,
-# more_benign_needed is printed with a caveat that it is unstable.
-EDGE_FACTOR = 10
 COLUMN = 26  # width of the reference and candidate columns
-EDGE_CAVEAT = "the FPR estimate sits at the tolerance edge; this number is unstable and more data may not settle it"
 
 
 # Input formats by file extension: snapshots, or bring-your-own scores (docs/design.md §4).
@@ -267,7 +263,7 @@ def render(report: Report, inputs: dict) -> str:
         lines += [f"  {key:<{width}}  {ref!r} -> {cand!r}" for key, ref, cand in report.changes_under_test]
     else:
         lines.append("Changes under test: none found in the metadata")
-    lines += ["", f"Verdict: {report.verdict.value}", *_more_benign(report), ""]
+    lines += ["", f"Verdict: {report.verdict.value}", *_undecided(report), ""]
     if report.recalibration is not None:
         lines += [*_recalibration(report), ""]
     lines += _performance(report)
@@ -278,25 +274,30 @@ def render(report: Report, inputs: dict) -> str:
     return "\n".join(line.rstrip() for line in lines)
 
 
-def _more_benign(report: Report) -> list[str]:
-    if report.verdict is not Verdict.INCONCLUSIVE:
-        return []
-    if report.more_benign_needed == 0:
-        return ["  The FPR condition is already decided; more benign examples alone won't resolve this."]
-    if report.more_benign_beyond_limit:
-        return [
-            f"  More than {gate_check.MORE_BENIGN_LIMIT:,} benign examples in all would be needed to settle the FPR condition:",
-            f"  {EDGE_CAVEAT}.",
-        ]
-    lines = [
-        (
-            f"  {report.more_benign_needed:,} more benign examples would settle the FPR condition, "
-            "if the observed rate held."
-        )
+def _undecided(report: Report) -> list[str]:
+    """For INCONCLUSIVE: first any condition PASS can't satisfy at this size, then one line per undecided condition."""
+    return [f"  {_out_of_reach_line(r)}" for r in report.out_of_reach] + [
+        f"  {_undecided_line(u)}" for u in report.undecided
     ]
-    if report.more_benign_needed > EDGE_FACTOR * report.n_benign:
-        lines.append(f"  Caveat: {EDGE_CAVEAT}.")
-    return lines
+
+
+def _out_of_reach_line(r: OutOfReach) -> str:
+    kind, errors, name = (
+        ("benign", "false positives", "FPR") if r.condition == "fpr" else ("attacks", "missed attacks", "FNR")
+    )
+    return (
+        f"PASS is out of reach at {r.n:,} {kind}, even with no {errors}: "
+        f"the {name} bound stays above the {r.line:.1%} line below {r.minimum:,} {kind}."
+    )
+
+
+def _undecided_line(u: Undecided) -> str:
+    if u.condition == "delta_auroc":
+        return f"ΔAUROC {u.estimate.low:+.3f} to {u.estimate.high:+.3f} against the {u.line:+.2f} line."
+    name, kind = ("FPR", "benign") if u.condition == "fpr" else ("FNR", "attack")
+    where = f"{name} {u.estimate.low:.1%} to {u.estimate.high:.1%} against the {u.line:.1%} line"
+    prompts = f"{u.floor.more:,} more {kind} prompt" + (" is" if u.floor.more == 1 else "s are")
+    return f"{where}; at least {prompts} needed, as fewer cannot settle it."
 
 
 def _recalibration(report: Report) -> list[str]:

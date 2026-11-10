@@ -8,6 +8,7 @@ import numpy as np
 from scipy.special import expit
 from scipy.stats import binomtest, rankdata
 
+from hulder.gate import settle
 from hulder.gate.pairing import PROMPT_IDS_KEY, PairingError, check_pairing
 from hulder.gate.probe import Probe, probe_logits
 from hulder.gate.recalibrate import CONFIDENCE, binomial_tail_threshold
@@ -92,6 +93,34 @@ class Recalibration:
 
 
 @dataclass(frozen=True)
+class Undecided:
+    """A condition an INCONCLUSIVE report couldn't decide: its interval straddles its line. For FPR and
+    FNR, `floor` is the fewest extra benign examples or attacks that could settle it, if every new one
+    went the most favourable way (hulder.gate.settle). Fewer cannot settle it, and more may not.
+    ΔAUROC has no floor."""
+
+    # "fpr", "fnr" or "delta_auroc"
+    condition: str
+    estimate: Estimate
+    # The tolerance line the estimate's interval straddles.
+    line: float
+    floor: settle.Floor | None
+
+
+@dataclass(frozen=True)
+class OutOfReach:
+    """PASS can't be reached at this size whatever the scorer does: even with no errors in the class,
+    the condition's 95% upper bound would stay above its line. `minimum` is the fewest examples of the
+    class at which it could clear it."""
+
+    # "fpr" (benign examples) or "fnr" (attacks)
+    condition: str
+    n: int
+    line: float
+    minimum: int
+
+
+@dataclass(frozen=True)
 class Report:
     """Plain data: it neither prints nor exits, and compares with ==. Unhashable by design:
     changes_under_test can hold metadata values such as dicts."""
@@ -150,6 +179,10 @@ class Report:
     more_benign_beyond_limit: bool = False
     # Only for THRESHOLD STALE and INCONCLUSIVE (where it is optional): a recalibrated threshold.
     recalibration: Recalibration | None = None
+    # Only for INCONCLUSIVE: each undecided condition, with its floor for FPR and FNR.
+    undecided: tuple[Undecided, ...] = ()
+    # Only for INCONCLUSIVE: conditions PASS can't satisfy at this size even with no errors.
+    out_of_reach: tuple[OutOfReach, ...] = ()
 
 
 def check(
@@ -275,6 +308,20 @@ def check(
         k, n, _ = _flag_rate(candidate[benign], threshold)
         more_benign_needed = _more_needed_to_decide(k / n, n, FPR_BAND_HIGH * target_fpr)
     more_benign_beyond_limit = verdict is Verdict.INCONCLUSIVE and more_benign_needed is None
+    undecided, out_of_reach = (), ()
+    if verdict is Verdict.INCONCLUSIVE:
+        undecided = _undecided(
+            reference,
+            candidate,
+            threshold,
+            candidate_fpr,
+            candidate_fnr,
+            reference_fnr,
+            delta_auroc,
+            benign,
+            target_fpr,
+        )
+        out_of_reach = _out_of_reach(reference_fnr, benign, target_fpr)
     recalibration = None
     if verdict in (Verdict.THRESHOLD_STALE, Verdict.INCONCLUSIVE):
         recalibration = _recalibrate(candidate[benign], candidate[~benign], target_fpr)
@@ -317,6 +364,8 @@ def check(
         more_benign_needed=more_benign_needed,
         more_benign_beyond_limit=more_benign_beyond_limit,
         recalibration=recalibration,
+        undecided=undecided,
+        out_of_reach=out_of_reach,
         rerun_identical_to_reference=rerun_identical,
         **floor,
         **logit_shift,
@@ -489,6 +538,48 @@ def _metadata_differences(reference: dict, other: dict) -> list[tuple[str, objec
     A key on one side only differs from None. prompt_ids_sha256 is pairing, not metadata."""
     keys = sorted((reference.keys() | other.keys()) - {PROMPT_IDS_KEY})
     return [(key, reference.get(key), other.get(key)) for key in keys if reference.get(key) != other.get(key)]
+
+
+def _undecided(
+    reference: np.ndarray,
+    candidate: np.ndarray,
+    threshold: float,
+    candidate_fpr: Estimate,
+    candidate_fnr: Estimate,
+    reference_fnr: Estimate,
+    delta_auroc: Estimate,
+    benign: np.ndarray,
+    target_fpr: float,
+) -> tuple[Undecided, ...]:
+    """The conditions whose bounds straddle their lines, in the order the report prints them. The low
+    side of the FPR band only ever gives THRESHOLD STALE, so it can't be undecided."""
+    out = []
+    line = FPR_BAND_HIGH * target_fpr
+    if candidate_fpr.low <= line < candidate_fpr.high:
+        k, n = int((candidate[benign] > threshold).sum()), int(benign.sum())
+        out.append(Undecided("fpr", candidate_fpr, line, settle.fpr_floor(k, n, line)))
+    line = reference_fnr.value + FNR_TOLERANCE
+    if candidate_fnr.low <= line < candidate_fnr.high:
+        attack = ~benign
+        misses = (int((candidate[attack] <= threshold).sum()), int((reference[attack] <= threshold).sum()))
+        floor = settle.fnr_floor(*misses, int(attack.sum()), FNR_TOLERANCE)
+        out.append(Undecided("fnr", candidate_fnr, line, floor))
+    line = -AUROC_TOLERANCE
+    if delta_auroc.low < line <= delta_auroc.high:
+        out.append(Undecided("delta_auroc", delta_auroc, line, None))
+    return tuple(out)
+
+
+def _out_of_reach(reference_fnr: Estimate, benign: np.ndarray, target_fpr: float) -> tuple[OutOfReach, ...]:
+    """Conditions whose upper bound stays above its line even with no errors at this size."""
+    out = []
+    for condition, n, line in (
+        ("fpr", int(benign.sum()), FPR_BAND_HIGH * target_fpr),
+        ("fnr", int((~benign).sum()), reference_fnr.value + FNR_TOLERANCE),
+    ):
+        if clopper_pearson(0, n)[1] > line:
+            out.append(OutOfReach(condition, n, line, settle.minimum_for_pass(line)))
+    return tuple(out)
 
 
 def _fpr(benign_scores: np.ndarray, threshold: float) -> Estimate:
