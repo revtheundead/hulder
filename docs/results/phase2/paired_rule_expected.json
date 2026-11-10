@@ -1,0 +1,77 @@
+{
+  "rule": "the paired FPR and FNR conditions of docs/design.md §6 as proposed: the reference's FPR on its own snapshot, r, held fixed, and the FPR and FNR changes on the same examples bounded by the interval paired_coverage.py chooses. Lines unchanged: r + the FPR change's upper bound <= 2 x target for PASS, the FNR change's upper bound <= +0.05. The ΔAUROC condition is unchanged",
+  "committed_before": "any run of the paired rule. The interval's own coverage bar is in paired_coverage_expected.json",
+  "if_a_bar_fails": "the paired rule doesn't ship, the current rule stays, the miss is published, and nothing is retuned",
+  "comparison": "every run reads the current rule and the paired rule on the same seeds and resamples, and reports both",
+  "seeds": {
+    "interval_coverage": [7000, 8000],
+    "synthetic_gate": [6000, 7000],
+    "promotion_round_trip": [8000, 9000],
+    "settle_rows": [3000, 4000],
+    "settle_rows_extension_offset": 4000000,
+    "planted_fault_resamples": [5000, 6000],
+    "planted_fault_planting": "unchanged at seed 0, so the faults are the same rows as planted_faults.md",
+    "not_used": "settle 0 to 999 and 2,000 to 2,999 (extensions at +3,000,000), the flip check and planted faults 0 to 999, the shift note's 1,000 to 1,999"
+  },
+  "runs": {
+    "synthetic_gate": {
+      "generator": "tests/synthetic.py unchanged_scorer, threshold fitted on each seed's reference benign scores",
+      "sizes": {"calibration": [1191, 910, 0.01], "small": [180, 180, 0.05]},
+      "bars": [
+        "the null and the fresh-engine noise case PASS in at least 99% of seeds, at each size",
+        "every bound of docs/results/phase1/gate_calibration.md still holds at 1,191 benign and 910 attacks: non-PASS <= 10% for the null and fresh-engine noise, STALE >= 90% at a true FPR of 5%, PASS <= 1% at 3% and 5%, and for the missed-attack cases SCORER DEGRADED >= 80% and PASS <= 1% at ΔAUROC -0.05 and -0.1, and SCORER DEGRADED <= 5% at -0.01",
+        "FNR rises of 0.10 and 0.15 at 180 and 910 attacks: non-PASS no lower than the current rule's minus 1 point"
+      ],
+      "reported_without_bar": [
+        "FPR at 1.5x and 2x the target, and FNR rises of 0.02, 0.04, 0.05 and 0.06, at both sizes",
+        "each seed's discordant counts for the null"
+      ]
+    },
+    "promotion_round_trip": {
+      "generator": "tests/recalibration_study.py promotion_round_trip, its cells (180, 180, 0.05, 0.25) and (1191, 910, 0.01, 0.05)",
+      "bars": [
+        "an unchanged rerun of the promoted candidate is non-PASS in at most 10% of seeds, in each cell, against 43% under the current rule at 180 per class",
+        "the 'not calibrated on this snapshot' warning in at most 1%, in each cell"
+      ],
+      "consequence": "if both hold, Recalibration.attacks_needed and its warning are removed"
+    },
+    "settle_rows": {
+      "cases": "settle_v2's FNR rises of 0.04 (population inside the line) and 0.06 (past it) at 180 benign and 180 attacks, a 5% target, from experiments/phase2/settle_validation.py at b78cc65",
+      "reads": "the FNR condition at n, then on the same seed extended with fresh examples at the original threshold to 2x, 5x and 10x the data",
+      "wrong_way": "settled on the side opposite the case's population side",
+      "bars": [
+        "the paired rule settles the wrong way in at most 3% of all seeds, per case and size",
+        "among settled seeds, the paired rule's wrong-way share is no higher than the current rule's on the same seeds at every size, and lower at n"
+      ],
+      "expectation_before_the_run": "by a normal approximation, not a measurement: at n, about 4% of settled seeds wrong for the 0.04 rise (current rule 11.8% in settle_v2) and about 7% for 0.06 (current 9.3%). settle_v2's bar of at most 1% of settled seeds isn't used, since no valid 95% bound meets it at 180 for a truth 0.01 from the line",
+      "reported_without_bar": [
+        "settle_v2's ΔAUROC -0.025 row, which the paired rule doesn't touch",
+        "each seed's per-seed truth at its fitted threshold, since the case's side is set by population values"
+      ]
+    },
+    "planted_faults": {
+      "harness": "experiments/phase4/probe/planted_faults.py, both splits, threshold refit on each resample's reference benign scores, 1,000 resamples per row",
+      "expected_verdicts": "planted_faults_expected.json unchanged. On population values the paired rule and the current rule agree, since the candidate's rate is the reference's plus the change",
+      "bars": [
+        "null rows non-PASS in at most 5% of resamples, on each split, so test's 11.8% must clear the bar",
+        "gross rows: the expected verdict in at least 95% of resamples",
+        "gross either-verdict rows: non-PASS in at least 95% of resamples",
+        "graded rows whose population verdict is THRESHOLD STALE or SCORER DEGRADED: PASS no more than the current rule's on the same resamples plus 1 point"
+      ],
+      "reported_without_bar": ["frozen-threshold rows", "every graded row under both rules"]
+    },
+    "held_out": {
+      "bar": "no check whose current verdict is PASS becomes non-PASS, and every verdict that changes is listed with its cause",
+      "checks": [
+        {"data": "Experiment 2, calibration split, primary probe (layer 18, -1) at 0.8025: FP8 majority against the control", "current": "PASS", "expected": "PASS"},
+        {"data": "the same, secondary probe (layer 27, -1)", "current": "PASS", "expected": "PASS"},
+        {"data": "Experiment 2: the shuffled rerun against the control, both probes", "current": "computed by the current rule in the same run", "expected": "PASS"},
+        {"data": "Experiment 2: each of fp8_r1 to fp8_r3 against kept/ and against the control, primary probe", "current": "computed by the current rule in the same run", "expected": "PASS"},
+        {"data": "Qwen3-4B score stages r1 to r3, scoring and scoring_caching, against kept/ (overhead_l4.md)", "current": "PASS", "expected": "PASS"},
+        {"data": "Qwen2.5-1.5B score stages r1 and r2, scoring and scoring_caching, against the bundled snapshot (overhead_l4.md)", "current": "PASS", "expected": "PASS"}
+      ],
+      "not_counted": "Experiment 2's boundary-pairs section, whose threshold wasn't calibrated on that snapshot"
+    }
+  },
+  "cuts_if_short": ["the Qwen2.5-1.5B score stages", "the 910-attack synthetic size"]
+}

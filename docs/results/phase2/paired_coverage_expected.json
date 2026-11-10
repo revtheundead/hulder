@@ -1,0 +1,67 @@
+{
+  "question": "how often each candidate 95% interval for a paired difference of proportions misses the true difference, at each end, on the gate's sizes",
+  "intervals": [
+    "exact_conditional",
+    "tango",
+    "newcombe"
+  ],
+  "alpha_two_sided": 0.05,
+  "truth": "b − c, the cell probabilities of flagged by the candidate only and by the reference only",
+  "miss": "low end: the lower bound is above the truth. High end: the upper bound is below it. The gate reads the lower bound for THRESHOLD STALE and the upper bound for PASS",
+  "draws": "10,000 tables per cell from a multinomial over (both, candidate only, reference only, neither), 10 for each seed with numpy default_rng([seed, n, a·10⁴, b·10⁴, c·10⁴])",
+  "seeds": [
+    7000,
+    8000
+  ],
+  "grid": {
+    "n": [
+      180,
+      910,
+      1050,
+      1191
+    ],
+    "both": [
+      0.01,
+      0.05,
+      0.15
+    ],
+    "candidate_only": [
+      0.0,
+      0.001,
+      0.0025,
+      0.005,
+      0.0075,
+      0.01,
+      0.02,
+      0.05
+    ],
+    "reference_only": [
+      0.0,
+      0.001,
+      0.0025,
+      0.005,
+      0.0075,
+      0.01,
+      0.02,
+      0.05
+    ]
+  },
+  "bars": {
+    "cell": "in every cell, each end misses in at most 3.5% of tables, against a nominal 2.5%",
+    "mean": "over all cells, each end's mean miss rate is at most 2.75%"
+  },
+  "choice": "of the intervals meeting both bars, the one with the smallest mean width over all cells is used by the paired FPR and FNR conditions. If none meets both, the paired rule doesn't ship and the miss is published",
+  "reported_without_bar": [
+    "every cell's miss rates, widths and share of tables with no discordant example",
+    "the cells at n = 180 whose total discordant rate is 0.5% to 1%, listed per interval, where 0 discordant examples are common and the exact conditional interval has no width"
+  ],
+  "cell_max": 0.035,
+  "mean_max": 0.0275,
+  "low_discordance": {
+    "n": 180,
+    "total_discordant": [
+      0.005,
+      0.01
+    ]
+  }
+}
