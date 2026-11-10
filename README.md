@@ -14,7 +14,7 @@ Activation probes are small classifiers that read a served model's own hidden st
 pip install hulder
 ```
 
-The base install is numpy and scipy and runs on CPU, on Python 3.12 or newer. Capturing activations from vLLM needs `pip install "hulder[vllm]"`, which adds the experimental `hulder.capture`.
+The base install is numpy and scipy and runs on CPU, on Python 3.12 or newer. Capturing activations from vLLM, or scoring inside `vllm serve`, needs `pip install "hulder[vllm]"`, which adds the experimental `hulder.capture` and `hulder.runtime`.
 
 ## Example
 
@@ -78,6 +78,10 @@ The [live tutorial](docs/tutorial-live.md) captures the demo with vLLM on a GPU 
 
 Any other scorer, such as an embedding similarity or a guard model's probability, can bring its own scores instead, one JSONL file per serving config with an `id`, `score` and `label` per line. The [JSONL example](examples/scores_jsonl/README.md) gives the format and a synthetic stale threshold to try.
 
+## In-server scoring (experimental)
+
+`hulder.runtime`, in the `vllm` extra, scores a probe inside `vllm serve` with CUDA graphs on, on vLLM 0.30.0. Each non-streamed reply carries `hulder_score`, and `/metrics` counts scores, flags and replies that went without one, with example Prometheus rules for drift alarms. It is monitor-only, so it can flag a request but not stop it. On Qwen3-4B on an L4 it passed the cost rule against a no-probe baseline on throughput, p99 TTFT and p99 TPOT. [In-server scoring](docs/runtime.md) gives the `vllm serve` command and the limits.
+
 ## What it has been tested on
 
 Every result below had its rules and expected verdicts committed before it ran, and misses are published.
@@ -101,6 +105,7 @@ The full list is in [docs/design.md §10](docs/design.md#10-known-limits).
 
 - [Reading a report](docs/reading-a-report.md): check 2 of the quickstart, line by line
 - [Live tutorial](docs/tutorial-live.md): the demo captured with vLLM on a GPU, and your own snapshots
+- [In-server scoring](docs/runtime.md): `hulder.runtime`, its metrics, example drift alarms and limits
 - [Design](docs/design.md): the problem and prior art, the public API, every design decision with the alternatives it rejected, the verdict rule, known limits and roadmap
 - [Results](docs/results/): every measurement, with the command that reproduces it, including where the gate loses
 - [Changelog](CHANGELOG.md)

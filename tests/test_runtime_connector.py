@@ -44,8 +44,12 @@ def test_worker_meta_from_several_workers_merges():
 
 
 def test_stats_aggregate_over_an_interval_and_reduce_for_the_log():
-    a = c.ScoreStats({"scores": [0.25], "flagged": 0, "replies_with_score": 1, "replies_without_score": 0})
-    b = c.ScoreStats({"scores": [0.75], "flagged": 1, "replies_with_score": 0, "replies_without_score": 2})
+    a = c.ScoreStats(
+        {"scores": [0.25], "flagged": 0, "replies_with_score": 1, "replies_without_score": 0, "draft_tokens": 0}
+    )
+    b = c.ScoreStats(
+        {"scores": [0.75], "flagged": 1, "replies_with_score": 0, "replies_without_score": 2, "draft_tokens": 3}
+    )
     both = a.aggregate(b)
     assert both.reduce() == {
         "scores": 2,
@@ -53,6 +57,16 @@ def test_stats_aggregate_over_an_interval_and_reduce_for_the_log():
         "flagged": 1,
         "replies_with_score": 1,
         "replies_without_score": 2,
+        "draft_tokens": 3,
     }
     assert not both.is_empty()
-    assert c.ScoreStats({"scores": [], "flagged": 0, "replies_with_score": 0, "replies_without_score": 0}).is_empty()
+    empty = c.ScoreStats()
+    empty.reset()
+    assert empty.is_empty()
+
+
+def test_drafts_alone_make_the_stats_worth_reporting():
+    stats = c.ScoreStats()
+    stats.reset()
+    stats.data["draft_tokens"] = 1
+    assert not stats.is_empty()

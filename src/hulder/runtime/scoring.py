@@ -2,6 +2,22 @@
 base install. connector.py wraps these for vLLM 0.30.0's connector interface (docs/design.md §5 D3).
 """
 
+# The connector's metrics on /metrics, as (name, help). Prometheus exposes each counter with a
+# _total suffix, and the histogram as _bucket, _count and _sum.
+SCORE_HISTOGRAM = ("hulder_probe_score", "Probe score at the end of prefill.")
+COUNTERS = {
+    "flagged": ("hulder_probe_flagged", "Scores strictly above the probe's threshold."),
+    "replies_with_score": ("hulder_probe_replies_with_score", "Finished requests with a score ready."),
+    "replies_without_score": ("hulder_probe_replies_without_score", "Requests that ended before their score."),
+    "draft_tokens": ("hulder_draft_tokens", "Draft tokens scheduled, which zero-draft keeps at 0."),
+}
+
+
+def exposed_metric_names() -> set[str]:
+    """Every series name the connector puts on /metrics."""
+    histogram = SCORE_HISTOGRAM[0]
+    return {f"{name}_total" for name, _ in COUNTERS.values()} | {f"{histogram}_{s}" for s in ("bucket", "count", "sum")}
+
 
 class PrefillTracker:
     """Finds where each request's last prompt token sits in the hidden-state cache, on the step
@@ -90,3 +106,35 @@ class ScoreLedger:
         }
         self._reset()
         return counts
+
+
+class DraftWatch:
+    """Counts the draft tokens each step schedules, which zero-draft keeps at 0. vLLM 0.30.0 drops
+    the schedule without an error when async scheduling is off or data_parallel_size is above 1, and
+    each decode step then carries a drafted token again. vLLM's own draft counter sums the same
+    scheduled_spec_decode_tokens (scheduler.py:1977-1998 at 0.30.0)."""
+
+    WARNING = (
+        "hulder.runtime: {n} draft token(s) scheduled in one step, where zero-draft schedules none, "
+        "so decode steps carry a drafted token again. With one, the stock connector lost 38.5% of "
+        "saturation throughput on an L4. Likely causes: async scheduling off (--no-async-scheduling), "
+        "data_parallel_size above 1, or Model Runner V1. Scores are unaffected. Every draft is counted in "
+        "hulder_draft_tokens on /metrics. This warning is logged once."
+    )
+
+    def __init__(self):
+        self._interval = 0
+        self._warned = False
+
+    def observe(self, scheduled_spec_decode_tokens: dict[str, list[int]]) -> str | None:
+        """Counts one step's drafts, returning the warning on the first step that has any."""
+        n = sum(len(tokens) for tokens in scheduled_spec_decode_tokens.values())
+        self._interval += n
+        if n and not self._warned:
+            self._warned = True
+            return self.WARNING.format(n=n)
+        return None
+
+    def drain(self) -> int:
+        n, self._interval = self._interval, 0
+        return n

@@ -69,7 +69,7 @@ A THRESHOLD STALE verdict means the scorer still separates the classes but the t
 
 The other important verdict is `SCORER DEGRADED` (e.g. AUROC falls to 0.81), where no threshold fixes it and the probe must be retrained on the new config. **The scenario's numbers (0.730, 3.4%, 0.81) are illustrative.**
 
-In production the runtime emits:
+In production the runtime would emit the following. v0.3 builds the score distribution, the flag counts and a draft counter, with names in `docs/runtime.md`. A drift statistic, latency, the queue and the judge come later.
 
 ```
 probe_score_p50{probe="attack_v3"}             0.12
@@ -146,12 +146,12 @@ The public API is `hulder check` and `hulder quickstart`, with their arguments, 
 - `hulder.apply_probe(probe, activations)` returns the scores `check` computes from activations.
 - `Report` is a plain data object that neither prints nor exits. It carries the verdict with the threshold and target FPR it was judged at, FPR and FNR with Clopper-Pearson intervals, AUROC and ΔAUROC with paired bootstrap intervals, decision flips, mean |Δscore| (and mean |Δlogit| when Hulder applies the probe), the noise-floor comparison, and for THRESHOLD STALE and INCONCLUSIVE a `Recalibration`. It compares with == and is unhashable by design, since its changes under test can hold metadata values such as dicts.
 
-`hulder.capture`, in the `vllm` extra, is public but experimental in v0.1, so its names (`capture`, `CaptureConfig`, `Capture`, `snapshot_metadata`, `base_model_for`) may change in any 0.x release. Importing it needs no vLLM. Everything else is internal, including `hulder.cli`'s functions and the submodules of `hulder.capture`.
+`hulder.capture`, in the `vllm` extra, is public but experimental in v0.1, so its names (`capture`, `CaptureConfig`, `Capture`, `snapshot_metadata`, `base_model_for`) may change in any 0.x release. Importing it needs no vLLM. `hulder.runtime` (v0.3) is experimental in the same way: `serve_args`, the connector's module path `hulder.runtime.connector` with its class `ScoringHiddenStatesConnector`, and the metric names in `docs/runtime.md`. Importing it and calling `serve_args` need no vLLM. Everything else is internal, including `hulder.cli`'s functions and the submodules of `hulder.capture`.
 
 | Install | Pulls in | Gives |
 |---|---|---|
 | `pip install hulder` | numpy, scipy | `check`, `check_snapshots`, `apply_probe`, the CLI, the quickstart on bundled data |
-| `pip install "hulder[vllm]"` | vLLM, pinned | `hulder.capture`, the extraction path of §5 |
+| `pip install "hulder[vllm]"` | vLLM, pinned | `hulder.capture`, the extraction path of §5, and `hulder.runtime`, in-server scoring (D1, D3) |
 | `pip install "hulder[train]"` | scikit-learn | probe training |
 
 The library is the core and the CLI only parses, calls and reports. Other tools (CI scripts, notebooks, a rollout controller) then call the same code instead of parsing text, and every statistical test targets the library. Nothing in the base install imports vLLM or torch, which a test enforces. vLLM as a core dependency was rejected because its torch and CUDA wheels run to several GB, which would break the CPU quickstart and exclude users who bring their own scores.
@@ -362,7 +362,7 @@ hulder/
     data/              bundled quickstart sample activations, example probe
     capture/           vLLM snapshot capture (hulder[vllm] extra)
     train/             probe training + export (hulder[train] extra)
-    runtime/           vLLM plugin / in-server scoring
+    runtime/           in-server scoring: the KV connector and serve_args (hulder[vllm] extra)
     gateway/           policy, routing, escalation queue, judge client
     control/           probe registry, rollout controller (stretch)
   harness/             docker-compose, load tests, fault injection
@@ -387,6 +387,8 @@ A rerun on the reference's path measures a zero floor, and a candidate that devi
 
 **Prefix caching changes activations even without cache hits.** The cause is unexplained (`docs/results/phase1/extraction_prototype.md`). `hulder.capture` requires it off (§5).
 
+**The runtime plugin runs on one narrow configuration.** vLLM 0.30.0 with Model Runner V2, async scheduling on and one GPU. V1 is untested and treated as unsupported, and with async scheduling off or `data_parallel_size` above 1 vLLM drops zero-draft and drafts a token per step again, which the runtime counts and warns about but can't prevent. One probe per server at the last prompt token. An FP8 KV cache and a workload built around long shared prefixes are untested. Its drift alarms are example Prometheus rules on the flag rate, not a statistic on the score distribution, and a flag rate on live traffic is not an FPR (`docs/runtime.md`).
+
 **The runtime plugin can flag a request but not stop it.** v0.3 is monitor-only, so tokens can reach the client before the score exists (§5 D3). A streamed reply carries no score, and a very short non-streamed reply can come back without one. On the 2070, of 360 requests, no 1-token reply carried a score at concurrency 1 or 8, and 344 of the 2-token replies went without at concurrency 8 and 190 at concurrency 1. All replies of 3 tokens or more carried one, which depends on timing and may differ on another GPU. `/metrics` still counts every score, including those that replies missed (`docs/results/phase3/d3_spike.md`).
 
 **Fixed tolerance bands.** The candidate FPR must stay between 0.5 and 2 times the target, FNR within 0.05 of the reference, and ΔAUROC above -0.02. These are constants in `hulder/gate/check.py`, not options.
@@ -407,7 +409,7 @@ v0.1 is the gate on activation probes: `hulder check` and `hulder quickstart` on
 
 - **v0.2, gate complete.** A recalibrated threshold for THRESHOLD STALE, binomial-tail at 95% confidence (§6). Bring-your-own scores as JSONL of id, score and label per serving config (`examples/scores_jsonl/`).
 - **After v0.2, smaller items.** A GitHub Action wrapping the CLI. A second worked example, semantic-cache similarity at fp32 vs int8 on CPU (§7). Holm correction when checking several candidates at once (§6). An FNR condition that compares reference and candidate on the same attacks, so an unchanged scorer can PASS on a few hundred attacks (§10). A `hulder snapshot` command around `hulder.capture`. A rerun of the candidate as the noise floor (`--rerun-of candidate`). Configurable tolerance bands, recorded in the report. The multivariate shift diagnostic of §6 (MMD on activations). Equality for `Snapshot`.
-- **v0.3, runtime plugin.** In-server probe scoring with CUDA graphs on (D1, D3), metrics and drift alarms, with overhead measured against a no-probe baseline and `vllm-lens`.
+- **v0.3, runtime plugin.** `hulder.runtime`: in-server probe scoring with CUDA graphs on (D1, D3), metrics, a draft counter and example Prometheus drift rules (`docs/runtime.md`), with overhead measured against a no-probe baseline and `vllm-lens` (`docs/results/phase3/overhead_l4.md`). Blocking before tokens stream and a drift statistic on the score distribution come later.
 - **Benchmarks page.** Qwen3-4B or Qwen3-8B in bf16 against FP8, AWQ and FP8 KV cache on an L4, with the noise floor, 2 to 3 layers and the token-position ablation (§5 D2, §7).
 - **v1.0, example deployment.** The probe-first cascade with failure policies (D4, D6), a docs site and a write-up.
 
