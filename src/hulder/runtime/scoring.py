@@ -2,6 +2,22 @@
 base install. connector.py wraps these for vLLM 0.30.0's connector interface (docs/design.md §5 D3).
 """
 
+# The connector's metrics on /metrics, as (name, help). Prometheus exposes each counter with a
+# _total suffix, and the histogram as _bucket, _count and _sum.
+SCORE_HISTOGRAM = ("hulder_probe_score", "Probe score at the end of prefill.")
+COUNTERS = {
+    "flagged": ("hulder_probe_flagged", "Scores strictly above the probe's threshold."),
+    "replies_with_score": ("hulder_probe_replies_with_score", "Finished requests with a score ready."),
+    "replies_without_score": ("hulder_probe_replies_without_score", "Requests that ended before their score."),
+    "draft_tokens": ("hulder_draft_tokens", "Draft tokens scheduled, which zero-draft keeps at 0."),
+}
+
+
+def exposed_metric_names() -> set[str]:
+    """Every series name the connector puts on /metrics."""
+    histogram = SCORE_HISTOGRAM[0]
+    return {f"{name}_total" for name, _ in COUNTERS.values()} | {f"{histogram}_{s}" for s in ("bucket", "count", "sum")}
+
 
 class PrefillTracker:
     """Finds where each request's last prompt token sits in the hidden-state cache, on the step

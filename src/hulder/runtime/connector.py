@@ -26,7 +26,7 @@ from vllm.utils.gpu_sync_debug import gpu_sync_allowed
 from vllm.v1.metrics.utils import create_metric_per_engine
 
 from hulder import Probe
-from hulder.runtime.scoring import DraftWatch, PrefillTracker, ScoreLedger
+from hulder.runtime.scoring import COUNTERS, SCORE_HISTOGRAM, DraftWatch, PrefillTracker, ScoreLedger
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +55,7 @@ class ScoringMetadata(ExampleHiddenStatesConnectorMetadata):
 class ScoreStats(KVConnectorStats):
     """ScoreLedger.drain()'s counts and DraftWatch.drain()'s drafts, for the /metrics and log paths."""
 
-    COUNTS = ("flagged", "replies_with_score", "replies_without_score", "draft_tokens")
+    COUNTS = tuple(COUNTERS)
 
     def reset(self):
         self.data = {"scores": [], **dict.fromkeys(self.COUNTS, 0)}
@@ -86,8 +86,8 @@ class ScorePromMetrics(KVConnectorPromMetrics):
         super().__init__(vllm_config, metric_types, labelnames, per_engine_labelvalues)
         self.scores = create_metric_per_engine(
             self._histogram_cls(
-                name="hulder_probe_score",
-                documentation="Probe score at the end of prefill.",
+                name=SCORE_HISTOGRAM[0],
+                documentation=SCORE_HISTOGRAM[1],
                 buckets=SCORE_BUCKETS,
                 labelnames=labelnames,
             ),
@@ -98,16 +98,7 @@ class ScorePromMetrics(KVConnectorPromMetrics):
                 self._counter_cls(name=name, documentation=documentation, labelnames=labelnames),
                 per_engine_labelvalues,
             )
-            for key, name, documentation in (
-                ("flagged", "hulder_probe_flagged", "Scores strictly above the probe's threshold."),
-                ("replies_with_score", "hulder_probe_replies_with_score", "Finished requests with a score ready."),
-                (
-                    "replies_without_score",
-                    "hulder_probe_replies_without_score",
-                    "Requests that ended before their score.",
-                ),
-                ("draft_tokens", "hulder_draft_tokens", "Draft tokens scheduled, which zero-draft keeps at 0."),
-            )
+            for key, (name, documentation) in COUNTERS.items()
         }
 
     def observe(self, transfer_stats_data: dict, engine_idx: int = 0):
