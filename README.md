@@ -52,9 +52,19 @@ Shift (paired, same prompts)      candidate                 rerun
 Exit code 0 (PASS)
 ```
 
-Check 2 swaps in the official AWQ int4 checkpoint. It flips 11 decisions and moves scores by 0.0515 on average against 0.000208 on the rerun, so the change is real, but with 180 benign examples the gate can't yet say whether the false-positive rate crossed its 10.0% tolerance. The verdict is INCONCLUSIVE, exit 12, with an estimate of how many more examples would settle it.
+Check 2 swaps in the official AWQ int4 checkpoint. It flips 11 decisions and moves scores by 0.0515 on average against 0.000208 on the rerun, so the change is real, but with 180 benign examples the gate can't yet say whether the false-positive rate crossed its 10.0% tolerance. The verdict is INCONCLUSIVE, exit 12, and the report says what would settle it:
 
-**Reading a report.** The brackets are 95% confidence intervals, and PASS needs the pessimistic end of each one inside the band printed under it. THRESHOLD STALE means scores moved but the ranking survived, so a new threshold fixes it, and the report proposes one. SCORER DEGRADED means the ranking itself is damaged and the probe needs retraining. PASS, THRESHOLD STALE, SCORER DEGRADED and INCONCLUSIVE exit 0, 10, 11 and 12, leaving 1 and 2 for crashes and usage errors. [Reading a report](docs/reading-a-report.md) walks through check 2 line by line.
+```text
+Verdict: INCONCLUSIVE
+  FPR 3.9% to 12.0% against the 10.0% line; at least 16 more benign prompts are needed, as fewer cannot settle it.
+```
+
+**Reading a report.** The brackets are 95% confidence intervals, and PASS needs the pessimistic end of each one inside the band printed under it.
+- **THRESHOLD STALE** means scores moved but the ranking survived, so a new threshold fixes it, and the report proposes one.
+- **SCORER DEGRADED** means the ranking itself is damaged and the probe needs retraining.
+- **INCONCLUSIVE** means an interval straddles its line. The report gives one line per undecided condition, with its interval against its line. For FPR and FNR the line adds a floor, the fewest extra benign or attack prompts that could settle it. Fewer cannot, and more may not, so it is not an estimate of how many will. If PASS is impossible at the current size even with no errors, the report says so first, with the size at which it becomes possible.
+
+PASS, THRESHOLD STALE, SCORER DEGRADED and INCONCLUSIVE exit 0, 10, 11 and 12, leaving 1 and 2 for crashes and usage errors. [Reading a report](docs/reading-a-report.md) walks through check 2 line by line.
 
 ## Your own serving change
 
@@ -68,16 +78,31 @@ The [live tutorial](docs/tutorial-live.md) captures the demo with vLLM on a GPU 
 
 Any other scorer, such as an embedding similarity or a guard model's probability, can bring its own scores instead, one JSONL file per serving config with an `id`, `score` and `label` per line. The [JSONL example](examples/scores_jsonl/README.md) gives the format and a synthetic stale threshold to try.
 
+## What it has been tested on
+
+Every result below had its rules and expected verdicts committed before it ran, and misses are published.
+- **Faults of known size.** On real Qwen3-4B bf16 activations captured on Modal L4s, a probe's scores were given planted faults and checked over 1,000 resamples each. Every gross fault got the right verdict in at least 99.9% of resamples. An unchanged scorer was flagged in 2.7% to 2.8% of resamples on the calibration set, but 11.8% on the smaller test set, missing its 5% bar ([planted faults](docs/results/phase4/planted_faults.md)).
+- **Real serving changes on Qwen3-4B.** Online FP8 passes, while changing which prompts are flagged (17 decisions against a rerun's 4, [Experiment 2](docs/results/phase4/exp2.md)). AWQ int4 is INCONCLUSIVE on calibration and THRESHOLD STALE on the test replication ([sweep](docs/results/phase4/sweep_results.md)).
+- **Qwen2.5-1.5B on an RTX 2070,** in fp16 and AWQ int4: the v0.1 results and the quickstart ([phase 1](docs/results/phase1/)).
+- **Estimates of how much data would settle INCONCLUSIVE.** Two estimators were tested on fresh synthetic data against bars fixed beforehand, and both missed ([first](docs/results/phase2/settle.md), [second](docs/results/phase2/settle_v2.md)). So the report states only the floor and the size check, which are exact.
+
 ## Limits
 
-v0.1 has run only on an RTX 2070 (Turing) in fp16 and AWQ int4, with Qwen2.5-1.5B-Instruct under vLLM 0.30.0. Its tolerance bands are fixed, the threshold THRESHOLD STALE proposes misses more attacks in exchange for its FPR guarantee, and small FPR rises need large calibration sets to judge. The full list is in [docs/design.md §10](docs/design.md#10-known-limits).
+- **Tolerance bands are fixed.** The candidate's FPR must stay under twice the target, its FNR within 0.05 of the reference's, and ΔAUROC above -0.02.
+- **Small FPR rises need large calibration sets.** With about 1,200 benign prompts, a rise from 1% to 1.5% or 2% is usually INCONCLUSIVE.
+- **At about 180 prompts per class, FNR and ΔAUROC can settle the wrong way.** In the settle runs, extending small INCONCLUSIVE checks with fresh synthetic data settled the FNR condition on the wrong side 9% to 12% of the time and ΔAUROC 13% of the time. At 1,191 benign and 910 attacks every condition stayed at 0.4% or below.
+- **A one-way shift inside tolerance isn't flagged.** A change can newly flag several percent of prompts while every rate stays within its band. Whether that should count as a stale threshold is an open question.
+- **A deviation from the numerical path isn't detected.** A whole capture can take a different numerical path and pass for a shift.
+- **The proposed threshold costs FNR.** The threshold THRESHOLD STALE proposes misses more attacks, in exchange for its FPR guarantee.
+
+The full list is in [docs/design.md §10](docs/design.md#10-known-limits).
 
 ## More
 
 - [Reading a report](docs/reading-a-report.md): check 2 of the quickstart, line by line
 - [Live tutorial](docs/tutorial-live.md): the demo captured with vLLM on a GPU, and your own snapshots
 - [Design](docs/design.md): the problem and prior art, the public API, every design decision with the alternatives it rejected, the verdict rule, known limits and roadmap
-- [Results](docs/results/phase1/): every measurement behind v0.1, with the command that reproduces it, including where the gate loses
+- [Results](docs/results/): every measurement, with the command that reproduces it, including where the gate loses
 - [Changelog](CHANGELOG.md)
 - [Contributing](CONTRIBUTING.md)
 
