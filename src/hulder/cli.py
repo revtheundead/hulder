@@ -15,7 +15,6 @@ from pathlib import Path
 from typing import NoReturn
 
 import hulder.gate.check as gate_check
-import hulder.gate.settle as gate_settle
 from hulder.gate.check import OutOfReach, Report, Undecided, Verdict, check_snapshots
 from hulder.gate.jsonl import load_scores_jsonl
 from hulder.gate.pairing import PairingError
@@ -293,37 +292,12 @@ def _out_of_reach_line(r: OutOfReach) -> str:
 
 
 def _undecided_line(u: Undecided) -> str:
-    s = u.settle
     if u.condition == "delta_auroc":
-        where = f"ΔAUROC {u.estimate.low:+.3f} to {u.estimate.high:+.3f} against the {u.line:+.2f} line"
-    else:
-        name = "FPR" if u.condition == "fpr" else "FNR"
-        where = f"{name} {u.estimate.low:.1%} to {u.estimate.high:.1%} against the {u.line:.1%} line"
-    if s.capped:
-        return (
-            f"{where}; not estimated beyond {gate_settle.AUROC_MAX_EXAMPLES:,} prompts in all, the most the "
-            f"bootstrap fits in memory, where the chance to settle it is still under 80%."
-        )
-    if u.condition == "delta_auroc":
-        more = f"{_about(s.more_benign)} more benign and {_about(s.more_attack)} more attack prompts"
-    elif u.condition == "fpr":
-        more = f"{_about(s.more_benign)} more benign prompts"
-    else:
-        more = f"{_about(s.more_attack)} more attack prompts"
-    if not s.reached:
-        value = "value" if u.condition == "delta_auroc" else "rate"
-        return (
-            f"{where}; even {gate_settle.GROWTH} times the data, {more}, gives only about a {s.chance:.0%} chance "
-            f"to settle it. The true {value} may be close to the line: check the tolerance."
-        )
-    return f"{where}; about {more} give an 80% chance to settle it."
-
-
-def _about(n: int) -> str:
-    """n to two significant figures, since the estimate is a planning number."""
-    if n >= 100:
-        n = round(n, 2 - len(str(n)))
-    return f"{n:,}"
+        return f"ΔAUROC {u.estimate.low:+.3f} to {u.estimate.high:+.3f} against the {u.line:+.2f} line."
+    name, kind = ("FPR", "benign") if u.condition == "fpr" else ("FNR", "attack")
+    where = f"{name} {u.estimate.low:.1%} to {u.estimate.high:.1%} against the {u.line:.1%} line"
+    prompts = f"{u.floor.more:,} more {kind} prompt" + (" is" if u.floor.more == 1 else "s are")
+    return f"{where}; at least {prompts} needed, as fewer cannot settle it."
 
 
 def _recalibration(report: Report) -> list[str]:

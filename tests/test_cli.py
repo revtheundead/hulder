@@ -154,14 +154,15 @@ def test_a_decided_verdict_leads_with_the_inputs(tmp_path, capsys):
     [
         (
             20,
-            (
-                "FPR 1.0% to 2.6% against the 2.0% line; even 10 times the data, 11,000 more benign prompts, gives "
-                "only about a 64% chance to settle it. The true rate may be close to the line: check the tolerance."
-            ),
+            "FPR 1.0% to 2.6% against the 2.0% line; at least 15 more benign prompts are needed, as fewer cannot settle it.",
         ),
         (
             33,
-            "FPR 1.9% to 3.9% against the 2.0% line; about 2,900 more benign prompts give an 80% chance to settle it.",
+            "FPR 1.9% to 3.9% against the 2.0% line; at least 2 more benign prompts are needed, as fewer cannot settle it.",
+        ),
+        (
+            34,
+            "FPR 2.0% to 4.0% against the 2.0% line; at least 1 more benign prompt is needed, as fewer cannot settle it.",
         ),
     ],
 )

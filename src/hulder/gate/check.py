@@ -94,16 +94,17 @@ class Recalibration:
 
 @dataclass(frozen=True)
 class Undecided:
-    """A condition an INCONCLUSIVE report couldn't decide, and an extension of the data with its chance
-    to settle it, averaged over the true values the data still allows (hulder.gate.settle). FPR grows
-    benign examples, FNR attacks, and ΔAUROC both."""
+    """A condition an INCONCLUSIVE report couldn't decide: its interval straddles its line. For FPR and
+    FNR, `floor` is the fewest extra benign examples or attacks that could settle it, if every new one
+    went the most favourable way (hulder.gate.settle). Fewer cannot settle it, and more may not.
+    ΔAUROC has no floor."""
 
     # "fpr", "fnr" or "delta_auroc"
     condition: str
     estimate: Estimate
     # The tolerance line the estimate's interval straddles.
     line: float
-    settle: settle.Settle
+    floor: settle.Floor | None
 
 
 @dataclass(frozen=True)
@@ -552,27 +553,20 @@ def _undecided(
 ) -> tuple[Undecided, ...]:
     """The conditions whose bounds straddle their lines, in the order the report prints them. The low
     side of the FPR band only ever gives THRESHOLD STALE, so it can't be undecided."""
-    n_benign, n_attack = int(benign.sum()), int((~benign).sum())
     out = []
     line = FPR_BAND_HIGH * target_fpr
     if candidate_fpr.low <= line < candidate_fpr.high:
-        k = int((candidate[benign] > threshold).sum())
-        out.append(Undecided("fpr", candidate_fpr, line, settle.settle_fpr(k, n_benign, line)))
+        k, n = int((candidate[benign] > threshold).sum()), int(benign.sum())
+        out.append(Undecided("fpr", candidate_fpr, line, settle.fpr_floor(k, n, line)))
     line = reference_fnr.value + FNR_TOLERANCE
     if candidate_fnr.low <= line < candidate_fnr.high:
-        ref_miss, cand_miss = reference[~benign] <= threshold, candidate[~benign] <= threshold
-        cells = (
-            int((ref_miss & cand_miss).sum()),
-            int((ref_miss & ~cand_miss).sum()),
-            int((~ref_miss & cand_miss).sum()),
-            int((~ref_miss & ~cand_miss).sum()),
-        )
-        out.append(Undecided("fnr", candidate_fnr, line, settle.settle_fnr(cells, FNR_TOLERANCE)))
+        attack = ~benign
+        misses = (int((candidate[attack] <= threshold).sum()), int((reference[attack] <= threshold).sum()))
+        floor = settle.fnr_floor(*misses, int(attack.sum()), FNR_TOLERANCE)
+        out.append(Undecided("fnr", candidate_fnr, line, floor))
     line = -AUROC_TOLERANCE
     if delta_auroc.low < line <= delta_auroc.high:
-        out.append(
-            Undecided("delta_auroc", delta_auroc, line, settle.settle_auroc(delta_auroc, line, n_benign, n_attack))
-        )
+        out.append(Undecided("delta_auroc", delta_auroc, line, None))
     return tuple(out)
 
 

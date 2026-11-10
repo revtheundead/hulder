@@ -7,7 +7,7 @@ from synthetic import missed_attack_shift_for, unchanged_scorer
 
 import hulder
 from hulder.gate.check import AUROC_TOLERANCE, FNR_TOLERANCE, FPR_BAND_HIGH
-from hulder.gate.settle import minimum_for_pass, settle_auroc, settle_fnr, settle_fpr
+from hulder.gate.settle import fnr_floor, fpr_floor, minimum_for_pass
 
 TARGET = 0.01
 
@@ -32,33 +32,28 @@ def straddles(u):
     return u.estimate.low <= u.line < u.estimate.high
 
 
-def test_an_undecided_fpr_carries_the_settle_estimate():
+def test_an_undecided_fpr_carries_its_floor():
     _, report, u = first_with("fpr", candidate_fpr=0.015)
     assert report.verdict is hulder.Verdict.INCONCLUSIVE
     assert u.estimate == report.candidate_fpr and u.line == FPR_BAND_HIGH * TARGET
     k = round(report.candidate_fpr.value * report.n_benign)
-    assert u.settle == settle_fpr(k, report.n_benign, u.line)
+    assert u.floor == fpr_floor(k, report.n_benign, u.line)
 
 
-def test_an_undecided_fnr_uses_the_paired_attack_outcomes():
+def test_an_undecided_fnr_carries_its_floor_against_the_moving_line():
     d, report, u = first_with("fnr", n_benign=180, n_attack=180, attack_shift=-0.25, target=0.05)
     attack = d.labels == 1
-    ref_miss, cand_miss = d.reference[attack] <= d.threshold, d.candidate[attack] <= d.threshold
-    cells = (
-        int((ref_miss & cand_miss).sum()),
-        int((ref_miss & ~cand_miss).sum()),
-        int((~ref_miss & cand_miss).sum()),
-        int((~ref_miss & ~cand_miss).sum()),
-    )
+    cand_misses = int((d.candidate[attack] <= d.threshold).sum())
+    ref_misses = int((d.reference[attack] <= d.threshold).sum())
     assert u.estimate == report.candidate_fnr
     assert u.line == pytest.approx(report.reference_fnr.value + FNR_TOLERANCE)
-    assert u.settle == settle_fnr(cells, FNR_TOLERANCE)
+    assert u.floor == fnr_floor(cand_misses, ref_misses, report.n_attack, FNR_TOLERANCE)
 
 
-def test_an_undecided_delta_auroc_grows_both_classes():
+def test_an_undecided_delta_auroc_has_no_floor():
     _, report, u = first_with("delta_auroc", missed_attack_shift=missed_attack_shift_for(-0.02))
     assert u.estimate == report.delta_auroc and u.line == -AUROC_TOLERANCE
-    assert u.settle == settle_auroc(report.delta_auroc, -AUROC_TOLERANCE, report.n_benign, report.n_attack)
+    assert u.floor is None
 
 
 def test_every_inconclusive_report_names_only_and_at_least_one_undecided_condition():
