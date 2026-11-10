@@ -11,6 +11,7 @@ Loaded by `vllm serve` through kv_connector_module_path, with kv_connector_extra
 probe_path. hulder.runtime.serve_args builds those arguments. Imports vLLM and torch.
 """
 
+import logging
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -25,7 +26,9 @@ from vllm.utils.gpu_sync_debug import gpu_sync_allowed
 from vllm.v1.metrics.utils import create_metric_per_engine
 
 from hulder import Probe
-from hulder.runtime.scoring import PrefillTracker, ScoreLedger
+from hulder.runtime.scoring import DraftWatch, PrefillTracker, ScoreLedger
+
+logger = logging.getLogger(__name__)
 
 SCORE_BUCKETS = [i / 20 for i in range(1, 20)]
 
@@ -50,18 +53,18 @@ class ScoringMetadata(ExampleHiddenStatesConnectorMetadata):
 
 
 class ScoreStats(KVConnectorStats):
-    """ScoreLedger.drain()'s counts, for the /metrics and log paths."""
+    """ScoreLedger.drain()'s counts and DraftWatch.drain()'s drafts, for the /metrics and log paths."""
+
+    COUNTS = ("flagged", "replies_with_score", "replies_without_score", "draft_tokens")
 
     def reset(self):
-        self.data = {"scores": [], "flagged": 0, "replies_with_score": 0, "replies_without_score": 0}
+        self.data = {"scores": [], **dict.fromkeys(self.COUNTS, 0)}
 
     def aggregate(self, other: "ScoreStats") -> "ScoreStats":
         return ScoreStats(
             {
                 "scores": self.data["scores"] + other.data["scores"],
-                "flagged": self.data["flagged"] + other.data["flagged"],
-                "replies_with_score": self.data["replies_with_score"] + other.data["replies_with_score"],
-                "replies_without_score": self.data["replies_without_score"] + other.data["replies_without_score"],
+                **{key: self.data[key] + other.data[key] for key in self.COUNTS},
             }
         )
 
@@ -70,13 +73,12 @@ class ScoreStats(KVConnectorStats):
         return {
             "scores": len(scores),
             "mean_score": sum(scores) / len(scores) if scores else 0.0,
-            "flagged": self.data["flagged"],
-            "replies_with_score": self.data["replies_with_score"],
-            "replies_without_score": self.data["replies_without_score"],
+            **{key: self.data[key] for key in self.COUNTS},
         }
 
     def is_empty(self) -> bool:
-        return not any(self.reduce()[k] for k in ("scores", "replies_with_score", "replies_without_score"))
+        reduced = self.reduce()
+        return not any(reduced[k] for k in ("scores", "replies_with_score", "replies_without_score", "draft_tokens"))
 
 
 class ScorePromMetrics(KVConnectorPromMetrics):
@@ -104,6 +106,7 @@ class ScorePromMetrics(KVConnectorPromMetrics):
                     "hulder_probe_replies_without_score",
                     "Requests that ended before their score.",
                 ),
+                ("draft_tokens", "hulder_draft_tokens", "Draft tokens scheduled, which zero-draft keeps at 0."),
             )
         }
 
@@ -123,6 +126,7 @@ class ScoringHiddenStatesConnector(ExampleHiddenStatesConnector):
         # Scheduler side.
         self._tracker = PrefillTracker(self._cache_kv_group_id, self._block_size)
         self._ledger = ScoreLedger(float(self._probe.metadata["threshold"]))
+        self._drafts = DraftWatch()
 
         # Worker side.
         self._probe_tensors = None
@@ -202,6 +206,8 @@ class ScoringHiddenStatesConnector(ExampleHiddenStatesConnector):
     # ==============================
     def build_connector_meta(self, scheduler_output):
         stock = super().build_connector_meta(scheduler_output)
+        if warning := self._drafts.observe(scheduler_output.scheduled_spec_decode_tokens):
+            logger.warning(warning)
         return ScoringMetadata(
             pending_saves=stock.pending_saves,
             new_req_filenames=stock.new_req_filenames,
@@ -226,7 +232,7 @@ class ScoringHiddenStatesConnector(ExampleHiddenStatesConnector):
     def get_kv_connector_stats(self):
         if self._role != KVConnectorRole.SCHEDULER:
             return None
-        stats = ScoreStats(self._ledger.drain())
+        stats = ScoreStats({**self._ledger.drain(), "draft_tokens": self._drafts.drain()})
         return None if stats.is_empty() else stats
 
     @classmethod

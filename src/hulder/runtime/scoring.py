@@ -90,3 +90,35 @@ class ScoreLedger:
         }
         self._reset()
         return counts
+
+
+class DraftWatch:
+    """Counts the draft tokens each step schedules, which zero-draft keeps at 0. vLLM 0.30.0 drops
+    the schedule without an error when async scheduling is off or data_parallel_size is above 1, and
+    each decode step then carries a drafted token again. vLLM's own draft counter sums the same
+    scheduled_spec_decode_tokens (scheduler.py:1977-1998 at 0.30.0)."""
+
+    WARNING = (
+        "hulder.runtime: {n} draft tokens were scheduled in one step, where zero-draft schedules none, "
+        "so decode steps carry a drafted token again. With one, the stock connector lost 38.5% of "
+        "saturation throughput on an L4. Likely causes: async scheduling off (--no-async-scheduling), "
+        "data_parallel_size above 1, or Model Runner V1. Scores are unaffected. Every draft is counted in "
+        "hulder_draft_tokens on /metrics. This warning is logged once."
+    )
+
+    def __init__(self):
+        self._interval = 0
+        self._warned = False
+
+    def observe(self, scheduled_spec_decode_tokens: dict[str, list[int]]) -> str | None:
+        """Counts one step's drafts, returning the warning on the first step that has any."""
+        n = sum(len(tokens) for tokens in scheduled_spec_decode_tokens.values())
+        self._interval += n
+        if n and not self._warned:
+            self._warned = True
+            return self.WARNING.format(n=n)
+        return None
+
+    def drain(self) -> int:
+        n, self._interval = self._interval, 0
+        return n
