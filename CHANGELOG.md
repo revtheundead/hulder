@@ -2,6 +2,12 @@
 
 Notable changes to hulder. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html). `hulder.capture` is experimental, so its names may change in any 0.x release (`docs/design.md` §4).
 
+## [Unreleased]
+
+### Added
+
+- `hulder.runtime`, in the `vllm` extra and experimental like `hulder.capture`: in-server probe scoring for `vllm serve` on vLLM 0.30.0. A KV connector scores a linear probe on each request's last prompt token at the end of prefill, with no host sync, and puts the score in a non-streamed reply's `kv_transfer_params` as `hulder_score` and on `/metrics`. It is monitor-only, so nothing waits for the score, and a streamed or very short reply can come back without one. `hulder.runtime.serve_args(probe_path)` returns the `--speculative-config` and `--kv-transfer-config` arguments that load it, with no drafted tokens, and refuses a probe that doesn't record a layer, position -1 and a threshold.
+
 ## [0.2.1] - 2026-11-10
 
 ### Added
