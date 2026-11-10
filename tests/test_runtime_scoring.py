@@ -128,7 +128,7 @@ def test_no_drafts_under_zero_draft_means_no_warning_and_nothing_counted():
 def test_the_first_drafted_step_warns_once_with_its_count_and_every_draft_is_counted():
     watch = s.DraftWatch()
     warning = watch.observe({"a": [5], "b": [-1]})
-    assert "2 draft tokens" in warning
+    assert "2 draft token(s)" in warning
     assert "--no-async-scheduling" in warning and "data_parallel_size" in warning
     assert watch.observe({"a": [7]}) is None
     assert watch.drain() == 3

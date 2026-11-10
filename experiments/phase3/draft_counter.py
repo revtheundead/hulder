@@ -1,4 +1,4 @@
-"""The draft counter's check on a server (hulder.runtime, written decision-0010): with async scheduling on, zero-draft
+"""The draft counter's check on a server (hulder.runtime, docs/design.md §5 D1): with async scheduling on, zero-draft
 schedules no draft tokens and the runtime stays quiet. With it off, vLLM 0.30.0 drafts again with no
 warning of its own, and the runtime must warn once and count the drafts on /metrics.
 

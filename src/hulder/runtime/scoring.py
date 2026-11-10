@@ -99,7 +99,7 @@ class DraftWatch:
     scheduled_spec_decode_tokens (scheduler.py:1977-1998 at 0.30.0)."""
 
     WARNING = (
-        "hulder.runtime: {n} draft tokens were scheduled in one step, where zero-draft schedules none, "
+        "hulder.runtime: {n} draft token(s) scheduled in one step, where zero-draft schedules none, "
         "so decode steps carry a drafted token again. With one, the stock connector lost 38.5% of "
         "saturation throughput on an L4. Likely causes: async scheduling off (--no-async-scheduling), "
         "data_parallel_size above 1, or Model Runner V1. Scores are unaffected. Every draft is counted in "

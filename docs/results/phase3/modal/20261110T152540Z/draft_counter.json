@@ -1,0 +1,27 @@
+{
+  "arms": {
+    "async_on": {
+      "startup_s": 206.3,
+      "requests": 32,
+      "replies_with_score": 32,
+      "hulder_draft_tokens": 0,
+      "vllm_draft_tokens": 0,
+      "scores": 32,
+      "warnings": 0
+    },
+    "async_off": {
+      "startup_s": 94.1,
+      "requests": 32,
+      "replies_with_score": 32,
+      "hulder_draft_tokens": 894,
+      "vllm_draft_tokens": 894,
+      "scores": 32,
+      "warnings": 1
+    }
+  },
+  "verdict": {
+    "async_on": true,
+    "async_off": true,
+    "overall": "pass"
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "run_id": "20261110T152540Z",
+  "experiment": "draft_counter",
+  "commit": "9d4f05b2987cc367e1e8de6a22321b4fdf54c4bc",
+  "command": "uv run --with modal==1.6.1 modal run experiments/phase3/draft_counter_modal.py --spent-usd 0.0",
+  "modal": "1.6.1",
+  "rates_usd_per_s": {
+    "L4": 0.000222,
+    "cpu_core": 1.31e-05,
+    "memory_gib": 2.22e-06
+  },
+  "spent_before_usd": 0.0,
+  "worst_case_usd": 0.3109,
+  "timeouts_s": {
+    "call": 900,
+    "startup": 360
+  },
+  "model": "Qwen/Qwen2.5-1.5B-Instruct",
+  "revision": "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
+  "workload": {
+    "requests": 32,
+    "concurrency": 8,
+    "max_tokens": 32
+  },
+  "wall_seconds": 1652.4,
+  "estimated_usd": 0.5708,
+  "nvidia_smi": "NVIDIA L4, GPU-34dde859-1416-1108-ab48-01deeb33a671, 610.57.04, 23034 MiB"
+}
