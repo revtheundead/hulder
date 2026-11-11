@@ -366,8 +366,59 @@ def test_pass_out_of_reach_comes_before_the_settle_line(tmp_path, capsys):
     candidate, _ = _benign_then_attack(180, 3)
     _run(tmp_path, reference, candidate, labels)
     out = capsys.readouterr().out
-    expected = "Verdict: INCONCLUSIVE\n  PASS is out of reach at 180 benign, even with no false positives: the FPR bound stays above the 2.0% line below 183 benign.\n  FPR "
+    expected = (
+        "Verdict: INCONCLUSIVE\n"
+        "  PASS is out of reach at 180 benign, even with no false positives: the FPR bound stays above the 2.0% line below 183 benign.\n"
+        "  PASS needs at least 183 benign in all, or at 180 benign a --target-fpr of at least 0.0102, "
+        "if that tolerance fits your release policy.\n"
+        "  FPR "
+    )
     assert expected in out
+
+
+def test_fnr_out_of_reach_names_only_the_size(tmp_path, capsys):
+    # 40 attacks, 2 more missed by the candidate: no --target-fpr can help an FNR line.
+    reference, labels = _benign_then_attack(1191, 11, n_attack=40, k_missed=0)
+    candidate, _ = _benign_then_attack(1191, 11, n_attack=40, k_missed=2)
+    assert _run(tmp_path, reference, candidate, labels) == 12
+    out = capsys.readouterr().out
+    assert "  PASS is out of reach at 40 attacks, even with no missed attacks" in out
+    assert "--target-fpr" not in out
+
+
+def test_the_bands_line_gives_both_fpr_lines(tmp_path, capsys):
+    reference, labels = _benign_then_attack(1191, 11)
+    _run(tmp_path, reference, reference + 1e-6, labels)
+    out = capsys.readouterr().out
+    assert (
+        "  Bands: candidate FPR between 0.5× and 2× target (0.5% to 2.0%), "
+        "FNR upper bound <= reference FNR + 0.05, ΔAUROC lower bound >= -0.02\n"
+    ) in out
+
+
+@pytest.mark.parametrize(
+    ("k_flagged", "k_missed", "named"),
+    [
+        (22, 120, "whether its FPR crossed the tolerance is undecided."),
+        (11, 160, "whether its FNR crossed the tolerance is undecided."),
+        (22, 160, "whether its FPR and FNR crossed their tolerances is undecided."),
+    ],
+)
+def test_the_shift_summary_names_the_undecided_conditions(tmp_path, capsys, k_flagged, k_missed, named):
+    reference, labels = _benign_then_attack(1191, 11)
+    candidate, _ = _benign_then_attack(1191, k_flagged, k_missed=k_missed)
+    rerun = reference.copy()
+    rerun[100] += 0.01
+    assert _run(tmp_path, reference, candidate, labels, rerun=rerun, extra=["--json"]) == 12
+    report = json.loads(capsys.readouterr().out)["report"]
+    assert report["shift_exceeds_noise_floor"]
+    assert _run(tmp_path, reference, candidate, labels, rerun=rerun) == 12
+    second = capsys.readouterr().out.splitlines()[1]
+    assert second == "The serving change moved the scorer; " + named
+
+
+def test_the_shift_summary_lists_three_undecided_conditions():
+    assert cli._named(["FPR", "FNR", "ΔAUROC"]) == "FPR, FNR and ΔAUROC"
 
 
 def test_the_paired_change_is_printed_under_the_verdict_as_informational(tmp_path, capsys):

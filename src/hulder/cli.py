@@ -9,6 +9,7 @@ import dataclasses
 import json
 import math
 import sys
+from decimal import Decimal
 from importlib.metadata import version
 from importlib.resources import files
 from pathlib import Path
@@ -241,13 +242,17 @@ def render(report: Report, inputs: dict) -> str:
     reference and candidate shows at a glance."""
     lines = []
     if report.verdict is Verdict.INCONCLUSIVE and report.shift_exceeds_noise_floor:
+        names = [CONDITION_NAMES[u.condition] for u in report.undecided]
         lines += [
             (
                 f"Scores shifted beyond the noise floor: {report.decision_flips} decisions flipped "
                 f"vs {report.noise_floor_decision_flips} on the rerun, "
                 f"mean |Δscore| {report.mean_abs_shift:.3g} vs {report.noise_floor_mean_abs_shift:.3g}."
             ),
-            "The serving change moved the scorer; whether its FPR crossed the tolerance is undecided.",
+            (
+                f"The serving change moved the scorer; whether its {_named(names)} crossed "
+                f"{'the tolerance' if len(names) == 1 else 'their tolerances'} is undecided."
+            ),
             "",
         ]
     for role in ("reference", "candidate", "rerun", "probe"):
@@ -279,9 +284,17 @@ def render(report: Report, inputs: dict) -> str:
     return "\n".join(line.rstrip() for line in lines)
 
 
+CONDITION_NAMES = {"fpr": "FPR", "fnr": "FNR", "delta_auroc": "ΔAUROC"}
+
+
+def _named(names: list[str]) -> str:
+    """Joins condition names as prose, e.g. "FPR, FNR and ΔAUROC"."""
+    return names[0] if len(names) == 1 else f"{', '.join(names[:-1])} and {names[-1]}"
+
+
 def _undecided(report: Report) -> list[str]:
     """For INCONCLUSIVE: first any condition PASS can't satisfy at this size, then one line per undecided condition."""
-    return [f"  {_out_of_reach_line(r)}" for r in report.out_of_reach] + [
+    return [line for r in report.out_of_reach for line in _out_of_reach_lines(r)] + [
         f"  {_undecided_line(u)}" for u in report.undecided
     ]
 
@@ -307,14 +320,23 @@ def _paired_changes(report: Report) -> list[str]:
     ]
 
 
-def _out_of_reach_line(r: OutOfReach) -> str:
+def _out_of_reach_lines(r: OutOfReach) -> list[str]:
     kind, errors, name = (
         ("benign", "false positives", "FPR") if r.condition == "fpr" else ("attacks", "missed attacks", "FNR")
     )
-    return (
-        f"PASS is out of reach at {r.n:,} {kind}, even with no {errors}: "
-        f"the {name} bound stays above the {r.line:.1%} line below {r.minimum:,} {kind}."
-    )
+    lines = [
+        (
+            f"  PASS is out of reach at {r.n:,} {kind}, even with no {errors}: "
+            f"the {name} bound stays above the {r.line:.1%} line below {r.minimum:,} {kind}."
+        )
+    ]
+    if r.target_fpr_for_pass is not None:
+        target = format(Decimal(repr(r.target_fpr_for_pass)), "f")
+        lines.append(
+            f"  PASS needs at least {r.minimum:,} {kind} in all, or at {r.n:,} {kind} a --target-fpr of at least "
+            f"{target}, if that tolerance fits your release policy."
+        )
+    return lines
 
 
 def _undecided_line(u: Undecided) -> str:
@@ -379,7 +401,8 @@ def _performance(report: Report) -> list[str]:
             f"[{report.delta_auroc.low:+.4f}, {report.delta_auroc.high:+.4f}]"
         ),
         (
-            f"  Bands: candidate FPR upper bound <= {gate_check.FPR_BAND_HIGH * report.target_fpr:.1%}, "
+            f"  Bands: candidate FPR between {gate_check.FPR_BAND_LOW:g}× and {gate_check.FPR_BAND_HIGH:g}× target "
+            f"({gate_check.FPR_BAND_LOW * report.target_fpr:.1%} to {gate_check.FPR_BAND_HIGH * report.target_fpr:.1%}), "
             f"FNR upper bound <= reference FNR + {gate_check.FNR_TOLERANCE}, ΔAUROC lower bound >= -{gate_check.AUROC_TOLERANCE}"
         ),
     ]
