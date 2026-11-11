@@ -13,7 +13,7 @@ from hulder.gate.pairing import PROMPT_IDS_KEY, PairingError, check_pairing
 from hulder.gate.probe import Probe, probe_logits
 from hulder.gate.recalibrate import CONFIDENCE, binomial_tail_threshold
 from hulder.gate.snapshot import Snapshot
-from hulder.gate.stats import clopper_pearson
+from hulder.gate.stats import clopper_pearson, paired_change_interval
 from hulder.gate.validate import example_ids, require_binary_labels
 
 N_BOOTSTRAP = 1000
@@ -108,6 +108,26 @@ class Undecided:
 
 
 @dataclass(frozen=True)
+class PairedChange:
+    """The change in FPR or FNR between the runs on the same examples, informational only. It holds the
+    reference's rate on this snapshot fixed and bounds the change from the examples that flipped each
+    way, with Newcombe's interval on continuity-corrected Wilson intervals. That interval missed the
+    coverage bar fixed beforehand, at most 3.68% per end against a nominal 2.5%
+    (docs/results/phase2/paired_coverage_cc.md), so the verdict, exit code and floors never read it
+    (docs/design.md §10)."""
+
+    # "fpr" (benign examples, counting flags) or "fnr" (attacks, counting misses)
+    condition: str
+    # Examples counted by both runs, by the candidate only (raising its rate) and by the reference only.
+    both: int
+    increase: int
+    decrease: int
+    n: int
+    # (increase - decrease) / n, candidate - reference, with the interval's 95% bounds.
+    estimate: Estimate
+
+
+@dataclass(frozen=True)
 class OutOfReach:
     """PASS can't be reached at this size whatever the scorer does: even with no errors in the class,
     the condition's 95% upper bound would stay above its line. `minimum` is the fewest examples of the
@@ -183,6 +203,9 @@ class Report:
     undecided: tuple[Undecided, ...] = ()
     # Only for INCONCLUSIVE: conditions PASS can't satisfy at this size even with no errors.
     out_of_reach: tuple[OutOfReach, ...] = ()
+    # The FPR and FNR change on the same examples, in that order. Informational: never an input to
+    # the verdict, exit code or floors (PairedChange).
+    paired_changes: tuple[PairedChange, ...] = ()
 
 
 def check(
@@ -326,6 +349,10 @@ def check(
     if verdict in (Verdict.THRESHOLD_STALE, Verdict.INCONCLUSIVE):
         recalibration = _recalibrate(candidate[benign], candidate[~benign], target_fpr)
     flipped = (reference > threshold) != (candidate > threshold)
+    paired_changes = (
+        _paired_change("fpr", reference[benign] > threshold, candidate[benign] > threshold),
+        _paired_change("fnr", reference[~benign] <= threshold, candidate[~benign] <= threshold),
+    )
     floor = {}
     if rerun_identical:
         warnings.append(
@@ -366,6 +393,7 @@ def check(
         recalibration=recalibration,
         undecided=undecided,
         out_of_reach=out_of_reach,
+        paired_changes=paired_changes,
         rerun_identical_to_reference=rerun_identical,
         **floor,
         **logit_shift,
@@ -580,6 +608,15 @@ def _out_of_reach(reference_fnr: Estimate, benign: np.ndarray, target_fpr: float
         if clopper_pearson(0, n)[1] > line:
             out.append(OutOfReach(condition, n, line, settle.minimum_for_pass(line)))
     return tuple(out)
+
+
+def _paired_change(condition: str, reference_counted: np.ndarray, candidate_counted: np.ndarray) -> PairedChange:
+    both = int((reference_counted & candidate_counted).sum())
+    increase = int((candidate_counted & ~reference_counted).sum())
+    decrease = int((reference_counted & ~candidate_counted).sum())
+    n = len(reference_counted)
+    low, high = paired_change_interval(both, increase, decrease, n)
+    return PairedChange(condition, both, increase, decrease, n, Estimate((increase - decrease) / n, low, high))
 
 
 def _fpr(benign_scores: np.ndarray, threshold: float) -> Estimate:

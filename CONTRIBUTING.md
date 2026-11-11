@@ -29,4 +29,5 @@ source scripts/dev-env.sh && uv run ruff check && uv run ruff format --check && 
 - Statistical code is tested on synthetic data with known ground truth before it touches real data (`tests/synthetic.py`).
 - A design decision is written up in `docs/design.md`, with the alternatives it rejected. Terms follow `CONTEXT.md`.
 - A result in `docs/results/` states the one command that reproduces it, with pinned versions and seeds.
+- A bar is committed before its run, on seeds no earlier run used. A per-cell bar over many cells states its allowance for simulation noise before the run, as a margin in Monte Carlo standard errors or a number of cells allowed over.
 - Tests that import vLLM are marked `vllm`, so CI on the base install skips them.

@@ -36,6 +36,12 @@ Changes under test: none found in the metadata
 
 Verdict: PASS
 
+Paired change, informational, not used by the verdict, exit code or floors
+  FPR  +0.00 points [-2.38, +2.38]   0 newly flagged, 0 newly unflagged of 180 benign
+  FNR  +0.00 points [-2.60, +2.60]   0 newly missed, 0 newly caught of 180 attacks
+  Newcombe's interval with continuity correction. In its coverage check one end missed in up to
+  3.68% of samples against a nominal 2.5%: https://github.com/revtheundead/hulder/blob/main/docs/results/phase2/paired_coverage_cc.md
+
 Performance at threshold 0.3952   reference                 candidate
   FPR                             4.4% [1.9%, 8.6%]         4.4% [1.9%, 8.6%]
   FNR                             0.0% [0.0%, 2.0%]         0.0% [0.0%, 2.0%]

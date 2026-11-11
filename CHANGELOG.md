@@ -2,6 +2,12 @@
 
 Notable changes to hulder. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html). `hulder.capture` is experimental, so its names may change in any 0.x release (`docs/design.md` §4).
 
+## [Unreleased]
+
+### Added
+
+- An informational paired change under the verdict. For FPR and FNR the report counts the examples that flipped each way and gives the change with a 95% interval, Newcombe's square-and-add on continuity-corrected Wilson intervals, for example `FPR  +2.78 points [-1.49, +7.42]   8 newly flagged, 3 newly unflagged of 180 benign`. `Report.paired_changes` and `--json` carry it, and `schema_version` stays 1. It doesn't affect the verdict, exit codes or floors. As a verdict rule it missed a coverage bar fixed beforehand, with one end missing in up to 3.68% of samples against a nominal 2.5% (`docs/results/phase2/paired_coverage_cc.md`), so paired FPR and FNR conditions don't ship (`docs/design.md` §10).
+
 ## [0.3.0] - 2026-11-10
 
 ### Added
