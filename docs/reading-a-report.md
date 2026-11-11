@@ -20,6 +20,12 @@ Changes under test (reference -> candidate)
 Verdict: INCONCLUSIVE
   FPR 3.9% to 12.0% against the 10.0% line; at least 16 more benign prompts are needed, as fewer cannot settle it.
 
+Paired change, informational, not used by the verdict, exit code or floors
+  FPR  +2.78 points [-1.49, +7.42]   8 newly flagged, 3 newly unflagged of 180 benign
+  FNR  +0.00 points [-2.60, +2.60]   0 newly missed, 0 newly caught of 180 attacks
+  Newcombe's interval with continuity correction. In its coverage check one end missed in up to
+  3.68% of samples against a nominal 2.5%: https://github.com/revtheundead/hulder/blob/main/docs/results/phase2/paired_coverage_cc.md
+
 Recalibrated threshold (optional)  0.5391 for a 5.0% target FPR (binomial-tail, 95% confidence)
   3 of 180 benign above it. With 95% confidence its FPR is at most 5.0% on traffic like this calibration set.
   Candidate FNR at 0.5391: 4.4% [1.9%, 8.6%]
@@ -60,6 +66,8 @@ Exit code 12 (INCONCLUSIVE)
 **Why INCONCLUSIVE.** Question 1 is the open one. The candidate's FPR interval, [3.9%, 12.0%], straddles the 10.0% line. The data can't rule out an FPR above the tolerance, so it can't PASS. It can't confirm one either, which would need the whole interval above 10.0% and would make the verdict THRESHOLD STALE. The line under the verdict says so. "At least 16 more benign prompts" is a floor, not an estimate. Sixteen more, every one of them flagged, would lift the interval wholly above 10.0%, and fewer can't settle it whatever they show. Unflagged ones would take far more to pull it below. Realistically it will take many more than 16. A report lists one such line per condition it couldn't decide, and before them says if PASS is out of reach at the current size even with no errors, with the size at which it becomes possible. ΔAUROC gets its interval line only. There is no number for how much data would probably settle a condition: two attempts at one missed their tests (`docs/results/phase2/settle.md`, `settle_v2.md`).
 
 **The recalibrated threshold.** If the threshold is what's wrong, this is the replacement for the same 5.0% target, fitted on the candidate's own benign scores. It's labelled optional because the verdict is INCONCLUSIVE, not THRESHOLD STALE. It allows only 3 of the 180 benign scores above it, fewer than one in twenty, because it must keep the FPR at or below 5.0% for 95% of the calibration sets this one could have been. That caution has a price. At 0.5391 the candidate misses 4.4% of attacks, where at 0.3952 it missed none. It was fitted on the same scores this report reads, so check it on a fresh candidate snapshot before relying on it. Passing `--threshold 0.5391` reproduces it exactly.
+
+**The paired change.** The block under the verdict is information only. Nothing in the verdict, the exit code or the floors reads it. It counts the prompts whose decision changed. Here 8 benign prompts were newly flagged and 3 newly unflagged, a change of +2.78 points. Its interval, [-1.49, +7.42], holds the reference's rate on these prompts fixed and bounds only the change, so it can be narrower than the per-run intervals when few prompts flip. With no prompt flipping, as for FNR here, it still spans [-2.60, +2.60] at 180 examples. In its own coverage test one end missed in up to 3.68% of samples, against a nominal 2.5%, which is why it stays informational (`docs/results/phase2/paired_coverage_cc.md`).
 
 **Shift and the noise floor.** This section never decides the verdict. It says whether the change moved the scorer at all. Prompt by prompt against the reference, the candidate flipped 11 decisions (3.1%) and moved scores by 0.0515 on average. The rerun flipped 0 and moved them by 0.000208, because GPU runs aren't bit-identical. That rerun is the noise floor, how much scores move when nothing changed. Δlogit is the same comparison on the probe's raw output before the sigmoid, 0.502 against 0.00197. The candidate's excess over the rerun is 0.0513 with interval [0.0457, 0.0577], clear of zero, so it exceeds the noise floor. Without `--noise-floor`, as in check 1, this reads "not measured".
 

@@ -9,6 +9,7 @@ from synthetic import missed_attack_shift_for, unchanged_scorer
 
 import hulder
 from hulder import cli
+from hulder.gate.stats import paired_change_interval
 
 _META = {"base_model": "Qwen/Qwen2.5-1.5B-Instruct", "quantization": None}
 
@@ -367,3 +368,51 @@ def test_pass_out_of_reach_comes_before_the_settle_line(tmp_path, capsys):
     out = capsys.readouterr().out
     expected = "Verdict: INCONCLUSIVE\n  PASS is out of reach at 180 benign, even with no false positives: the FPR bound stays above the 2.0% line below 183 benign.\n  FPR "
     assert expected in out
+
+
+def test_the_paired_change_is_printed_under_the_verdict_as_informational(tmp_path, capsys):
+    reference, labels = _benign_then_attack(1191, 11)
+    candidate, _ = _benign_then_attack(1191, 22)
+    assert _run(tmp_path, reference, candidate, labels) == 12
+    out = capsys.readouterr().out
+    verdict_block, rest = out.split("Paired change", 1)
+    assert verdict_block.rstrip().endswith("cannot settle it.")
+    fpr_low, fpr_high = paired_change_interval(11, 11, 0, 1191)
+    fnr_low, fnr_high = paired_change_interval(120, 0, 0, 910)
+    assert rest.startswith(", informational, not used by the verdict, exit code or floors\n")
+    assert f"  FPR  +0.92 points [{fpr_low * 100:+.2f}, {fpr_high * 100:+.2f}]" in rest
+    assert "11 newly flagged, 0 newly unflagged of 1,191 benign" in rest
+    assert f"  FNR  +0.00 points [{fnr_low * 100:+.2f}, {fnr_high * 100:+.2f}]" in rest
+    assert "0 newly missed, 0 newly caught of 910 attacks" in rest
+    assert "Newcombe's interval with continuity correction" in rest
+    assert "3.68%" in rest and cli.PAIRED_CHANGE_RESULTS in rest
+
+
+def test_the_paired_change_is_printed_on_a_pass_too(tmp_path, capsys):
+    d = unchanged_scorer(0)
+    assert _run(tmp_path, d.reference, d.candidate, d.labels, extra=["--threshold", str(d.threshold)]) == 0
+    out = capsys.readouterr().out
+    assert out.index("Verdict: PASS") < out.index("Paired change, informational") < out.index("Performance at")
+
+
+def test_json_output_carries_the_paired_changes(tmp_path, capsys):
+    reference, labels = _benign_then_attack(1191, 11)
+    candidate, _ = _benign_then_attack(1191, 22)
+    _run(tmp_path, reference, candidate, labels, extra=["--json"])
+    out = json.loads(capsys.readouterr().out)
+    fpr, fnr = out["report"]["paired_changes"]
+    assert {k: fpr[k] for k in ("condition", "both", "increase", "decrease", "n")} == {
+        "condition": "fpr",
+        "both": 11,
+        "increase": 11,
+        "decrease": 0,
+        "n": 1191,
+    }
+    assert fpr["estimate"]["value"] == pytest.approx(11 / 1191)
+    assert fnr["condition"] == "fnr" and fnr["n"] == 910
+    assert out["schema_version"] == 1
+
+
+def test_quickstart_prints_the_paired_change_for_both_checks(capsys):
+    assert cli.run(["quickstart"]) == 0
+    assert capsys.readouterr().out.count("Paired change, informational") == 2

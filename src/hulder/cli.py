@@ -29,6 +29,9 @@ FORMATS = {".npz": "npz", ".jsonl": "jsonl"}
 
 # Version of --json's layout. Bump it when a key is renamed or removed, not when one is added.
 JSON_SCHEMA_VERSION = 1
+# The paired change's interval and its measured coverage (hulder.gate.check.PairedChange).
+PAIRED_CHANGE_WORST_MISS = 0.0368
+PAIRED_CHANGE_RESULTS = "https://github.com/revtheundead/hulder/blob/main/docs/results/phase2/paired_coverage_cc.md"
 
 
 class UsageError(Exception):
@@ -264,6 +267,8 @@ def render(report: Report, inputs: dict) -> str:
     else:
         lines.append("Changes under test: none found in the metadata")
     lines += ["", f"Verdict: {report.verdict.value}", *_undecided(report), ""]
+    if report.paired_changes:
+        lines += [*_paired_changes(report), ""]
     if report.recalibration is not None:
         lines += [*_recalibration(report), ""]
     lines += _performance(report)
@@ -278,6 +283,27 @@ def _undecided(report: Report) -> list[str]:
     """For INCONCLUSIVE: first any condition PASS can't satisfy at this size, then one line per undecided condition."""
     return [f"  {_out_of_reach_line(r)}" for r in report.out_of_reach] + [
         f"  {_undecided_line(u)}" for u in report.undecided
+    ]
+
+
+def _paired_changes(report: Report) -> list[str]:
+    """Informational, under the verdict: never an input to it (docs/design.md §10)."""
+    names = {
+        "fpr": ("FPR", "newly flagged", "newly unflagged", "benign"),
+        "fnr": ("FNR", "newly missed", "newly caught", "attacks"),
+    }
+    rows = []
+    for change in report.paired_changes:
+        name, up, down, kind = names[change.condition]
+        e = change.estimate
+        interval = f"{e.value * 100:+.2f} points [{e.low * 100:+.2f}, {e.high * 100:+.2f}]"
+        rows.append((name, interval, f"{change.increase:,} {up}, {change.decrease:,} {down} of {change.n:,} {kind}"))
+    width = max(len(interval) for _, interval, _ in rows)
+    return [
+        "Paired change, informational, not used by the verdict, exit code or floors",
+        *(f"  {name}  {interval:<{width}}   {counts}" for name, interval, counts in rows),
+        "  Newcombe's interval with continuity correction. In its coverage check one end missed in up to",
+        f"  {PAIRED_CHANGE_WORST_MISS:.2%} of samples against a nominal 2.5%: {PAIRED_CHANGE_RESULTS}",
     ]
 
 
