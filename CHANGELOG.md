@@ -7,6 +7,12 @@ Notable changes to hulder. The format follows [Keep a Changelog](https://keepach
 ### Added
 
 - An informational paired change under the verdict. For FPR and FNR the report counts the examples that flipped each way and gives the change with a 95% interval, Newcombe's square-and-add on continuity-corrected Wilson intervals, for example `FPR  +2.78 points [-1.49, +7.42]   8 newly flagged, 3 newly unflagged of 180 benign`. `Report.paired_changes` and `--json` carry it, and `schema_version` stays 1. It doesn't affect the verdict, exit codes or floors. As a verdict rule it missed a coverage bar fixed beforehand, with one end missing in up to 3.68% of samples against a nominal 2.5% (`docs/results/phase2/paired_coverage_cc.md`), so paired FPR and FNR conditions don't ship (`docs/design.md` §10).
+- When PASS is out of reach because of the target FPR, an INCONCLUSIVE report names both ways out: the minimum size, and the smallest `--target-fpr` at which PASS becomes possible at the current size, for example `PASS needs at least 183 benign in all, or at 180 benign a --target-fpr of at least 0.0102, if that tolerance fits your release policy.` It is exact, like the size check, rounded up to three significant figures. `OutOfReach.target_fpr_for_pass` and `--json` carry it, and `schema_version` stays 1.
+
+### Changed
+
+- The report's Bands line gives both FPR lines, for example `candidate FPR between 0.5× and 2× target (2.5% to 10.0%)`. The low line was always part of the rule, as THRESHOLD STALE, but wasn't printed.
+- The summary at the top of an INCONCLUSIVE report with a real shift names the conditions that are undecided, for example `whether its FPR and FNR crossed their tolerances is undecided`, instead of always FPR.
 
 ## [0.3.0] - 2026-11-10
 

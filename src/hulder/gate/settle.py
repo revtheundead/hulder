@@ -1,9 +1,10 @@
 """Exact size facts for an INCONCLUSIVE report, with no estimate of what new data will show.
 
 `minimum_for_pass` is the fewest examples at which PASS is possible at all: below it, even with no
-errors, the 95% upper bound stays above the line. The floors are the fewest extra examples that
-could settle an undecided condition in its nearer direction, if every new example went the most
-favourable way. Fewer cannot settle it, whatever they show. More may not either.
+errors, the 95% upper bound stays above the line. `minimum_target_for_pass` is the same check turned
+round for the FPR condition: the smallest target FPR whose line a given size clears with no errors.
+The floors are the fewest extra examples that could settle an undecided condition in its nearer
+direction, if every new example went the most favourable way. Fewer cannot settle it, whatever they show. More may not either.
 
 Two estimates of how much data would settle a condition with a stated chance were tested and missed
 their bars (docs/results/phase2/settle.md and settle_v2.md), so the report gives only these.
@@ -32,6 +33,24 @@ def minimum_for_pass(line: float) -> int:
     while clopper_pearson(0, n)[1] > line:
         n += 1
     return n
+
+
+def minimum_target_for_pass(n: int, band: float, figures: int = 3) -> float:
+    """The smallest target FPR, rounded up to `figures` significant figures, at which n benign with no
+    false positives have a 95% upper bound at most band * target. It is the value the report prints, so
+    passing it back as the target reaches PASS at n."""
+    bound = clopper_pearson(0, n)[1]
+    exponent = math.floor(math.log10(bound / band)) - (figures - 1)
+
+    def clears(digits: int) -> bool:
+        return bound <= band * float(f"{digits}e{exponent}")
+
+    digits = math.ceil(bound / band / 10**exponent)
+    while not clears(digits):
+        digits += 1
+    while clears(digits - 1):
+        digits -= 1
+    return float(f"{digits}e{exponent}")
 
 
 def _first(predicate) -> int:

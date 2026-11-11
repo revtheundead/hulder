@@ -1,10 +1,12 @@
 """Exact floors for an undecided condition (hulder.gate.settle): the fewest extra examples that could
 settle it, if every new example went the most favourable way. Pinned against Clopper-Pearson."""
 
+from decimal import Decimal
+
 import numpy as np
 import pytest
 
-from hulder.gate.settle import Floor, fnr_floor, fpr_floor, minimum_for_pass
+from hulder.gate.settle import Floor, fnr_floor, fpr_floor, minimum_for_pass, minimum_target_for_pass
 from hulder.gate.stats import clopper_pearson
 
 
@@ -27,6 +29,27 @@ def test_minimum_for_pass_is_the_smallest_size_whose_zero_error_bound_clears_the
     assert n == 183
     assert clopper_pearson(0, n)[1] <= 0.02 < clopper_pearson(0, n - 1)[1]
     assert minimum_for_pass(0.10) == 36
+
+
+def _one_step_below(target: float) -> float:
+    """The next smaller value with the same number of significant figures, three."""
+    d = Decimal(repr(target))
+    return float(d - Decimal(1).scaleb(d.adjusted() - 2))
+
+
+@pytest.mark.parametrize("n", [1, 2, 36, 180, 182, 1000, 10_000, 250_000])
+def test_minimum_target_for_pass_is_the_smallest_three_figure_target_whose_line_clears(n):
+    target = minimum_target_for_pass(n, 2.0)
+    zero_error_bound = clopper_pearson(0, n)[1]
+    assert zero_error_bound <= 2.0 * target
+    assert zero_error_bound > 2.0 * _one_step_below(target)
+    assert len(Decimal(repr(target)).normalize().as_tuple().digits) <= 3
+
+
+def test_minimum_target_for_pass_at_the_size_checks_example():
+    # 180 benign at a 1% target is out of reach until 183 benign; a 1.02% target reaches it at 180.
+    assert minimum_target_for_pass(180, 2.0) == 0.0102
+    assert minimum_for_pass(2.0 * 0.0102) <= 180 < minimum_for_pass(2.0 * 0.0101)
 
 
 # --- FPR ---
