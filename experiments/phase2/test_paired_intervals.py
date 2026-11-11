@@ -74,3 +74,29 @@ def test_newcombe_without_correlation_is_the_plain_square_and_add():
     low, high = p.newcombe(a, b, c, n)
     assert low == pytest.approx(-math.hypot(0.3 - l1, u1 - 0.3))
     assert high == pytest.approx(math.hypot(0.3 - l1, u1 - 0.3))
+
+
+@pytest.mark.parametrize("k,n", [(0, 180), (1, 180), (3, 180), (11, 1191), (179, 180), (180, 180)])
+def test_wilson_cc_matches_scipy(k, n):
+    ci = binomtest(k, n).proportion_ci(confidence_level=0.95, method="wilsoncc")
+    assert p.wilson_cc(k, n) == pytest.approx((ci.low, ci.high), abs=1e-12)
+
+
+@pytest.mark.parametrize("table", TABLES)
+def test_newcombe_cc_contains_newcombe(table):
+    low, high = p.newcombe(*table)
+    cc_low, cc_high = p.newcombe_cc(*table)
+    assert cc_low <= low + 1e-12 and high <= cc_high + 1e-12
+
+
+@pytest.mark.parametrize("table", TABLES)
+def test_newcombe_cc_contains_the_estimate_and_negates_on_swap(table):
+    a, b, c, n = table
+    low, high = p.newcombe_cc(a, b, c, n)
+    assert -1 <= low <= (b - c) / n + 1e-12 <= high + 2e-12 <= 1 + 2e-12
+    assert p.newcombe_cc(a, c, b, n) == pytest.approx((-high, -low), abs=1e-9)
+
+
+def test_the_first_runs_candidates_are_unchanged():
+    assert list(p.INTERVALS) == ["exact_conditional", "tango", "newcombe"]
+    assert list(p.CANDIDATES) == [*p.INTERVALS, "newcombe_cc"]

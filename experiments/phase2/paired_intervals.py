@@ -14,7 +14,9 @@ Clopper-Pearson bounds are.
 Tango's score interval and Newcombe's square-and-add interval follow the code of the R package
 contingencytables 3.1.1 (Fagerland, Lydersen and Laake), functions
 Tango_asymptotic_score_CI_paired_2x2 and Newcombe_square_and_add_CI_paired_2x2, with its
-n[1, 2] = b and n[2, 1] = c.
+n[1, 2] = b and n[2, 1] = c. The continuity-corrected variant swaps in Wilson intervals with
+continuity correction, as Newcombe's paper describes for its paired method 11. That reading of the
+paper is unchecked against its text, and the Wilson intervals are checked against scipy's.
 """
 
 import math
@@ -70,14 +72,32 @@ def wilson(k: int, n: int, alpha: float = ALPHA) -> tuple[float, float]:
     return max(0.0, centre - half), min(1.0, centre + half)
 
 
-def newcombe(a: int, b: int, c: int, n: int, alpha: float = ALPHA) -> tuple[float, float]:
+def wilson_cc(k: int, n: int, alpha: float = ALPHA) -> tuple[float, float]:
+    """The Wilson score interval for k of n with continuity correction."""
+    z = norm.ppf(1 - alpha / 2)
+    p = k / n
+    if k == 0:
+        low = 0.0
+    else:
+        low = (2 * n * p + z * z - 1 - z * math.sqrt(z * z - 2 - 1 / n + 4 * p * (n * (1 - p) + 1))) / (2 * (n + z * z))
+    if k == n:
+        high = 1.0
+    else:
+        high = (2 * n * p + z * z + 1 + z * math.sqrt(z * z + 2 - 1 / n + 4 * p * (n * (1 - p) - 1))) / (
+            2 * (n + z * z)
+        )
+    return max(0.0, low), min(1.0, high)
+
+
+def newcombe(a: int, b: int, c: int, n: int, alpha: float = ALPHA, score=None) -> tuple[float, float]:
     """Newcombe's square-and-add interval for paired data (Newcombe 1998), from the two runs' Wilson
     intervals and a correction for their correlation."""
+    score = score or wilson
     d = n - a - b - c
     candidate, reference = a + b, a + c
     p1, p2 = candidate / n, reference / n
-    l1, u1 = wilson(candidate, n, alpha)
-    l2, u2 = wilson(reference, n, alpha)
+    l1, u1 = score(candidate, n, alpha)
+    l2, u2 = score(reference, n, alpha)
     if 0 in (candidate, n - candidate, reference, n - reference):
         psi = 0.0
     else:
@@ -95,4 +115,13 @@ def newcombe(a: int, b: int, c: int, n: int, alpha: float = ALPHA) -> tuple[floa
     return float(low), float(high)
 
 
+def newcombe_cc(a: int, b: int, c: int, n: int, alpha: float = ALPHA) -> tuple[float, float]:
+    """Newcombe's square-and-add interval built on continuity-corrected Wilson intervals, with the same
+    correlation correction. Added for the second coverage run, after the first run's cells were seen."""
+    return newcombe(a, b, c, n, alpha, score=wilson_cc)
+
+
+# The first coverage run's candidates.
 INTERVALS = {"exact_conditional": exact_conditional, "tango": tango, "newcombe": newcombe}
+# Every candidate, including the second run's.
+CANDIDATES = {**INTERVALS, "newcombe_cc": newcombe_cc}
