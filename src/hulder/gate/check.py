@@ -131,13 +131,15 @@ class PairedChange:
 class OutOfReach:
     """PASS can't be reached at this size whatever the scorer does: even with no errors in the class,
     the condition's 95% upper bound would stay above its line. `minimum` is the fewest examples of the
-    class at which it could clear it."""
+    class at which it could clear it. For FPR, whose line is set by the target, `target_fpr_for_pass` is
+    the smallest target (to three significant figures) at which it could clear it at n; None for FNR."""
 
     # "fpr" (benign examples) or "fnr" (attacks)
     condition: str
     n: int
     line: float
     minimum: int
+    target_fpr_for_pass: float | None = None
 
 
 @dataclass(frozen=True)
@@ -606,7 +608,8 @@ def _out_of_reach(reference_fnr: Estimate, benign: np.ndarray, target_fpr: float
         ("fnr", int((~benign).sum()), reference_fnr.value + FNR_TOLERANCE),
     ):
         if clopper_pearson(0, n)[1] > line:
-            out.append(OutOfReach(condition, n, line, settle.minimum_for_pass(line)))
+            target = settle.minimum_target_for_pass(n, FPR_BAND_HIGH) if condition == "fpr" else None
+            out.append(OutOfReach(condition, n, line, settle.minimum_for_pass(line), target))
     return tuple(out)
 
 

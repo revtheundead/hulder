@@ -7,7 +7,7 @@ from synthetic import missed_attack_shift_for, unchanged_scorer
 
 import hulder
 from hulder.gate.check import AUROC_TOLERANCE, FNR_TOLERANCE, FPR_BAND_HIGH
-from hulder.gate.settle import fnr_floor, fpr_floor, minimum_for_pass
+from hulder.gate.settle import fnr_floor, fpr_floor, minimum_for_pass, minimum_target_for_pass
 
 TARGET = 0.01
 
@@ -71,6 +71,24 @@ def test_pass_out_of_reach_at_180_benign_and_a_1_percent_target():
     assert report.verdict is hulder.Verdict.INCONCLUSIVE
     [fpr] = [r for r in report.out_of_reach if r.condition == "fpr"]
     assert (fpr.n, fpr.minimum) == (180, minimum_for_pass(0.02)) == (180, 183)
+    assert fpr.target_fpr_for_pass == minimum_target_for_pass(180, FPR_BAND_HIGH) == 0.0102
+
+
+def _no_false_positives(n_benign, n_attack=180):
+    """A reference and an identical candidate with no benign above 0.5 and every attack above it."""
+    labels = np.r_[np.zeros(n_benign, int), np.ones(n_attack, int)]
+    scores = np.where(labels == 1, np.linspace(0.6, 1.0, len(labels)), np.linspace(0.0, 0.4, len(labels)))
+    return scores, labels
+
+
+def test_pass_is_reachable_at_the_reported_target_and_not_one_step_below():
+    scores, labels = _no_false_positives(180)
+    [fpr] = hulder.check(scores, scores + 1e-6, labels, threshold=0.5, target_fpr=TARGET).out_of_reach
+    at = hulder.check(scores, scores + 1e-6, labels, threshold=0.5, target_fpr=fpr.target_fpr_for_pass)
+    assert at.out_of_reach == ()
+    assert at.candidate_fpr.high <= FPR_BAND_HIGH * fpr.target_fpr_for_pass
+    below = hulder.check(scores, scores + 1e-6, labels, threshold=0.5, target_fpr=0.0101)
+    assert [r.condition for r in below.out_of_reach] == ["fpr"]
 
 
 def test_pass_within_reach_at_the_calibration_size():
@@ -89,6 +107,7 @@ def test_fnr_out_of_reach_when_even_no_misses_cant_clear_its_line():
     assert report.verdict is hulder.Verdict.INCONCLUSIVE
     [fnr] = [r for r in report.out_of_reach if r.condition == "fnr"]
     assert (fnr.n, fnr.minimum) == (40, minimum_for_pass(0.05))
+    assert fnr.target_fpr_for_pass is None  # the FNR line doesn't depend on the target
 
 
 def test_decided_verdicts_have_neither():
